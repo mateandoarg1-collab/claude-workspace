@@ -86,7 +86,8 @@ export default function Dashboard() {
             </p>
           </div>
           <nav className="flex gap-3 text-sm">
-            <Link href="/" className="font-medium text-emerald-700">Ventas</Link>
+            <Link href="/" className="font-medium text-emerald-700">Mercado Libre</Link>
+            <Link href="/canales" className="text-slate-600 hover:text-slate-900">Canales</Link>
             <Link href="/preguntas" className="text-slate-600 hover:text-slate-900">Preguntas</Link>
             <button
               onClick={async () => { await fetch('/api/auth', { method: 'DELETE' }); location.href = '/login'; }}

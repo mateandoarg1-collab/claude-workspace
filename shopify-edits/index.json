@@ -1,0 +1,2704 @@
+/*
+ * ------------------------------------------------------------
+ * IMPORTANT: The contents of this file are auto-generated.
+ *
+ * This file may be updated by the Shopify admin theme editor
+ * or related systems. Please exercise caution as any changes
+ * made to this file may be overwritten.
+ * ------------------------------------------------------------
+ */
+{
+  "sections": {
+    "collection_list_slider_n8Ypbb": {
+      "type": "collection-list-slider",
+      "blocks": {
+        "featured_collection_bipqHE": {
+          "type": "featured_collection",
+          "disabled": true,
+          "settings": {
+            "collection": "mates",
+            "image": "shopify://shop_images/Frame_1597883038_f2ecc401-cefc-4f72-8549-2047ad82bf01.png",
+            "title": "SALE"
+          }
+        },
+        "featured_collection_mWNfgi": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "mates",
+            "image": "shopify://shop_images/matecalabaza.jpg",
+            "title": "Mates"
+          }
+        },
+        "featured_collection_VtB8dT": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "termos",
+            "image": "shopify://shop_images/termo1.jpg",
+            "title": "Termos"
+          }
+        },
+        "featured_collection_ppPWzg": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "materas",
+            "image": "shopify://shop_images/matera-1.jpg",
+            "title": "Materas"
+          }
+        },
+        "featured_collection_7GY76a": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "pavas",
+            "image": "shopify://shop_images/setmatero2.jpg",
+            "title": "Set Materos"
+          }
+        },
+        "featured_collection_4ULYYm": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "bombillas",
+            "image": "shopify://shop_images/bombilla1.jpg",
+            "title": "Bombillas"
+          }
+        },
+        "featured_collection_FeB3Gq": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "yerberas-y-azucareras",
+            "image": "shopify://shop_images/yerberas1.jpg",
+            "title": "Yerberas"
+          }
+        },
+        "featured_collection_yRMD9N": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "accesorios",
+            "image": "shopify://shop_images/picocebador2.jpg",
+            "title": "Accesorios"
+          }
+        },
+        "featured_collection_qaCXTN": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "mochilas",
+            "image": "shopify://shop_images/mochu1l.jpg",
+            "title": "Mochilas"
+          }
+        },
+        "featured_collection_mqeww7": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "yerbas",
+            "image": "shopify://shop_images/yerbas1.jpg",
+            "title": "Yerbas"
+          }
+        }
+      },
+      "block_order": [
+        "featured_collection_bipqHE",
+        "featured_collection_mWNfgi",
+        "featured_collection_VtB8dT",
+        "featured_collection_ppPWzg",
+        "featured_collection_7GY76a",
+        "featured_collection_4ULYYm",
+        "featured_collection_FeB3Gq",
+        "featured_collection_yRMD9N",
+        "featured_collection_qaCXTN",
+        "featured_collection_mqeww7"
+      ],
+      "custom_css": [],
+      "name": "CATEGORIAS SUPERIORES",
+      "settings": {
+        "container": "fixed",
+        "color_scheme": "",
+        "section_header_alignment": "left",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "",
+        "highlight_style": "none",
+        "highlight_font_style": "italic",
+        "highlight_style_color": "",
+        "highlight_text_color": "",
+        "heading_size": "h3",
+        "description": "",
+        "text_size": "text-base",
+        "button_label": "",
+        "button_link": "",
+        "button_style": "btn--underline",
+        "button_icon": "none",
+        "card_color_scheme": "",
+        "card_style": "standard",
+        "card_heading_size": "text-base",
+        "card_image_ratio": "1/1",
+        "card_image_width": "full",
+        "card_image_padding": "none",
+        "rounded_card_image": false,
+        "mobile_layout": "vertical",
+        "carousel_item_size": "auto",
+        "columns_desktop": 6,
+        "carousel_control_color_scheme": "",
+        "padding_top": 20,
+        "padding_bottom": 20,
+        "show_section_divider": false,
+        "divider_width": "fixed"
+      }
+    },
+    "image_with_text_overlay_Cykedi": {
+      "type": "image-with-text-overlay",
+      "blocks": {
+        "heading_hkzDQU": {
+          "type": "heading",
+          "settings": {
+            "heading": "MATES DE VERDAD",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h1"
+          }
+        },
+        "text_xNrbbd": {
+          "type": "text",
+          "settings": {
+            "text": "<p>Mates, termos y accesorios premium diseñados para durar toda la vida.<br/>Elegí calidad, elegí tradición.</p><p></p>",
+            "text_size": "text-base"
+          }
+        },
+        "button_h7RbJk": {
+          "type": "button",
+          "settings": {
+            "button_label": "Comprar ahora",
+            "button_link": "shopify://products/mate-camionero-de-algarrobo-personalizado-prueba",
+            "button_style": "btn--primary",
+            "button_icon": "arrow-right"
+          }
+        }
+      },
+      "block_order": [
+        "heading_hkzDQU",
+        "text_xNrbbd",
+        "button_h7RbJk"
+      ],
+      "disabled": true,
+      "name": "t:sections.image-with-text-overlay.name",
+      "settings": {
+        "container": "fixed",
+        "image": "shopify://shop_images/Firefly_20260316155936.webp",
+        "desktop_height": "small",
+        "overlay_opacity": 20,
+        "enable_parallax": false,
+        "parallax_direction": "vertical",
+        "color_scheme": "scheme-inverse",
+        "content_position": "middle-left",
+        "content_alignment": "left",
+        "image_mobile": "shopify://shop_images/heromobile-mateando.webp",
+        "mobile_height": "adapt",
+        "content_position_mobile": "bottom-center-mobile",
+        "content_alignment_mobile": "center",
+        "padding_top": 20,
+        "padding_bottom": 0,
+        "enable_preload_image": false
+      }
+    },
+    "slideshow_RCxFLU": {
+      "type": "slideshow",
+      "blocks": {
+        "slide_9yKTXm": {
+          "type": "slide",
+          "settings": {
+            "color_scheme": "scheme-14",
+            "background": "shopify://shop_images/bannermateandomate.jpg",
+            "background_mobile": "shopify://shop_images/bannermateandomate.jpg",
+            "image_overlay_opacity": 0,
+            "content_position": "middle-left",
+            "text_alignment": "left",
+            "subheading": "",
+            "title": "",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h1",
+            "description": "",
+            "description_size": "text-base",
+            "button_label": "",
+            "button_link": "shopify://products/mate-camionero-de-algarrobo-personalizado-prueba",
+            "button_style": "btn--primary",
+            "button_icon": "none",
+            "enable_preload_image": false
+          }
+        }
+      },
+      "block_order": [
+        "slide_9yKTXm"
+      ],
+      "name": "BANNERS PRINCIPALES",
+      "settings": {
+        "container": "full",
+        "slide_height": "adapt",
+        "show_controls": true,
+        "autoplay": false,
+        "autoplay_delay": 5,
+        "show_text_below": false,
+        "text_alignment_mobile": "left",
+        "accessibility_info": "Slideshow about our brand"
+      }
+    },
+    "image_cards_ETpTQd": {
+      "type": "image-cards",
+      "blocks": {
+        "image_card_Jz6VYi": {
+          "type": "image_card",
+          "settings": {
+            "color_scheme": "scheme-inverse",
+            "image": "shopify://shop_images/c1e79259a9fecf541729ffad39b7d21563c1c4a7b2cfc47630090fbc8216229e19762.jpg",
+            "image_ratio": "1/1",
+            "image_overlay_opacity": 16,
+            "content_position": "bottom-right",
+            "content_alignment": "center",
+            "content_spacing": "medium",
+            "content_gap": "fitted",
+            "card_link": "shopify://collections/calabaza",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Calabaza",
+            "highlight_style": "none",
+            "highlight_font_style": "normal",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "button_label": "",
+            "button_style": "btn--primary",
+            "button_icon": "none",
+            "show_badge": false,
+            "badge_color_scheme": "",
+            "badge_shape": "circle",
+            "badge_position": "top-right",
+            "badge_subtext": "Save",
+            "badge_text": "99$",
+            "color_scheme_mobile": "scheme-inverse",
+            "show_text_below": false,
+            "content_alignment_mobile": "center",
+            "enable_preload_image": false
+          }
+        },
+        "image_card_zXXCCc": {
+          "type": "image_card",
+          "settings": {
+            "color_scheme": "scheme-inverse",
+            "image": "shopify://shop_images/6d1b0307ab8b1365c4eb8bfcbff7f8d903fe9ac331bc91baaf4dbf27ed8556ae19762_f5b5755e-3531-4165-a816-af88e813034a.jpg",
+            "image_ratio": "1/1",
+            "image_overlay_opacity": 16,
+            "content_position": "bottom-right",
+            "content_alignment": "center",
+            "content_spacing": "medium",
+            "content_gap": "fitted",
+            "card_link": "shopify://collections/madera",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Madera",
+            "highlight_style": "none",
+            "highlight_font_style": "normal",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "button_label": "",
+            "button_style": "btn--primary",
+            "button_icon": "none",
+            "show_badge": false,
+            "badge_color_scheme": "",
+            "badge_shape": "circle",
+            "badge_position": "top-right",
+            "badge_subtext": "Save",
+            "badge_text": "99$",
+            "color_scheme_mobile": "scheme-inverse",
+            "show_text_below": false,
+            "content_alignment_mobile": "center",
+            "enable_preload_image": false
+          }
+        },
+        "image_card_LeHFFA": {
+          "type": "image_card",
+          "settings": {
+            "color_scheme": "scheme-inverse",
+            "image": "shopify://shop_images/MATES-ACERO.jpg",
+            "image_ratio": "1/1",
+            "image_overlay_opacity": 16,
+            "content_position": "bottom-right",
+            "content_alignment": "center",
+            "content_spacing": "medium",
+            "content_gap": "fitted",
+            "card_link": "shopify://collections/acero",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Acero",
+            "highlight_style": "none",
+            "highlight_font_style": "normal",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "button_label": "",
+            "button_style": "btn--primary",
+            "button_icon": "none",
+            "show_badge": false,
+            "badge_color_scheme": "",
+            "badge_shape": "circle",
+            "badge_position": "top-right",
+            "badge_subtext": "Save",
+            "badge_text": "99$",
+            "color_scheme_mobile": "scheme-inverse",
+            "show_text_below": false,
+            "content_alignment_mobile": "center",
+            "enable_preload_image": false
+          }
+        },
+        "image_card_b6Q6BK": {
+          "type": "image_card",
+          "settings": {
+            "color_scheme": "scheme-inverse",
+            "image": "shopify://shop_images/MATES-CERAMICA.jpg",
+            "image_ratio": "1/1",
+            "image_overlay_opacity": 16,
+            "content_position": "bottom-right",
+            "content_alignment": "center",
+            "content_spacing": "medium",
+            "content_gap": "fitted",
+            "card_link": "shopify://collections/acero",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Cerámica",
+            "highlight_style": "none",
+            "highlight_font_style": "normal",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "button_label": "",
+            "button_style": "btn--primary",
+            "button_icon": "none",
+            "show_badge": false,
+            "badge_color_scheme": "",
+            "badge_shape": "circle",
+            "badge_position": "top-right",
+            "badge_subtext": "Save",
+            "badge_text": "99$",
+            "color_scheme_mobile": "scheme-inverse",
+            "show_text_below": false,
+            "content_alignment_mobile": "center",
+            "enable_preload_image": false
+          }
+        }
+      },
+      "block_order": [
+        "image_card_Jz6VYi",
+        "image_card_zXXCCc",
+        "image_card_LeHFFA",
+        "image_card_b6Q6BK"
+      ],
+      "name": "t:sections.image-cards.name",
+      "settings": {
+        "container": "fixed",
+        "color_scheme": "",
+        "section_header_alignment": "left",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "<strong>Encontrá tu Estilo</strong>",
+        "highlight_style": "none",
+        "highlight_font_style": "italic",
+        "highlight_style_color": "",
+        "highlight_text_color": "",
+        "heading_size": "h1",
+        "description": "",
+        "description_size": "text-sm",
+        "columns_desktop": 4,
+        "column_gap": "medium",
+        "row_gap": "inherit",
+        "enable_slider": true,
+        "content_overflow": true,
+        "navigation_position": "bottom",
+        "columns_mobile": "2",
+        "swipe_on_mobile": true,
+        "show_progress_bar": true,
+        "padding_top": 50,
+        "padding_bottom": 50,
+        "show_section_divider": false,
+        "divider_width": "fixed"
+      }
+    },
+    "collection_list_slider_KUGqf9": {
+      "type": "collection-list-slider",
+      "blocks": {
+        "featured_collection_hgTFkC": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "",
+            "image": "shopify://shop_images/Frame_1597883038_f2ecc401-cefc-4f72-8549-2047ad82bf01.png",
+            "title": "SALE 🔥"
+          }
+        },
+        "featured_collection_GYX9GX": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "mates",
+            "image": "shopify://shop_images/Frame_3_82899612-0772-478d-90bf-6b8a4bf54dc7.png",
+            "title": "Mates"
+          }
+        },
+        "featured_collection_Bwb9FW": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "materas",
+            "image": "shopify://shop_images/Frame_7_bb0f2113-f52a-48a5-9da2-37071d3b0ca3.png",
+            "title": "Materas"
+          }
+        },
+        "featured_collection_rewaPg": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "bombillas",
+            "image": "shopify://shop_images/Frame_6_e1041818-10ed-4b0c-927f-24810584b898.png",
+            "title": "Bombillas"
+          }
+        },
+        "featured_collection_qUd3KE": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "termos",
+            "image": "shopify://shop_images/Frame_5_23bc26f5-9cfd-48f9-9a11-3e14e5dfa209.png",
+            "title": "Termos"
+          }
+        },
+        "featured_collection_gx3w3e": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "",
+            "image": "shopify://shop_images/Frame_8_c706f9c5-2217-407f-9f73-27aa3b858926.png",
+            "title": "Mochilas"
+          }
+        },
+        "featured_collection_pGnkeH": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "",
+            "image": "shopify://shop_images/Frame_4_1ed95af4-a246-4760-82fa-7cdc7803dece.png",
+            "title": "Yerberas"
+          }
+        },
+        "featured_collection_AhqVWG": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "",
+            "image": "shopify://shop_images/Frame_10_ff9a3ce8-8a66-459a-b718-09e33c710a20.png",
+            "title": "Pavas"
+          }
+        },
+        "featured_collection_JXEPXP": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "",
+            "image": "shopify://shop_images/Frame_2_55c3096b-7207-4b02-85f6-f4095368e890.png",
+            "title": "Accesorios"
+          }
+        },
+        "featured_collection_HqBTcH": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "",
+            "image": "shopify://shop_images/Frame_9_70d000e4-a913-4800-abe5-410156ada35b.png",
+            "title": "Yerbas"
+          }
+        }
+      },
+      "block_order": [
+        "featured_collection_hgTFkC",
+        "featured_collection_GYX9GX",
+        "featured_collection_Bwb9FW",
+        "featured_collection_rewaPg",
+        "featured_collection_qUd3KE",
+        "featured_collection_gx3w3e",
+        "featured_collection_pGnkeH",
+        "featured_collection_AhqVWG",
+        "featured_collection_JXEPXP",
+        "featured_collection_HqBTcH"
+      ],
+      "disabled": true,
+      "custom_css": [
+        ".f-column.swiper-slide {min-width: 200px;}"
+      ],
+      "name": "t:sections.collection-list-slider.name",
+      "settings": {
+        "container": "full",
+        "color_scheme": "scheme-1",
+        "section_header_alignment": "left",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "",
+        "highlight_style": "none",
+        "highlight_font_style": "italic",
+        "highlight_style_color": "",
+        "highlight_text_color": "",
+        "heading_size": "h3",
+        "description": "",
+        "text_size": "text-base",
+        "button_label": "",
+        "button_link": "",
+        "button_style": "btn--underline",
+        "button_icon": "none",
+        "card_color_scheme": "scheme-1",
+        "card_style": "card",
+        "card_heading_size": "h6",
+        "card_image_ratio": "1/1",
+        "card_image_width": "full",
+        "card_image_padding": "none",
+        "rounded_card_image": false,
+        "mobile_layout": "vertical",
+        "carousel_item_size": "fixed",
+        "columns_desktop": 10,
+        "carousel_control_color_scheme": "scheme-1",
+        "padding_top": 50,
+        "padding_bottom": 50,
+        "show_section_divider": false,
+        "divider_width": "fixed"
+      }
+    },
+    "featured_collection_W8EBVU": {
+      "type": "featured-collection",
+      "blocks": {
+        "collection_pU9yqa": {
+          "type": "collection",
+          "settings": {
+            "collection": "destacados",
+            "title": "Lo más buscado 🔥🔥",
+            "show_banner": false,
+            "color_scheme": "scheme-inverse",
+            "card_link": "",
+            "image_overlay_opacity": 20,
+            "content_position": "split-bottom-button",
+            "content_alignment": "left",
+            "subheading": "Promotion",
+            "subheading_style": "",
+            "heading": "Soft Stools Design",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Shop now",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        },
+        "collection_pWPNg3": {
+          "type": "collection",
+          "settings": {
+            "collection": "mates",
+            "title": "Mates",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        },
+        "collection_CzAijn": {
+          "type": "collection",
+          "settings": {
+            "collection": "termos",
+            "title": "Termos",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        },
+        "collection_3WH8MH": {
+          "type": "collection",
+          "settings": {
+            "collection": "materas",
+            "title": "Materas",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        },
+        "collection_HXj7NB": {
+          "type": "collection",
+          "settings": {
+            "collection": "sets-materos",
+            "title": "",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        },
+        "collection_Ftdtcq": {
+          "type": "collection",
+          "settings": {
+            "collection": "bombillas",
+            "title": "",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        },
+        "collection_JN7dPV": {
+          "type": "collection",
+          "settings": {
+            "collection": "yerberas-y-azucareras",
+            "title": "",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        },
+        "collection_9VCFrF": {
+          "type": "collection",
+          "settings": {
+            "collection": "accesorios",
+            "title": "Accesorios",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        }
+      },
+      "block_order": [
+        "collection_pU9yqa",
+        "collection_pWPNg3",
+        "collection_CzAijn",
+        "collection_3WH8MH",
+        "collection_HXj7NB",
+        "collection_Ftdtcq",
+        "collection_JN7dPV",
+        "collection_9VCFrF"
+      ],
+      "custom_css": [],
+      "settings": {
+        "container": "fixed",
+        "color_scheme": "",
+        "section_header_alignment": "center",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "",
+        "highlight_style": "hand_drawn_circle",
+        "highlight_font_style": "normal",
+        "highlight_style_color": "",
+        "highlight_text_color": "#ff370a",
+        "heading_size": "h2",
+        "description": "",
+        "text_size": "text-base",
+        "button_label": "",
+        "button_link": "",
+        "button_style": "btn--plain",
+        "button_icon": "caret-right",
+        "limit": 100,
+        "columns": 4,
+        "column_gap": "large",
+        "row_gap": "medium",
+        "enable_slider": false,
+        "content_overflow": false,
+        "navigation_position": "center_image",
+        "pcard_image_ratio": "",
+        "columns_mobile": "2",
+        "swipe_on_mobile": false,
+        "show_progress_bar": true,
+        "padding_top": 0,
+        "padding_bottom": 32,
+        "show_section_divider": false,
+        "divider_width": "full"
+      }
+    },
+    "scrolling_promotion_xjUMhy": {
+      "type": "scrolling-promotion",
+      "blocks": {
+        "text_79pqWH": {
+          "type": "text",
+          "settings": {
+            "text_link": "",
+            "text": "20% OFF TRANSFERENCIA",
+            "text_size": "h5",
+            "text_opacity": 100,
+            "use_custom_color": false,
+            "custom_color": "#000000"
+          }
+        },
+        "image_xYUPy3": {
+          "type": "image",
+          "settings": {
+            "image": "shopify://shop_images/Sale.svg",
+            "image_height": 32,
+            "image_rounded": false,
+            "image_link": "",
+            "image_height_mobile": 20
+          }
+        },
+        "text_ajiCtb": {
+          "type": "text",
+          "settings": {
+            "text_link": "",
+            "text": "ENVÍO GRATIS (+100.000)",
+            "text_size": "h5",
+            "text_opacity": 100,
+            "use_custom_color": false,
+            "custom_color": "#000000"
+          }
+        },
+        "image_7fN4wW": {
+          "type": "image",
+          "settings": {
+            "image": "shopify://shop_images/Box.svg",
+            "image_height": 32,
+            "image_rounded": false,
+            "image_link": "",
+            "image_height_mobile": 20
+          }
+        },
+        "text_TNUeGW": {
+          "type": "text",
+          "settings": {
+            "text_link": "",
+            "text": "3 CUOTAS SIN INTERES",
+            "text_size": "h5",
+            "text_opacity": 100,
+            "use_custom_color": false,
+            "custom_color": "#000000"
+          }
+        },
+        "image_AXiTCG": {
+          "type": "image",
+          "settings": {
+            "image": "shopify://shop_images/Card.svg",
+            "image_height": 32,
+            "image_rounded": false,
+            "image_link": "",
+            "image_height_mobile": 20
+          }
+        }
+      },
+      "block_order": [
+        "text_79pqWH",
+        "image_xYUPy3",
+        "text_ajiCtb",
+        "image_7fN4wW",
+        "text_TNUeGW",
+        "image_AXiTCG"
+      ],
+      "name": "t:sections.scrolling-promotion.name",
+      "settings": {
+        "color_scheme": "scheme-inverse",
+        "direction": "left",
+        "pause_on_hover": true,
+        "speed": 0.3,
+        "h_spacing": 80,
+        "show_section_divider": false,
+        "padding_top": 30,
+        "padding_bottom": 30
+      }
+    },
+    "featured_collection_nQwM9c": {
+      "type": "featured-collection",
+      "blocks": {
+        "collection_G7jcAG": {
+          "type": "collection",
+          "settings": {
+            "collection": "calabaza",
+            "title": "",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        },
+        "collection_ki8pUy": {
+          "type": "collection",
+          "settings": {
+            "collection": "madera",
+            "title": "",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        },
+        "collection_RB3YmE": {
+          "type": "collection",
+          "settings": {
+            "collection": "ceramica",
+            "title": "",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        },
+        "collection_EFAepV": {
+          "type": "collection",
+          "settings": {
+            "collection": "acero",
+            "title": "",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        }
+      },
+      "block_order": [
+        "collection_G7jcAG",
+        "collection_ki8pUy",
+        "collection_RB3YmE",
+        "collection_EFAepV"
+      ],
+      "custom_css": [],
+      "settings": {
+        "container": "fixed",
+        "color_scheme": "",
+        "section_header_alignment": "left",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "Mates",
+        "highlight_style": "hand_drawn_circle",
+        "highlight_font_style": "normal",
+        "highlight_style_color": "",
+        "highlight_text_color": "#ff370a",
+        "heading_size": "h2",
+        "description": "",
+        "text_size": "text-base",
+        "button_label": "",
+        "button_link": "",
+        "button_style": "btn--plain",
+        "button_icon": "caret-right",
+        "limit": 100,
+        "columns": 4,
+        "column_gap": "large",
+        "row_gap": "medium",
+        "enable_slider": true,
+        "content_overflow": false,
+        "navigation_position": "center_image",
+        "pcard_image_ratio": "",
+        "columns_mobile": "2",
+        "swipe_on_mobile": true,
+        "show_progress_bar": true,
+        "padding_top": 0,
+        "padding_bottom": 32,
+        "show_section_divider": false,
+        "divider_width": "full"
+      }
+    },
+    "featured_collection_VE4Gtp": {
+      "type": "featured-collection",
+      "blocks": {
+        "collection_AUmHAK": {
+          "type": "collection",
+          "settings": {
+            "collection": "termos",
+            "title": "",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        }
+      },
+      "block_order": [
+        "collection_AUmHAK"
+      ],
+      "custom_css": [],
+      "settings": {
+        "container": "fixed",
+        "color_scheme": "",
+        "section_header_alignment": "left",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "Termos",
+        "highlight_style": "hand_drawn_circle",
+        "highlight_font_style": "normal",
+        "highlight_style_color": "",
+        "highlight_text_color": "#ff370a",
+        "heading_size": "h2",
+        "description": "",
+        "text_size": "text-base",
+        "button_label": "",
+        "button_link": "",
+        "button_style": "btn--plain",
+        "button_icon": "caret-right",
+        "limit": 100,
+        "columns": 4,
+        "column_gap": "large",
+        "row_gap": "medium",
+        "enable_slider": true,
+        "content_overflow": false,
+        "navigation_position": "center_image",
+        "pcard_image_ratio": "",
+        "columns_mobile": "2",
+        "swipe_on_mobile": true,
+        "show_progress_bar": true,
+        "padding_top": 0,
+        "padding_bottom": 32,
+        "show_section_divider": false,
+        "divider_width": "full"
+      }
+    },
+    "featured_collection_fiN7gf": {
+      "type": "featured-collection",
+      "blocks": {
+        "collection_wWiXUC": {
+          "type": "collection",
+          "settings": {
+            "collection": "materas",
+            "title": "",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        }
+      },
+      "block_order": [
+        "collection_wWiXUC"
+      ],
+      "custom_css": [],
+      "settings": {
+        "container": "fixed",
+        "color_scheme": "",
+        "section_header_alignment": "left",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "Materas",
+        "highlight_style": "hand_drawn_circle",
+        "highlight_font_style": "normal",
+        "highlight_style_color": "",
+        "highlight_text_color": "#ff370a",
+        "heading_size": "h2",
+        "description": "",
+        "text_size": "text-base",
+        "button_label": "",
+        "button_link": "",
+        "button_style": "btn--plain",
+        "button_icon": "caret-right",
+        "limit": 100,
+        "columns": 4,
+        "column_gap": "large",
+        "row_gap": "medium",
+        "enable_slider": true,
+        "content_overflow": false,
+        "navigation_position": "center_image",
+        "pcard_image_ratio": "",
+        "columns_mobile": "2",
+        "swipe_on_mobile": true,
+        "show_progress_bar": true,
+        "padding_top": 0,
+        "padding_bottom": 32,
+        "show_section_divider": false,
+        "divider_width": "full"
+      }
+    },
+    "featured_collection_Mx77NW": {
+      "type": "featured-collection",
+      "blocks": {
+        "collection_Uh4gej": {
+          "type": "collection",
+          "settings": {
+            "collection": "set-materos",
+            "title": "",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        }
+      },
+      "block_order": [
+        "collection_Uh4gej"
+      ],
+      "custom_css": [],
+      "settings": {
+        "container": "fixed",
+        "color_scheme": "",
+        "section_header_alignment": "left",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "Set Materos",
+        "highlight_style": "hand_drawn_circle",
+        "highlight_font_style": "normal",
+        "highlight_style_color": "",
+        "highlight_text_color": "#ff370a",
+        "heading_size": "h2",
+        "description": "",
+        "text_size": "text-base",
+        "button_label": "",
+        "button_link": "",
+        "button_style": "btn--plain",
+        "button_icon": "caret-right",
+        "limit": 100,
+        "columns": 4,
+        "column_gap": "large",
+        "row_gap": "medium",
+        "enable_slider": true,
+        "content_overflow": false,
+        "navigation_position": "center_image",
+        "pcard_image_ratio": "",
+        "columns_mobile": "2",
+        "swipe_on_mobile": true,
+        "show_progress_bar": true,
+        "padding_top": 0,
+        "padding_bottom": 32,
+        "show_section_divider": false,
+        "divider_width": "full"
+      }
+    },
+    "featured_collection_DdnnAV": {
+      "type": "featured-collection",
+      "blocks": {
+        "collection_gBjkaX": {
+          "type": "collection",
+          "settings": {
+            "collection": "bombillas",
+            "title": "",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        }
+      },
+      "block_order": [
+        "collection_gBjkaX"
+      ],
+      "custom_css": [],
+      "settings": {
+        "container": "fixed",
+        "color_scheme": "",
+        "section_header_alignment": "left",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "Bombillas",
+        "highlight_style": "hand_drawn_circle",
+        "highlight_font_style": "normal",
+        "highlight_style_color": "",
+        "highlight_text_color": "#ff370a",
+        "heading_size": "h2",
+        "description": "",
+        "text_size": "text-base",
+        "button_label": "",
+        "button_link": "",
+        "button_style": "btn--plain",
+        "button_icon": "caret-right",
+        "limit": 100,
+        "columns": 4,
+        "column_gap": "large",
+        "row_gap": "medium",
+        "enable_slider": true,
+        "content_overflow": false,
+        "navigation_position": "center_image",
+        "pcard_image_ratio": "",
+        "columns_mobile": "2",
+        "swipe_on_mobile": true,
+        "show_progress_bar": true,
+        "padding_top": 0,
+        "padding_bottom": 32,
+        "show_section_divider": false,
+        "divider_width": "full"
+      }
+    },
+    "featured_collection_BTD3Vp": {
+      "type": "featured-collection",
+      "blocks": {
+        "collection_mkURQx": {
+          "type": "collection",
+          "settings": {
+            "collection": "yerberas-y-azucareras",
+            "title": "",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        }
+      },
+      "block_order": [
+        "collection_mkURQx"
+      ],
+      "custom_css": [],
+      "settings": {
+        "container": "fixed",
+        "color_scheme": "",
+        "section_header_alignment": "left",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "Yerberas",
+        "highlight_style": "hand_drawn_circle",
+        "highlight_font_style": "normal",
+        "highlight_style_color": "",
+        "highlight_text_color": "#ff370a",
+        "heading_size": "h2",
+        "description": "",
+        "text_size": "text-base",
+        "button_label": "",
+        "button_link": "",
+        "button_style": "btn--plain",
+        "button_icon": "caret-right",
+        "limit": 100,
+        "columns": 4,
+        "column_gap": "large",
+        "row_gap": "medium",
+        "enable_slider": true,
+        "content_overflow": false,
+        "navigation_position": "center_image",
+        "pcard_image_ratio": "",
+        "columns_mobile": "2",
+        "swipe_on_mobile": true,
+        "show_progress_bar": true,
+        "padding_top": 0,
+        "padding_bottom": 32,
+        "show_section_divider": false,
+        "divider_width": "full"
+      }
+    },
+    "featured_collection_egMAKq": {
+      "type": "featured-collection",
+      "blocks": {
+        "collection_Da9KFU": {
+          "type": "collection",
+          "settings": {
+            "collection": "yerbas",
+            "title": "",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        }
+      },
+      "block_order": [
+        "collection_Da9KFU"
+      ],
+      "custom_css": [],
+      "settings": {
+        "container": "fixed",
+        "color_scheme": "",
+        "section_header_alignment": "left",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "Yerbas",
+        "highlight_style": "hand_drawn_circle",
+        "highlight_font_style": "normal",
+        "highlight_style_color": "",
+        "highlight_text_color": "#ff370a",
+        "heading_size": "h2",
+        "description": "",
+        "text_size": "text-base",
+        "button_label": "",
+        "button_link": "",
+        "button_style": "btn--plain",
+        "button_icon": "caret-right",
+        "limit": 100,
+        "columns": 4,
+        "column_gap": "large",
+        "row_gap": "medium",
+        "enable_slider": true,
+        "content_overflow": false,
+        "navigation_position": "center_image",
+        "pcard_image_ratio": "",
+        "columns_mobile": "2",
+        "swipe_on_mobile": true,
+        "show_progress_bar": true,
+        "padding_top": 0,
+        "padding_bottom": 32,
+        "show_section_divider": false,
+        "divider_width": "full"
+      }
+    },
+    "featured_collection_kzfxiV": {
+      "type": "featured-collection",
+      "blocks": {
+        "collection_iPWdF3": {
+          "type": "collection",
+          "settings": {
+            "collection": "accesorios",
+            "title": "",
+            "show_banner": false,
+            "color_scheme": "scheme-1",
+            "card_link": "",
+            "image_overlay_opacity": 0,
+            "content_position": "top-left",
+            "content_alignment": "left",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "Collections",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "",
+            "text_size": "text-base",
+            "button_label": "Button label",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        }
+      },
+      "block_order": [
+        "collection_iPWdF3"
+      ],
+      "custom_css": [],
+      "settings": {
+        "container": "fixed",
+        "color_scheme": "",
+        "section_header_alignment": "left",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "Accesorios",
+        "highlight_style": "hand_drawn_circle",
+        "highlight_font_style": "normal",
+        "highlight_style_color": "",
+        "highlight_text_color": "#ff370a",
+        "heading_size": "h2",
+        "description": "",
+        "text_size": "text-base",
+        "button_label": "",
+        "button_link": "",
+        "button_style": "btn--plain",
+        "button_icon": "caret-right",
+        "limit": 100,
+        "columns": 4,
+        "column_gap": "large",
+        "row_gap": "medium",
+        "enable_slider": true,
+        "content_overflow": false,
+        "navigation_position": "center_image",
+        "pcard_image_ratio": "",
+        "columns_mobile": "2",
+        "swipe_on_mobile": true,
+        "show_progress_bar": true,
+        "padding_top": 0,
+        "padding_bottom": 32,
+        "show_section_divider": false,
+        "divider_width": "full"
+      }
+    },
+    "featured_collection_r9hH67": {
+      "type": "featured-collection",
+      "custom_css": [],
+      "settings": {
+        "container": "fixed",
+        "color_scheme": "",
+        "section_header_alignment": "center",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "",
+        "highlight_style": "hand_drawn_circle",
+        "highlight_font_style": "normal",
+        "highlight_style_color": "",
+        "highlight_text_color": "#ff370a",
+        "heading_size": "h2",
+        "description": "",
+        "text_size": "text-base",
+        "button_label": "",
+        "button_link": "",
+        "button_style": "btn--plain",
+        "button_icon": "caret-right",
+        "limit": 12,
+        "columns": 4,
+        "column_gap": "large",
+        "row_gap": "medium",
+        "enable_slider": false,
+        "content_overflow": false,
+        "navigation_position": "center_image",
+        "pcard_image_ratio": "",
+        "columns_mobile": "2",
+        "swipe_on_mobile": false,
+        "show_progress_bar": true,
+        "padding_top": 0,
+        "padding_bottom": 32,
+        "show_section_divider": false,
+        "divider_width": "full"
+      }
+    },
+    "banner_with_tabs_aqFCw9": {
+      "type": "banner-with-tabs",
+      "blocks": {
+        "tab_czrnQA": {
+          "type": "tab",
+          "settings": {
+            "tab_title": "Mate Ranchero",
+            "tab_icon": "approximate-equal",
+            "background": "shopify://shop_images/Firefly.png",
+            "card_link": "shopify://products/mate-vaca-ranchero",
+            "image": "shopify://shop_images/Gemini_Generated_Image_3827z23827z23827_2.png",
+            "subheading": "",
+            "heading": "MATE VACA RANCHERO",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "description": "<p>La diferencia entre el modelo VACA RANCHERO y el MATE MUU es meramente estética, ya que ambos son de algarrobo. El Ranchero es torneado y el Muu se hace artesanalmente, con más trabajo manual, por eso su precio es mayor. En las imágenes de la tienda online se ve claramente la diferencia estética. ¡Estamos a disposición para cualquier consulta! 🫶☺️</p><p><br/></p>",
+            "button_label": "COMPRAR",
+            "button_icon": "none"
+          }
+        },
+        "tab_R4XrP7": {
+          "type": "tab",
+          "settings": {
+            "tab_title": "Termo Mateando",
+            "tab_icon": "approximate-equal",
+            "background": "shopify://shop_images/Firefly.webp",
+            "card_link": "shopify://products/termo-stanley-mate-system-classic-1-2-l",
+            "image": "shopify://shop_images/Gemini_Generated_Image_3827z23827z23827_2_ea481ad7-25a5-4d4a-a32e-52133a5c3a8e.png",
+            "subheading": "",
+            "heading": "TERMO MATEANDO",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "description": "<p>El Termo Slim Acero Inoxidable Premium de 750 ml de la marca Mateando es la solución ideal para quienes buscan mantener sus bebidas a la temperatura perfecta durante horas.</p>",
+            "button_label": "COMPRAR",
+            "button_icon": "none"
+          }
+        },
+        "tab_7xhf8k": {
+          "type": "tab",
+          "settings": {
+            "tab_title": "Canasta Matera",
+            "tab_icon": "approximate-equal",
+            "background": "shopify://shop_images/Firefly_1.png",
+            "card_link": "shopify://products/canasta-matera-ecocuero-reforzada-premium",
+            "image": "shopify://shop_images/Gemini_Generated_Image_3827z23827z23827_3.png",
+            "subheading": "",
+            "heading": "CANASTA MATERA",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "description": "<p>Llevá tu equipo matero completo, siempre ordenado y protegido.<br/>Nuestra Matera Canasta de ECO Cuero Premium incluye división interna, costuras en hilo tiento y terminaciones cinceladas para un diseño resistente y con estilo.</p>",
+            "button_label": "COMPRAR",
+            "button_icon": "none"
+          }
+        }
+      },
+      "block_order": [
+        "tab_czrnQA",
+        "tab_R4XrP7",
+        "tab_7xhf8k"
+      ],
+      "disabled": true,
+      "name": "t:sections.banner-with-tabs.presets.name",
+      "settings": {
+        "color_scheme": "scheme-inverse",
+        "desktop_height": "small",
+        "image_overlay_opacity": 0,
+        "heading": "Nuestros Bestsellers",
+        "highlight_style": "none",
+        "highlight_font_style": "italic",
+        "highlight_style_color": "",
+        "highlight_text_color": "",
+        "heading_size": "h5",
+        "tab_heading_size": "h1",
+        "tab_icon_size": "medium",
+        "card_color_scheme": "",
+        "card_content_alignment": "left",
+        "card_image_ratio": "adapt",
+        "card_title_size": "h5",
+        "card_text_size": "text-base",
+        "card_button_style": "btn--primary",
+        "mobile_height": "large",
+        "padding_top": 0,
+        "padding_bottom": 0,
+        "enable_preload_image": false
+      }
+    },
+    "collection_list_with_banner_tdm33U": {
+      "type": "collection-list-with-banner",
+      "blocks": {
+        "image_card_zkHFDt": {
+          "type": "image_card",
+          "settings": {
+            "color_scheme": "scheme-inverse",
+            "image": "shopify://shop_images/59ca1896-db97-4aac-a8cf-9115dcc9d9f4.jpg",
+            "image_overlay_opacity": 20,
+            "content_position": "split-bottom-button",
+            "content_alignment": "left",
+            "content_spacing": "small",
+            "content_gap": "fitted",
+            "card_link": "",
+            "subheading": "",
+            "subheading_style": "",
+            "heading": "MATE + BOMBILLA + YERBERA",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2",
+            "heading_size_mobile": "inherit",
+            "heading_size_custom": 18,
+            "description": "<p>Hasta agotar stock</p>",
+            "button_label": "Quiero esta oferta",
+            "button_style": "btn--primary",
+            "button_icon": "none",
+            "show_badge": true,
+            "badge_color_scheme": "scheme-2",
+            "badge_shape": "circle",
+            "badge_position": "top-right",
+            "badge_subtext": "Oferta!",
+            "badge_text": "3X1",
+            "color_scheme_mobile": "scheme-inverse",
+            "image_mobile": "shopify://shop_images/59ca1896-db97-4aac-a8cf-9115dcc9d9f4.jpg",
+            "content_alignment_mobile": "left",
+            "enable_preload_image": false
+          }
+        },
+        "featured_collection_6WGCBa": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "",
+            "image": "shopify://shop_images/Frame_3.png",
+            "title": "Mates"
+          }
+        },
+        "featured_collection_gGnnRE": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "",
+            "image": "shopify://shop_images/Frame_7_9901dd2f-bd9e-4b69-845e-b0fb942edacf.png",
+            "title": "Materas"
+          }
+        },
+        "featured_collection_AGnLQT": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "",
+            "image": "shopify://shop_images/Frame_6_5daa1c52-d975-426d-b32d-94133e8e630a.png",
+            "title": "Bombillas"
+          }
+        },
+        "featured_collection_YMn8Ht": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "",
+            "image": "shopify://shop_images/Frame_4.png",
+            "title": "Yerberas"
+          }
+        },
+        "featured_collection_cPRLbw": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "",
+            "image": "shopify://shop_images/Frame_8_8e260477-ac42-4dd9-ba9a-cad13b172105.png",
+            "title": "Mochilas"
+          }
+        },
+        "featured_collection_mBk6yt": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "",
+            "image": "shopify://shop_images/Frame_10_d8421866-1b4d-4c4f-be54-01cfce7bddf1.png",
+            "title": "Pavas"
+          }
+        },
+        "featured_collection_KMdQXf": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "",
+            "image": "shopify://shop_images/Frame_2.png",
+            "title": "Accesorios"
+          }
+        },
+        "featured_collection_f89JGk": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "",
+            "image": "shopify://shop_images/Frame_9.png",
+            "title": "Yerbas"
+          }
+        },
+        "featured_collection_pVwrdJ": {
+          "type": "featured_collection",
+          "settings": {
+            "collection": "",
+            "image": "shopify://shop_images/Frame_5_3a91889c-74dd-48ad-8775-091cfc8ce7b6.png",
+            "title": "Termos"
+          }
+        }
+      },
+      "block_order": [
+        "image_card_zkHFDt",
+        "featured_collection_6WGCBa",
+        "featured_collection_gGnnRE",
+        "featured_collection_AGnLQT",
+        "featured_collection_YMn8Ht",
+        "featured_collection_cPRLbw",
+        "featured_collection_mBk6yt",
+        "featured_collection_KMdQXf",
+        "featured_collection_f89JGk",
+        "featured_collection_pVwrdJ"
+      ],
+      "disabled": true,
+      "custom_css": [
+        ".card-media__content-wrapper {max-width: 22rem;}",
+        "@media (max-width: 1023.98px) {.card-media__content-wrapper {max-width: 20rem; }}"
+      ],
+      "name": "t:sections.collection-list-banner.name",
+      "settings": {
+        "container": "fixed",
+        "color_scheme": "",
+        "section_header_alignment": "left",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "NUESTRAS CATEGORIAS",
+        "highlight_style": "none",
+        "highlight_font_style": "italic",
+        "highlight_style_color": "",
+        "highlight_text_color": "",
+        "heading_size": "h2",
+        "description": "",
+        "text_size": "text-base",
+        "button_label": "Ver todos los productos",
+        "button_link": "",
+        "button_style": "btn--plain",
+        "button_icon": "caret-right",
+        "card_color_scheme": "",
+        "card_image_ratio": "1/1",
+        "rounded_card_image": true,
+        "columns_desktop": 3,
+        "grid_bordered": true,
+        "column_gap": "medium",
+        "row_gap": "inherit",
+        "columns_mobile": "2",
+        "swipe_on_mobile": false,
+        "padding_top": 60,
+        "padding_bottom": 0,
+        "show_section_divider": false,
+        "divider_width": "fixed"
+      }
+    },
+    "products_bundle_selection_W3awj9": {
+      "type": "products-bundle-selection",
+      "blocks": {
+        "collection_aHNpKd": {
+          "type": "collection",
+          "settings": {
+            "collection": "mates",
+            "title": ""
+          }
+        },
+        "collection_GEX9Vg": {
+          "type": "collection",
+          "settings": {
+            "collection": "bombillas",
+            "title": ""
+          }
+        },
+        "collection_4NpJa3": {
+          "type": "collection",
+          "settings": {
+            "collection": "termos",
+            "title": ""
+          }
+        }
+      },
+      "block_order": [
+        "collection_aHNpKd",
+        "collection_GEX9Vg",
+        "collection_4NpJa3"
+      ],
+      "disabled": true,
+      "name": "t:sections.products-bundle-selection.name",
+      "settings": {
+        "container": "fixed",
+        "color_scheme": "scheme-1",
+        "section_header_alignment": "left",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "Arma tu <em>Set Matero</em>",
+        "highlight_style": "none",
+        "highlight_font_style": "normal",
+        "highlight_style_color": "",
+        "highlight_text_color": "#ff370a",
+        "heading_size": "h2",
+        "description": "<p>Agrega 3 prouctos para obtener un 15%</p>",
+        "text_size": "text-base",
+        "bundle_bar_color_scheme": "",
+        "bundle_bar_description": "<p>Selecciona hasta 3 productos y suma el pack al carrito para aplicar los descuentos.</p>",
+        "discount_max_items": 3,
+        "prevent_duplicate_products": true,
+        "discount_tiers": "1",
+        "discount_tier_min_items_1": 3,
+        "discount_tier_percent_1": 15,
+        "discount_tier_label_1": "",
+        "discount_tier_min_items_2": 12,
+        "discount_tier_percent_2": 0,
+        "discount_tier_label_2": "Add 4 items get 15% OFF",
+        "discount_tier_min_items_3": 5,
+        "discount_tier_percent_3": 20,
+        "discount_tier_label_3": "Add 5 items get 20% OFF",
+        "limit": 3,
+        "columns": 4,
+        "column_gap": "medium",
+        "row_gap": "inherit",
+        "pcard_image_ratio": "",
+        "pcard_title_line_limit": "1-line",
+        "columns_mobile": "2",
+        "swipe_on_mobile": true,
+        "show_progress_bar": true,
+        "padding_top": 50,
+        "padding_bottom": 50,
+        "show_section_divider": false,
+        "divider_width": "fixed"
+      }
+    },
+    "testimonials_mRbzVA": {
+      "type": "testimonials",
+      "blocks": {
+        "testimonial_YdNfeB": {
+          "type": "testimonial",
+          "settings": {
+            "icon": "5-stars",
+            "image": "shopify://shop_images/3x12s.jpg",
+            "heading": "Aladana Marquez ⭐⭐⭐⭐⭐",
+            "text": "<p>Recibí el 3x1 del mate ranchero y superó mis expectativas. El mate es hermoso, la bombilla de muy buena calidad y la yerbera re práctica.</p>",
+            "author": "Aladana Marquez",
+            "bio": "",
+            "product": ""
+          }
+        },
+        "testimonial_Q38dbT": {
+          "type": "testimonial",
+          "settings": {
+            "icon": "5-stars",
+            "image": "shopify://shop_images/matesoldemayo.jpg",
+            "heading": "Valentina patino ⭐⭐⭐⭐⭐",
+            "text": "<p>Hermoso mate Sol de Mayo en madera. Excelente calidad, terminaciones impecables y muy cómodo para cebar. Se nota lo artesanal. Súper recomendable.</p>",
+            "author": "Valentina patino",
+            "bio": "",
+            "product": "mate-algarrobo-sol-de-mayo-argentino"
+          }
+        },
+        "testimonial_L3qkpN": {
+          "type": "testimonial",
+          "settings": {
+            "icon": "5-stars",
+            "image": "shopify://shop_images/ChatGPT_Image_3_may_2026_04_09_41_p.m..png",
+            "heading": "Martina Zandri ⭐⭐⭐⭐⭐",
+            "text": "<p>“No lo suelto más” Lo compré para llevar al <br/>trabajo y literalmente me salvó. No tengo que estar cebando todo el tiempo</p>",
+            "author": "Martina Zandri",
+            "bio": "",
+            "product": "mate-listo-autocebante-mateando"
+          }
+        },
+        "testimonial_FRkJGb": {
+          "type": "testimonial",
+          "settings": {
+            "icon": "5-stars",
+            "image": "shopify://shop_images/CALIDAD1.jpg",
+            "heading": "Laura Maemi⭐⭐⭐⭐⭐",
+            "text": "<p>El mejor mate que tuve. Probé varios imperiales, pero este es otro nivel: la madera es hermosa, las terminaciones impecables y el agarre comodísimo. Desde el primer mate, salen suaves. Un lujo.”</p>",
+            "author": "",
+            "bio": "",
+            "product": "mate-imperial-rustico-personalizado"
+          }
+        },
+        "testimonial_icbYC8": {
+          "type": "testimonial",
+          "settings": {
+            "icon": "5-stars",
+            "image": "shopify://shop_images/matepersonalizado.jpg",
+            "heading": "Silvina Reyes⭐⭐⭐⭐⭐",
+            "text": "<p>“¡Hermoso el mate personalizado de Disney! El diseño quedó increíble, tal cual lo pedí. La calidad es top y la entrega fue rapidísima. Súper recomendable.”</p>",
+            "author": "Silvina Reyes",
+            "bio": "",
+            "product": "termo-2"
+          }
+        }
+      },
+      "block_order": [
+        "testimonial_YdNfeB",
+        "testimonial_Q38dbT",
+        "testimonial_L3qkpN",
+        "testimonial_FRkJGb",
+        "testimonial_icbYC8"
+      ],
+      "custom_css": [
+        ".testimonials .testimonial__wrapper.has-overlay {background-image: none !important;}",
+        " @media (min-width: 990px) { .testimonials .testimonial {height: auto !important; } .testimonials .testimonial__image {height: auto !important; aspect-ratio: 1 / 1; }}"
+      ],
+      "name": "t:sections.testimonials.name",
+      "settings": {
+        "container": "fixed",
+        "color_scheme": "scheme-4",
+        "section_header_alignment": "left",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "Opiniones: 4.9 ⭐⭐⭐⭐⭐",
+        "highlight_style": "none",
+        "highlight_font_style": "italic",
+        "highlight_style_color": "",
+        "highlight_text_color": "",
+        "heading_size": "h3",
+        "description": "",
+        "text_size": "text-sm",
+        "layout": "standard",
+        "card_color_scheme": "scheme-9",
+        "card_content_color_scheme": "scheme-inverse",
+        "card_image_ratio": "1/1",
+        "card_heading_size": "h6",
+        "card_text_size": "text-base",
+        "author_info_layout": "horizontal",
+        "card_trigger_behavior": "click",
+        "show_image": false,
+        "show_author_image": false,
+        "columns_desktop": 3,
+        "column_gap": "extra-large",
+        "row_gap": "none",
+        "enable_slider": true,
+        "columns_mobile": "1",
+        "swipe_on_mobile": true,
+        "show_progress_bar": true,
+        "padding_top": 50,
+        "padding_bottom": 50,
+        "show_section_divider": false,
+        "divider_width": "full"
+      }
+    },
+    "video_feed_mmDy6b": {
+      "type": "video-feed",
+      "blocks": {
+        "video_F6NbJU": {
+          "type": "video",
+          "settings": {
+            "video": "shopify://files/videos/Con música.mov",
+            "product": "matera-capri",
+            "show_product": true,
+            "use_poster": false
+          }
+        },
+        "video_q6fccD": {
+          "type": "video",
+          "settings": {
+            "video": "shopify://files/videos/copy_49FDB850-7852-48DA-B6AA-A8D0EDD709B1.MOV",
+            "product": "mate-camionero-algarrobo",
+            "show_product": true,
+            "use_poster": false
+          }
+        },
+        "video_gzJh33": {
+          "type": "video",
+          "settings": {
+            "video": "shopify://files/videos/8f873a72936c47bcb628f423148f7822.MOV",
+            "product": "3x1-mate-ranchero-bombilla-yerbera-gamuza",
+            "show_product": true,
+            "use_poster": false
+          }
+        },
+        "video_TfUPx3": {
+          "type": "video",
+          "settings": {
+            "video": "shopify://files/videos/Con música 2.mov",
+            "product": "matera-cuerina",
+            "show_product": true,
+            "use_poster": false
+          }
+        },
+        "video_q3Upnf": {
+          "type": "video",
+          "settings": {
+            "video": "shopify://files/videos/copy_52161A0A-C3D8-4050-972A-01B5443E5E89.MOV",
+            "product": "3x1-mate-ranchero-bombilla-yerbera-gamuza",
+            "show_product": true,
+            "use_poster": false
+          }
+        },
+        "video_Ye6CtY": {
+          "type": "video",
+          "settings": {
+            "video": "shopify://files/videos/El ultimo te sorprendera  Top 1 La luz para mate (No te quemes más… literal _)  Top 2 3x1 Mate Ranchero + Yerbera gamuza + Bombilla (El combo viral que no falla)  Top 3 Matera eco cuero negra (Clásica, elegante y p.mp4",
+            "product": "2x1-mate-imperial-algarrobo-rustico-guarda-abstracta",
+            "show_product": true,
+            "use_poster": true
+          }
+        },
+        "video_m7gkHH": {
+          "type": "video",
+          "settings": {
+            "video": "shopify://files/videos/Solo esto - Vermont, USA.mp4",
+            "product": "3x1-mate-imperial-de-algarrobo-rustico-bombilla-yerbera-gamuza",
+            "show_product": true,
+            "use_poster": true
+          }
+        },
+        "video_TbjXLt": {
+          "type": "video",
+          "settings": {
+            "video": "shopify://files/videos/Solo esto - Vermont, USA.mp4",
+            "product": "3x1-mate-imperial-de-algarrobo-rustico-bombilla-yerbera-gamuza",
+            "show_product": true,
+            "use_poster": true
+          }
+        },
+        "video_DwJDcU": {
+          "type": "video",
+          "settings": {
+            "video": "shopify://files/videos/FINDE XL EN MATEANDO   ESTE FINDE ES EL MOMENTO. DESPUÉS NO VUELVE.   25% OFF pagando por transferencia — SOLO ESTE FINDE  No es permanente. No se repite. No hay prórroga.  Cada hora que pasa, se agota.  Si lo quer.mp4",
+            "product": "bolso-matero-tulum",
+            "show_product": true,
+            "use_poster": true
+          }
+        },
+        "video_tx9DcC": {
+          "type": "video",
+          "settings": {
+            "video": "shopify://files/videos/El mate que queremos TODAS, en 3x1 por tiempo limitado  incluye mate ranchero + bombilla + yerbera de gamuza.mp4",
+            "product": "bombillon-recto-deluxe-pico-rey",
+            "show_product": true,
+            "use_poster": true
+          }
+        }
+      },
+      "block_order": [
+        "video_F6NbJU",
+        "video_q6fccD",
+        "video_gzJh33",
+        "video_TfUPx3",
+        "video_q3Upnf",
+        "video_Ye6CtY",
+        "video_m7gkHH",
+        "video_TbjXLt",
+        "video_DwJDcU",
+        "video_tx9DcC"
+      ],
+      "name": "Video Feed PRO+",
+      "settings": {
+        "title": "+500.000 personas ya lo tienen🧉",
+        "bg": "#ffffff",
+        "title_color": "#000000",
+        "card_text_color": "#ffffff",
+        "show_arrows": false,
+        "cards_desktop": 5,
+        "cards_mobile": 1,
+        "mobile_height": 55,
+        "max_width": 1400,
+        "max_width_mobile": 90,
+        "title_spacing_desktop": 20,
+        "title_spacing_mobile": 30
+      }
+    },
+    "collapsible_tabs_GzYC9T": {
+      "type": "collapsible-tabs",
+      "blocks": {
+        "collapsible_item_eFemDY": {
+          "type": "collapsible_item",
+          "settings": {
+            "icon": "none",
+            "heading": "¿Cuáles son las formas de pago?",
+            "content": "<p>Podés pagar con tarjeta de débito o crédito en 3 y 6 cuotas sin interés seleccionando Mercado Pago al momento del checkout. También podés abonar por transferencia bancaria y acceder a un 20% de descuento extra en tu compra.</p>",
+            "custom_liquid": "",
+            "page": "",
+            "open": true,
+            "use_subtext_color": true
+          }
+        },
+        "collapsible_item_LTHmNf": {
+          "type": "collapsible_item",
+          "settings": {
+            "icon": "none",
+            "heading": "¿Cuánto tarda en llegar mi pedido?",
+            "content": "<p>🚀 Envío prioritario (CABA): llega en el día si comprás antes de las 12 hs.<br/>🏙️ CABA y GBA: 1 a 3 días hábiles.<br/>📦 OCA interior del país: 2 a 3 días hábiles (productos lisos) / 4 a 5 días hábiles (personalizados).<br/>📍 Retiro en local (Palermo): en el día o hasta 1 a 2 días hábiles.</p>",
+            "custom_liquid": "",
+            "page": "",
+            "open": false,
+            "use_subtext_color": true
+          }
+        },
+        "collapsible_item_RQ3WzW": {
+          "type": "collapsible_item",
+          "settings": {
+            "icon": "none",
+            "heading": "¿Hacen envios?",
+            "content": "<p>¡Sí! Enviamos a toda <strong>Argentina</strong> y también al <strong>exterior</strong>.</p><p><strong>Dentro del país:</strong> Podés cotizar el envío con tu código postal directamente en el producto. Tenemos envíos express a domicilio en CABA y enviamos por OCA a todo el país.</p><p><strong>Envíos internacionales: </strong>Una vez realizada tu compra te enviamos tu pedido de forma 100% gratuita por FedEx. El mate no conoce fronteras 🧉</p><p><br/></p>",
+            "custom_liquid": "",
+            "page": "",
+            "open": false,
+            "use_subtext_color": true
+          }
+        },
+        "collapsible_item_aKpRFm": {
+          "type": "collapsible_item",
+          "settings": {
+            "icon": "none",
+            "heading": "¿Todos los mates son iguales?",
+            "content": "<p>¡No! Todos nuestros mates son 100% artesanales, por lo que no existen dos iguales. En el caso de los mates de calabaza, al trabajarse sobre un fruto natural, los tamaños y formas varían en cada unidad. Eso es parte de lo que los hace únicos.</p>",
+            "custom_liquid": "",
+            "page": "",
+            "open": false,
+            "use_subtext_color": true
+          }
+        },
+        "collapsible_item_3c4PkF": {
+          "type": "collapsible_item",
+          "settings": {
+            "icon": "none",
+            "heading": "¿Los mates tienen garantía ?",
+            "content": "<p>Sí, <strong>ofrecemos 1 mes de garantía por fallas de fábrica notorias</strong> que impidan su uso normal. Si esto ocurre, nos contactás, verificamos el problema y lo resolvemos lo antes posible.</p><p>Tené en cuenta que la calabaza, al ser un fruto natural, puede presentar variaciones en tamaño y forma. Cada mate es hecho a mano con dedicación, buscando siempre la mejor calidad posible.</p>",
+            "custom_liquid": "",
+            "page": "",
+            "open": false,
+            "use_subtext_color": true
+          }
+        },
+        "collapsible_item_jkPA9c": {
+          "type": "collapsible_item",
+          "settings": {
+            "icon": "none",
+            "heading": "¿Qué es la personalización láser y en qué productos se puede hacer?",
+            "content": "<p>La personalización láser es un g<strong>rabado permanente hecho con tecnología láser </strong>de precisión directamente sobre el producto. Podés personalizar mates y termos con el texto, nombre o diseño que quieras. El resultado es prolijo, duradero y no se borra ni con el uso ni con el lavado.</p>",
+            "custom_liquid": "",
+            "page": "",
+            "open": false,
+            "use_subtext_color": true
+          }
+        },
+        "collapsible_item_QKgY4p": {
+          "type": "collapsible_item",
+          "settings": {
+            "icon": "none",
+            "heading": "¿Cómo encargo un mate personalizado?",
+            "content": "<p>¡Es muy fácil! Entrá a nuestra sección de personalizados en la tienda y seguí el paso a paso. También podés consultarnos por WhatsApp o por el chat de Instagram, estamos siempre disponibles para asesorarte.</p>",
+            "custom_liquid": "",
+            "page": "",
+            "open": false,
+            "use_subtext_color": true
+          }
+        },
+        "collapsible_item_tTxkzp": {
+          "type": "collapsible_item",
+          "settings": {
+            "icon": "none",
+            "heading": "¿Cuánto tarda un pedido personalizado?",
+            "content": "<p>Una vez confirmado tu pedido, el grabado y empaque están listos en 1 a 2 días hábiles. A partir de ahí, se suma el tiempo de envío según tu localidad.</p><p>Si querés el personalizado al instante, podés pasar por nuestro local y te lo hacemos en el momento 🔥</p>",
+            "custom_liquid": "",
+            "page": "",
+            "open": false,
+            "use_subtext_color": true
+          }
+        },
+        "collapsible_item_DbBgNM": {
+          "type": "collapsible_item",
+          "settings": {
+            "icon": "none",
+            "heading": "¿Hacen factura?",
+            "content": "<p>¡Sí! Emitimos factura automáticamente con los datos del comprador al momento de confirmar tu pedido. No necesitas solicitarla por separado.</p>",
+            "custom_liquid": "",
+            "page": "",
+            "open": false,
+            "use_subtext_color": true
+          }
+        },
+        "collapsible_item_arGDf4": {
+          "type": "collapsible_item",
+          "settings": {
+            "icon": "none",
+            "heading": "¿Tienen local físico?",
+            "content": "<p>¡Sí! Estamos en Costa Rica 5651, Palermo Hollywood (CABA).</p><p>📅 Lunes a sábados de 11 a 19 hs.</p><p>Además, hacemos personalizados en el momento para que te lo lleves ese mismo día. ¡Te esperamos!</p>",
+            "custom_liquid": "",
+            "page": "",
+            "open": false,
+            "use_subtext_color": true
+          }
+        },
+        "collapsible_item_dfFDAz": {
+          "type": "collapsible_item",
+          "settings": {
+            "icon": "none",
+            "heading": "¿Los mates se curan?",
+            "content": "<p>Los mates de calabaza y de madera sí se deben curar antes de usar por primera vez. ¡Pero no te preocupes! Todos nuestros productos llegan con un folleto que explica claramente el paso a paso del proceso de curado.</p><p>Además, tenemos videos explicativos by More Beltrán en YouTube para cada material:</p><p>🪵 <strong>Mates de algarrobo / madera: </strong><a href=\"https://youtu.be/b-9IxVK5tFY?si=EGYE9RMNmEYGrUst\">https://youtu.be/b-9IxVK5tFY?si=EGYE9RMNmEYGrUst</a><br/>🎃 <strong>Mates de calabaza: </strong><a href=\"https://youtu.be/aDR-_nt1NAw?si=ZS4ciOlAOBdHlD8o\">https://youtu.be/aDR-_nt1NAw?si=ZS4ciOlAOBdHlD8o</a></p>",
+            "custom_liquid": "",
+            "page": "",
+            "open": false,
+            "use_subtext_color": true
+          }
+        },
+        "collapsible_item_ay3Q33": {
+          "type": "collapsible_item",
+          "settings": {
+            "icon": "none",
+            "heading": "¿Cómo puedo saber dónde está mi pedido?",
+            "content": "<p>Cuando realizás tu compra, te llega un mail de confirmación al instante. En las horas siguientes, dentro del tiempo estimado de entrega, te llega un segundo correo con tu número de seguimiento en la parte inferior.</p><p>Con ese número podés rastrear tu pedido en <a href=\"https://oca.com.ar\">https://oca.com.ar</a></p><p>Si tenés dudas con el seguimiento o tu pedido se demoró más de lo esperado, contactanos por WhatsApp o al mail <a href=\"mailto:info@mateando.com\">info@mateando.com</a> indicando tu número de pedido.</p>",
+            "custom_liquid": "",
+            "page": "",
+            "open": false,
+            "use_subtext_color": true
+          }
+        },
+        "collapsible_item_X4QzcK": {
+          "type": "collapsible_item",
+          "settings": {
+            "icon": "none",
+            "heading": "¿Cómo puedo cambiar mi producto?",
+            "content": "<p>Podés solicitar un cambio dentro de los 30 días desde la fecha de compra, siempre que se cumplan estas condiciones:</p><p>✅ El producto debe estar en su embalaje original y en el mismo estado en que lo recibiste.<br/>✅ No debe haber sido usado.<br/>❌ No aceptamos cambios en productos personalizados.<br/>❌ Los gastos de envío no son reembolsables.</p><p>Para iniciar el cambio, escribinos a <a href=\"mailto:info@mateando.com\">info@mateando.com</a> y te indicamos cómo proceder.</p>",
+            "custom_liquid": "",
+            "page": "",
+            "open": false,
+            "use_subtext_color": true
+          }
+        },
+        "collapsible_item_RtBPtT": {
+          "type": "collapsible_item",
+          "settings": {
+            "icon": "none",
+            "heading": "Recibí un producto con error de color o pedido incompleto, ¿qué hago?",
+            "content": "<p>¡Pedimos disculpas! Escribinos a <a href=\"mailto:info@mateando.com\">info@mateando.com</a> dentro de las 24 hs de recibido el pedido con la siguiente información:</p><p>📦 Tu número de pedido.<br/>📸 Fotos claras de: la caja, el producto, el embalaje, la etiqueta y una foto general donde se vea todo junto (caja, producto, bolsa de burbujas y envoltorio).</p><p>Importante: si el producto fue usado o se retiró alguna etiqueta, no podremos procesar el reemplazo.</p>",
+            "custom_liquid": "",
+            "page": "",
+            "open": false,
+            "use_subtext_color": true
+          }
+        },
+        "collapsible_item_jV9e37": {
+          "type": "collapsible_item",
+          "settings": {
+            "icon": "none",
+            "heading": "¿Qué hago si mi producto llegó dañado?",
+            "content": "<p>Lamentamos que haya pasado. Contactanos a <a href=\"mailto:info@mateando.com\">info@mateando.com</a> dentro de las 18 hs de recibido el producto con:</p><p>📦 Tu número de pedido.<br/>📸 Fotos de: la caja, el producto, el embalaje, la etiqueta y una foto general donde se vea todo junto (caja, producto, bolsa de burbujas y envoltorio).</p><p>Importante: si el producto fue usado o se retiró alguna etiqueta, no podremos gestionarlo como daño en el envío.</p><p>Una vez verificado, te enviamos una etiqueta prepaga para la devolución y te mandamos un producto nuevo al recibirlo.</p>",
+            "custom_liquid": "",
+            "page": "",
+            "open": false,
+            "use_subtext_color": true
+          }
+        }
+      },
+      "block_order": [
+        "collapsible_item_eFemDY",
+        "collapsible_item_LTHmNf",
+        "collapsible_item_RQ3WzW",
+        "collapsible_item_aKpRFm",
+        "collapsible_item_3c4PkF",
+        "collapsible_item_jkPA9c",
+        "collapsible_item_QKgY4p",
+        "collapsible_item_tTxkzp",
+        "collapsible_item_DbBgNM",
+        "collapsible_item_arGDf4",
+        "collapsible_item_dfFDAz",
+        "collapsible_item_ay3Q33",
+        "collapsible_item_X4QzcK",
+        "collapsible_item_RtBPtT",
+        "collapsible_item_jV9e37"
+      ],
+      "custom_css": [],
+      "settings": {
+        "container": "fixed",
+        "color_scheme": "scheme-1",
+        "header_layout": "standing-column",
+        "section_header_alignment": "left",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "Preguntas Frecuentes",
+        "highlight_style": "none",
+        "highlight_font_style": "italic",
+        "highlight_style_color": "",
+        "highlight_text_color": "",
+        "heading_size": "h3",
+        "description": "<p>¿No tenemos tu respuesta? Dejanos un mensaje</p>",
+        "text_size": "text-base",
+        "button_label": "Contactanos",
+        "button_link": "shopify://pages/contact",
+        "button_style": "btn--primary",
+        "button_icon": "none",
+        "column_gap": "2xs",
+        "row_gap": "none",
+        "item_style": "card",
+        "item_color_scheme": "scheme-1",
+        "item_heading_font": "heading",
+        "item_heading_size": "h5",
+        "item_icon_size": "medium",
+        "padding_top": 50,
+        "padding_bottom": 50,
+        "show_section_divider": false,
+        "divider_width": "fixed"
+      }
+    },
+    "flexible_media_hQTChj": {
+      "type": "flexible-media",
+      "blocks": {
+        "heading_3yjwbJ": {
+          "type": "heading",
+          "settings": {
+            "heading": "Dónde encontrarnos",
+            "highlight_style": "none",
+            "highlight_font_style": "normal",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "hd2"
+          }
+        },
+        "subheading_cqCrEH": {
+          "type": "subheading",
+          "settings": {
+            "subheading": "Costa Rica 5651, Palermo Hollywood, Capital Federal"
+          }
+        },
+        "text_nTQ6Ca": {
+          "type": "text",
+          "settings": {
+            "text": "<p>Personalizamos el mate de tus sueños en el  momento</p>",
+            "subtext_color": true
+          }
+        },
+        "button_gBqUTH": {
+          "type": "button",
+          "settings": {
+            "button_label": "¿Cómo llego?",
+            "button_link": "",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        }
+      },
+      "block_order": [
+        "heading_3yjwbJ",
+        "subheading_cqCrEH",
+        "text_nTQ6Ca",
+        "button_gBqUTH"
+      ],
+      "name": "Flexible Media",
+      "settings": {
+        "container": "fixed",
+        "color_scheme": "scheme-4",
+        "main_media_type": "image",
+        "main_image": "shopify://shop_images/IMG_4308.heic",
+        "main_map_iframe": "",
+        "main_media_position": "left",
+        "main_media_width": 50,
+        "columns_gap": 60,
+        "main_media_height": 460,
+        "main_media_height_mobile": 320,
+        "inner_media_type": "map",
+        "inner_map_iframe": "<iframe src=\"https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3284.868383990782!2d-58.4350783!3d-34.58219669999999!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x95bcb59a342579ad%3A0x282dc78d564936ea!2smateando!5e0!3m2!1ses-419!2sar!4v1782251646225!5m2!1ses-419!2sar\" width=\"600\" height=\"450\" style=\"border:0;\" allowfullscreen=\"\" loading=\"lazy\" referrerpolicy=\"strict-origin-when-cross-origin\"></iframe>",
+        "inner_media_position": "after_text",
+        "inner_media_width": 640,
+        "inner_media_height": 180,
+        "inner_media_height_mobile": 220,
+        "inner_media_margin_top": 18,
+        "media_radius": 16,
+        "desktop_content_position": "center",
+        "desktop_content_alignment": "left",
+        "mobile_content_alignment": "inherit",
+        "padding_top": 80,
+        "padding_bottom": 80
+      }
+    },
+    "image_with_text_LKx6x6": {
+      "type": "image-with-text",
+      "blocks": {
+        "badge_Q7dRE4": {
+          "type": "badge",
+          "settings": {
+            "color_scheme": "scheme-inverse",
+            "text": "mateando - mateando - mateando - mateando -",
+            "image": "shopify://shop_images/logo_mate.svg",
+            "position_mobile": "right"
+          }
+        },
+        "subheading_T48YKG": {
+          "type": "subheading",
+          "settings": {
+            "subheading": "Costa Rica 5651, Palermo Hollywood, Capital Federal"
+          }
+        },
+        "heading_79CBzH": {
+          "type": "heading",
+          "settings": {
+            "heading": "v",
+            "highlight_style": "none",
+            "highlight_font_style": "italic",
+            "highlight_style_color": "",
+            "highlight_text_color": "",
+            "heading_size": "h2"
+          }
+        },
+        "text_BUzFqQ": {
+          "type": "text",
+          "settings": {
+            "text": "<p>Personalizamos el mate de tus sueños en el  momento</p>",
+            "subtext_color": true
+          }
+        },
+        "button_JEVLPk": {
+          "type": "button",
+          "settings": {
+            "button_label": "Como llegar",
+            "button_link": "https://maps.app.goo.gl/ztYthCmy1g98YjDX6",
+            "button_style": "btn--primary",
+            "button_icon": "none"
+          }
+        }
+      },
+      "block_order": [
+        "badge_Q7dRE4",
+        "subheading_T48YKG",
+        "heading_79CBzH",
+        "text_BUzFqQ",
+        "button_JEVLPk"
+      ],
+      "disabled": true,
+      "name": "t:sections.image-with-text.name",
+      "settings": {
+        "container": "full",
+        "color_scheme": "scheme-4",
+        "image": "shopify://shop_images/Firefly_20260318111827.webp",
+        "image_position": "left",
+        "image_width": 50,
+        "desktop_content_position": "center",
+        "desktop_content_alignment": "left",
+        "mobile_content_alignment": "inherit",
+        "show_section_divider": false,
+        "divider_width": "fixed",
+        "padding_top": 50,
+        "padding_bottom": 50
+      }
+    },
+    "scrolling_gallery_image_fdCKzb": {
+      "type": "scrolling-gallery-image",
+      "blocks": {
+        "gallery_RCFKqj": {
+          "type": "gallery",
+          "settings": {
+            "color_scheme": "",
+            "image": "shopify://shop_images/image_29.png",
+            "image_avatar": "shopify://shop_images/image_28.png",
+            "image_link": "",
+            "social_media": "instagram",
+            "heading": "@camilo"
+          }
+        },
+        "gallery_zU9JHf": {
+          "type": "gallery",
+          "settings": {
+            "color_scheme": "",
+            "image": "shopify://shop_images/image_36.png",
+            "image_avatar": "shopify://shop_images/image_35.png",
+            "image_link": "",
+            "social_media": "instagram",
+            "heading": "@morebeltran"
+          }
+        },
+        "gallery_biP4ne": {
+          "type": "gallery",
+          "settings": {
+            "color_scheme": "",
+            "image": "shopify://shop_images/Frame_24.png",
+            "image_avatar": "shopify://shop_images/image_33.png",
+            "image_link": "",
+            "social_media": "instagram",
+            "heading": "@evaluna"
+          }
+        },
+        "gallery_9AyNMm": {
+          "type": "gallery",
+          "settings": {
+            "color_scheme": "",
+            "image": "shopify://shop_images/Frame_26.png",
+            "image_avatar": "shopify://shop_images/image_32.png",
+            "image_link": "",
+            "social_media": "instagram",
+            "heading": "@samtrottier"
+          }
+        },
+        "gallery_idtXyj": {
+          "type": "gallery",
+          "settings": {
+            "color_scheme": "",
+            "image": "shopify://shop_images/image_31.png",
+            "image_avatar": "shopify://shop_images/image_30.png",
+            "image_link": "",
+            "social_media": "instagram",
+            "heading": "@lajoaqui"
+          }
+        },
+        "gallery_gf3tw7": {
+          "type": "gallery",
+          "settings": {
+            "color_scheme": "",
+            "image": "shopify://shop_images/Frame_28.png",
+            "image_avatar": "shopify://shop_images/image_34.png",
+            "image_link": "",
+            "social_media": "instagram",
+            "heading": "@emi_martinez26"
+          }
+        }
+      },
+      "block_order": [
+        "gallery_RCFKqj",
+        "gallery_zU9JHf",
+        "gallery_biP4ne",
+        "gallery_9AyNMm",
+        "gallery_idtXyj",
+        "gallery_gf3tw7"
+      ],
+      "name": "t:sections.scrolling-gallery-images.name",
+      "settings": {
+        "color_scheme": "scheme-inverse",
+        "section_header_alignment": "left",
+        "section_header_alignment_mobile": "inherit",
+        "subheading": "",
+        "heading": "Comunidad Mateando",
+        "highlight_style": "none",
+        "highlight_font_style": "normal",
+        "highlight_style_color": "",
+        "highlight_text_color": "#ff370a",
+        "heading_size": "h3",
+        "description": "<p>Subí tu foto etiquetando a <strong>@mateando</strong> y mostranos dónde estás tomando el tuyo.</p>",
+        "text_size": "text-base",
+        "show_button_on_top": true,
+        "button_label": "Seguinos en Instagram",
+        "button_link": "https://www.instagram.com/mateando",
+        "button_style": "btn--primary",
+        "button_icon": "none",
+        "direction": "left",
+        "speed": 0.4,
+        "pause_on_hover": true,
+        "column_gap": "small",
+        "show_section_divider": false,
+        "divider_width": "fixed",
+        "padding_top": 50,
+        "padding_bottom": 50
+      }
+    }
+  },
+  "order": [
+    "collection_list_slider_n8Ypbb",
+    "image_with_text_overlay_Cykedi",
+    "slideshow_RCxFLU",
+    "image_cards_ETpTQd",
+    "collection_list_slider_KUGqf9",
+    "featured_collection_W8EBVU",
+    "scrolling_promotion_xjUMhy",
+    "featured_collection_nQwM9c",
+    "featured_collection_VE4Gtp",
+    "featured_collection_fiN7gf",
+    "featured_collection_Mx77NW",
+    "featured_collection_DdnnAV",
+    "featured_collection_BTD3Vp",
+    "featured_collection_egMAKq",
+    "featured_collection_kzfxiV",
+    "featured_collection_r9hH67",
+    "banner_with_tabs_aqFCw9",
+    "collection_list_with_banner_tdm33U",
+    "products_bundle_selection_W3awj9",
+    "testimonials_mRbzVA",
+    "video_feed_mmDy6b",
+    "collapsible_tabs_GzYC9T",
+    "flexible_media_hQTChj",
+    "image_with_text_LKx6x6",
+    "scrolling_gallery_image_fdCKzb"
+  ]
+}
