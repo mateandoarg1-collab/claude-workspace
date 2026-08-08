@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { EmpretiendaManual, fetchEmpretiendaManual, saveEmpretiendaManual, splitEmpretienda } from '@/lib/manual';
 
@@ -26,6 +26,8 @@ export default function Canales() {
   const [mlErr, setMlErr] = useState('');
   const [mayorista, setMayorista] = useState<{ orders: number; amount: number; tab: string } | null>(null);
   const [mayoristaErr, setMayoristaErr] = useState('');
+  const [mp, setMp] = useState<{ orders: number; amount: number } | null>(null);
+  const [mpErr, setMpErr] = useState('');
   const [manual, setManual] = useState<EmpretiendaManual | null>(null);
   const [form, setForm] = useState<Form>({ totalMonto: '', totalCant: '', localMonto: '', localCant: '' });
   const [editing, setEditing] = useState(false);
@@ -41,6 +43,11 @@ export default function Canales() {
       .then((r) => r.json())
       .then((d) => (d.error ? setMayoristaErr(d.error) : setMayorista(d)))
       .catch((e) => setMayoristaErr(String(e)));
+
+    fetch('/api/mercadopago/sales', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => (d.error ? setMpErr(d.error) : setMp(d.month_to_date)))
+      .catch((e) => setMpErr(String(e)));
 
     fetchEmpretiendaManual().then((m) => {
       setManual(m);
@@ -70,8 +77,19 @@ export default function Canales() {
   const formOnlineMonto = Math.max(0, num(form.totalMonto) - num(form.localMonto));
   const formOnlineCant = Math.max(0, num(form.totalCant) - num(form.localCant));
 
+  const mpMonto = mp?.amount ?? 0;
+  const mpCant = mp?.orders ?? 0;
+  const otrosMonto = Math.max(0, onlineMonto - mpMonto);
+  const otrosCant = Math.max(0, onlineCant - mpCant);
+
   const canales = [
-    { nombre: 'Tienda Online (.com)', monto: onlineMonto, cantidad: onlineCant, fuente: 'Empretienda − Local' },
+    {
+      nombre: 'Tienda Online (.com)', monto: onlineMonto, cantidad: onlineCant, fuente: 'Empretienda − Local',
+      sub: [
+        { nombre: 'Mercado Pago', monto: mpMonto, cantidad: mpCant, fuente: mpErr ? `Error: ${mpErr}` : 'API en vivo' },
+        { nombre: 'Otros medios (Transferencia, GOcuotas, Ualá Bis)', monto: otrosMonto, cantidad: otrosCant, fuente: 'manual, por diferencia' },
+      ],
+    },
     { nombre: 'Mercado Libre', monto: ml?.amount ?? 0, cantidad: ml?.orders ?? 0, fuente: mlErr ? `Error: ${mlErr}` : 'API en vivo' },
     { nombre: 'Local Físico', monto: localMonto, cantidad: localCant, fuente: 'Empretienda (Acordar) — manual' },
     { nombre: 'Mayorista', monto: mayorista?.amount ?? 0, cantidad: mayorista?.orders ?? 0, fuente: mayoristaErr ? `Error: ${mayoristaErr}` : `Google Sheets (${mayorista?.tab ?? '—'})` },
@@ -108,12 +126,22 @@ export default function Canales() {
             </thead>
             <tbody>
               {canales.map((c) => (
-                <tr key={c.nombre} className="border-t border-slate-100">
-                  <td className="py-3 font-medium">{c.nombre}</td>
-                  <td className="text-right tabular-nums">{fmt(c.monto)}</td>
-                  <td className="text-right tabular-nums">{c.cantidad}</td>
-                  <td className="text-right text-xs text-slate-400 pl-4">{c.fuente}</td>
-                </tr>
+                <Fragment key={c.nombre}>
+                  <tr className="border-t border-slate-100">
+                    <td className="py-3 font-medium">{c.nombre}</td>
+                    <td className="text-right tabular-nums">{fmt(c.monto)}</td>
+                    <td className="text-right tabular-nums">{c.cantidad}</td>
+                    <td className="text-right text-xs text-slate-400 pl-4">{c.fuente}</td>
+                  </tr>
+                  {c.sub?.map((s) => (
+                    <tr key={c.nombre + '-' + s.nombre} className="text-slate-500">
+                      <td className="py-1.5 pl-6 text-xs">└ {s.nombre}</td>
+                      <td className="text-right tabular-nums text-xs">{fmt(s.monto)}</td>
+                      <td className="text-right tabular-nums text-xs">{s.cantidad}</td>
+                      <td className="text-right text-xs text-slate-400 pl-4">{s.fuente}</td>
+                    </tr>
+                  ))}
+                </Fragment>
               ))}
               <tr className="border-t-2 border-slate-300 font-bold">
                 <td className="py-3">Total</td>
