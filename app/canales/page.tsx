@@ -18,7 +18,7 @@ function empretiendaMetricasUrl(paymentMethod?: number) {
   return `https://panel.empretienda.com/metricas?${params.toString()}`;
 }
 
-type Form = { gocuotasMonto: string; gocuotasCant: string; localMonto: string; localCant: string };
+type Form = { gocuotasMonto: string; gocuotasCant: string };
 const num = (s: string) => Number(s.replace(/\./g, '').replace(',', '.')) || 0;
 
 export default function Canales() {
@@ -30,8 +30,10 @@ export default function Canales() {
   const [mpErr, setMpErr] = useState('');
   const [comprobantes, setComprobantes] = useState<{ orders: number; amount: number } | null>(null);
   const [comprobantesErr, setComprobantesErr] = useState('');
+  const [local, setLocal] = useState<{ orders: number; amount: number } | null>(null);
+  const [localErr, setLocalErr] = useState('');
   const [manual, setManual] = useState<EmpretiendaManual | null>(null);
-  const [form, setForm] = useState<Form>({ gocuotasMonto: '', gocuotasCant: '', localMonto: '', localCant: '' });
+  const [form, setForm] = useState<Form>({ gocuotasMonto: '', gocuotasCant: '' });
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -56,13 +58,16 @@ export default function Canales() {
       .then((d) => (d.error ? setComprobantesErr(d.error) : setComprobantes(d)))
       .catch((e) => setComprobantesErr(String(e)));
 
+    fetch('/api/local', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => (d.error ? setLocalErr(d.error) : setLocal(d)))
+      .catch((e) => setLocalErr(String(e)));
+
     fetchEmpretiendaManual().then((m) => {
       setManual(m);
       setForm({
         gocuotasMonto: String(m.gocuotasMonto || ''),
         gocuotasCant: String(m.gocuotasCant || ''),
-        localMonto: String(m.localMonto || ''),
-        localCant: String(m.localCant || ''),
       });
     });
   }, []);
@@ -72,8 +77,6 @@ export default function Canales() {
     const saved = await saveEmpretiendaManual({
       gocuotasMonto: num(form.gocuotasMonto),
       gocuotasCant: num(form.gocuotasCant),
-      localMonto: num(form.localMonto),
-      localCant: num(form.localCant),
     });
     setManual(saved);
     setSaving(false);
@@ -86,8 +89,6 @@ export default function Canales() {
   const compCant = comprobantes?.orders ?? 0;
   const gocuotasMonto = manual?.gocuotasMonto ?? 0;
   const gocuotasCant = manual?.gocuotasCant ?? 0;
-  const localMonto = manual?.localMonto ?? 0;
-  const localCant = manual?.localCant ?? 0;
 
   const onlineMonto = mpMonto + compMonto + gocuotasMonto;
   const onlineCant = mpCant + compCant + gocuotasCant;
@@ -102,7 +103,7 @@ export default function Canales() {
       ],
     },
     { nombre: 'Mercado Libre', monto: ml?.amount ?? 0, cantidad: ml?.orders ?? 0, fuente: mlErr ? `Error: ${mlErr}` : 'API en vivo' },
-    { nombre: 'Local Físico', monto: localMonto, cantidad: localCant, fuente: 'Empretienda (Acordar) — manual' },
+    { nombre: 'Local Físico', monto: local?.amount ?? 0, cantidad: local?.orders ?? 0, fuente: localErr ? `Error: ${localErr}` : 'Cargado en /caja — en vivo' },
     { nombre: 'Mayorista', monto: mayorista?.amount ?? 0, cantidad: mayorista?.orders ?? 0, fuente: mayoristaErr ? `Error: ${mayoristaErr}` : `Google Sheets (${mayorista?.tab ?? '—'})` },
   ];
 
@@ -162,11 +163,14 @@ export default function Canales() {
               </tr>
             </tbody>
           </table>
+          <p className="text-xs text-slate-400 mt-3">
+            Local Físico ahora se carga desde <a href="/caja" target="_blank" className="text-emerald-700 underline">/caja</a> — el equipo del local registra cada venta ahí y suma solo.
+          </p>
         </section>
 
         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">GOcuotas + Local Físico — carga manual</h2>
+            <h2 className="text-lg font-semibold">GOcuotas — carga manual</h2>
             <button
               onClick={() => setEditing((v) => !v)}
               className="text-sm px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
@@ -186,28 +190,18 @@ export default function Canales() {
           {editing && (
             <div className="space-y-4">
               <p className="text-sm text-slate-600">
-                Mercado Pago y Transferencias ya se calculan solos. Acá solo cargás lo que falta:
-                GOcuotas (parte de Tienda Online) y Local Físico (Acordar). Abrí el panel de Empretienda,
-                sección <strong>Métricas</strong>, filtrá por cada método de pago y copiá los totales.
+                Mercado Pago, Transferencias y Local ya se calculan solos. Solo falta GOcuotas: abrí el panel de
+                Empretienda, sección <strong>Métricas</strong>, filtrá por método de pago GOcuotas y copiá los totales.
               </p>
-              <div className="flex gap-3 text-sm">
-                <a href={empretiendaMetricasUrl()} target="_blank" className="text-emerald-700 underline">
-                  Abrir Métricas (elegí el filtro ahí)
-                </a>
-                <a href={empretiendaMetricasUrl(3)} target="_blank" className="text-emerald-700 underline">
-                  Ver Local directo (filtro Acordar)
-                </a>
-              </div>
+              <a href={empretiendaMetricasUrl()} target="_blank" className="text-emerald-700 underline text-sm">
+                Abrir Métricas
+              </a>
 
               <div className="grid grid-cols-2 gap-4">
                 <Field label="GOcuotas — Volumen de ventas ($)" value={form.gocuotasMonto}
                   onChange={(v) => setForm({ ...form, gocuotasMonto: v })} />
                 <Field label="GOcuotas — Cantidad de ventas" value={form.gocuotasCant}
                   onChange={(v) => setForm({ ...form, gocuotasCant: v })} />
-                <Field label="Local (Acordar) — Volumen de ventas ($)" value={form.localMonto}
-                  onChange={(v) => setForm({ ...form, localMonto: v })} />
-                <Field label="Local (Acordar) — Cantidad de ventas" value={form.localCant}
-                  onChange={(v) => setForm({ ...form, localCant: v })} />
               </div>
 
               <button

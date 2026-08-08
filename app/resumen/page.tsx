@@ -27,14 +27,15 @@ export default function Resumen() {
       fetch('/api/mayorista', { cache: 'no-store' }).then((r) => r.json()),
       fetch('/api/mercadopago/sales', { cache: 'no-store' }).then((r) => r.json()),
       fetch('/api/comprobantes', { cache: 'no-store' }).then((r) => r.json()),
+      fetch('/api/local', { cache: 'no-store' }).then((r) => r.json()),
       fetchEmpretiendaManual(),
-    ]).then(([mlData, mayoristaData, mpData, compData, manual]) => {
+    ]).then(([mlData, mayoristaData, mpData, compData, localData, manual]) => {
       setMl(mlData);
       if (!mayoristaData.error) setMayorista(mayoristaData);
       if (!mpData.error) setMp(mpData.month_to_date);
       if (!compData.error) setComprobantes(compData);
+      if (!localData.error) setLocal({ monto: localData.amount, cant: localData.orders });
       setGocuotas({ monto: manual.gocuotasMonto, cant: manual.gocuotasCant });
-      setLocal({ monto: manual.localMonto, cant: manual.localCant });
       setLoading(false);
     });
   }, []);
@@ -85,7 +86,7 @@ export default function Resumen() {
         </Card>
 
         <p className="text-center text-white/30 text-xs mt-6">
-          GOcuotas y Local se actualizan a mano en /canales · el resto, en vivo
+          GOcuotas se actualiza a mano en /canales · el resto, en vivo (Local vía /caja)
         </p>
       </div>
     </div>

@@ -1,8 +1,6 @@
 export type EmpretiendaManual = {
   gocuotasMonto: number;
   gocuotasCant: number;
-  localMonto: number;
-  localCant: number;
   updatedAt: string;
 };
 

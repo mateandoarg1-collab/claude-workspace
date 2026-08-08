@@ -16,8 +16,6 @@ export async function POST(req: Request) {
     const data = await setEmpretiendaManual({
       gocuotasMonto: Number(body.gocuotasMonto) || 0,
       gocuotasCant: Number(body.gocuotasCant) || 0,
-      localMonto: Number(body.localMonto) || 0,
-      localCant: Number(body.localCant) || 0,
     });
     return Response.json(data);
   } catch (e: unknown) {

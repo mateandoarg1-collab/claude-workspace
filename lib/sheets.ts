@@ -44,8 +44,6 @@ const MANUAL_TAB = 'dashboard_manual';
 export type EmpretiendaManualData = {
   gocuotasMonto: number;
   gocuotasCant: number;
-  localMonto: number;
-  localCant: number;
   updatedAt: string;
 };
 
@@ -53,15 +51,13 @@ export async function getEmpretiendaManual(): Promise<EmpretiendaManualData> {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `'${MANUAL_TAB}'!A2:E2`,
+    range: `'${MANUAL_TAB}'!A2:C2`,
   });
   const row = res.data.values?.[0] ?? [];
   return {
     gocuotasMonto: Number(row[0]) || 0,
     gocuotasCant: Number(row[1]) || 0,
-    localMonto: Number(row[2]) || 0,
-    localCant: Number(row[3]) || 0,
-    updatedAt: row[4] ?? '',
+    updatedAt: row[2] ?? '',
   };
 }
 
@@ -70,9 +66,9 @@ export async function setEmpretiendaManual(data: Omit<EmpretiendaManualData, 'up
   const updatedAt = new Date().toISOString();
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
-    range: `'${MANUAL_TAB}'!A2:E2`,
+    range: `'${MANUAL_TAB}'!A2:C2`,
     valueInputOption: 'RAW',
-    requestBody: { values: [[data.gocuotasMonto, data.gocuotasCant, data.localMonto, data.localCant, updatedAt]] },
+    requestBody: { values: [[data.gocuotasMonto, data.gocuotasCant, updatedAt]] },
   });
   return { ...data, updatedAt };
 }
