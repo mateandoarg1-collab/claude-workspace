@@ -15,6 +15,7 @@ type Sum = { orders: number; amount: number };
 export default function Resumen() {
   const [ml, setMl] = useState<{ month_to_date: Sum } | null>(null);
   const [mayorista, setMayorista] = useState<{ orders: number; amount: number } | null>(null);
+  const [mp, setMp] = useState({ orders: 0, amount: 0 });
   const [online, setOnline] = useState({ monto: 0, cant: 0 });
   const [local, setLocal] = useState({ monto: 0, cant: 0 });
   const [loading, setLoading] = useState(true);
@@ -23,10 +24,12 @@ export default function Resumen() {
     Promise.all([
       fetch('/api/ml/sales', { cache: 'no-store' }).then((r) => r.json()),
       fetch('/api/mayorista', { cache: 'no-store' }).then((r) => r.json()),
+      fetch('/api/mercadopago/sales', { cache: 'no-store' }).then((r) => r.json()),
       fetchEmpretiendaManual(),
-    ]).then(([mlData, mayoristaData, manual]) => {
+    ]).then(([mlData, mayoristaData, mpData, manual]) => {
       setMl(mlData);
       if (!mayoristaData.error) setMayorista(mayoristaData);
+      if (!mpData.error) setMp(mpData.month_to_date);
       const s = splitEmpretienda(manual);
       setOnline({ monto: s.onlineMonto, cant: s.onlineCant });
       setLocal({ monto: s.localMonto, cant: s.localCant });
@@ -65,6 +68,7 @@ export default function Resumen() {
 
           <div className="space-y-2">
             <ChanRow label="Tienda Online" color="text-blue-400" monto={online.monto} cant={online.cant} />
+            <ChanRow label="  └ Mercado Pago" color="text-blue-400/60" monto={mp.amount} cant={mp.orders} small />
             <ChanRow label="Local Físico" color="text-emerald-400" monto={local.monto} cant={local.cant} />
             <ChanRow label="Mercado Libre" color="text-yellow-400" monto={ml.month_to_date.amount} cant={ml.month_to_date.orders} />
             <ChanRow label="Mayorista" color="text-purple-400" monto={mayorista?.amount ?? 0} cant={mayorista?.orders ?? 0} />
@@ -76,7 +80,7 @@ export default function Resumen() {
         </Card>
 
         <p className="text-center text-white/30 text-xs mt-6">
-          TO y Local se actualizan a mano en /canales · Mayorista y ML en vivo
+          TO (excepto MP) y Local se actualizan a mano en /canales · Mayorista, ML y MP en vivo
         </p>
       </div>
     </div>
@@ -91,11 +95,11 @@ function Card({ children, className = '' }: { children: React.ReactNode; classNa
   );
 }
 
-function ChanRow({ label, color, monto, cant }: { label: string; color: string; monto: number; cant: number }) {
+function ChanRow({ label, color, monto, cant, small }: { label: string; color: string; monto: number; cant: number; small?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between text-sm">
+    <div className={`flex items-baseline justify-between ${small ? 'text-xs' : 'text-sm'}`}>
       <span className={`font-semibold ${color}`}>{label}:</span>
-      <span className="text-white">
+      <span className={small ? 'text-white/70' : 'text-white'}>
         {fmtFull(monto)} <span className="text-white/40">({cant} ventas)</span>
       </span>
     </div>

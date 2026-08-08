@@ -1,13 +1,32 @@
 const TOKEN = process.env.MP_ACCESS_TOKEN!;
 
-type Payment = { status: string; transaction_amount: number };
+type Payment = {
+  id: number;
+  status: string;
+  transaction_amount: number;
+  operation_type: string;
+  point_of_interaction?: { type?: string };
+  external_reference?: string;
+};
 type Search = { results: Payment[]; paging: { total: number; limit: number; offset: number } };
+
+// Solo ventas reales de Empretienda: pagos de checkout (no transferencias sueltas
+// tipo money_transfer/PSP_TRANSFER) y con la referencia "order-*" que usa Empretienda
+// — la misma cuenta de MP también liquida ventas de Mercado Libre, que llevan otro
+// formato de referencia y ya se cuentan aparte vía la API de ML.
+function isStoreSale(p: Payment) {
+  return (
+    p.status === 'approved' &&
+    p.operation_type === 'regular_payment' &&
+    p.point_of_interaction?.type === 'CHECKOUT' &&
+    !!p.external_reference?.startsWith('order-')
+  );
+}
 
 export async function getMercadoPagoSummary(fromISO: string, toISO: string) {
   let offset = 0;
-  const limit = 50;
-  let orders = 0;
-  let amount = 0;
+  const limit = 500;
+  const seen = new Map<number, number>();
 
   while (true) {
     const params = new URLSearchParams({
@@ -27,15 +46,12 @@ export async function getMercadoPagoSummary(fromISO: string, toISO: string) {
     const data = (await res.json()) as Search;
 
     for (const p of data.results) {
-      if (p.status === 'approved') {
-        orders++;
-        amount += p.transaction_amount;
-      }
+      if (isStoreSale(p)) seen.set(p.id, p.transaction_amount);
     }
 
     offset += limit;
     if (offset >= data.paging.total || data.results.length < limit) break;
   }
 
-  return { orders, amount };
+  return { orders: seen.size, amount: Array.from(seen.values()).reduce((s, v) => s + v, 0) };
 }
