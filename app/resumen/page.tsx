@@ -57,11 +57,12 @@ export default function Resumen() {
         </div>
 
         <Card>
-          <div className="flex items-baseline justify-between mb-1">
+          <div className="flex items-baseline justify-between mb-3">
             <span className="text-yellow-400 font-bold text-sm tracking-wide">MES — POR CANAL</span>
-            <span className="text-white font-bold text-lg">{fmtM(totalMes)}</span>
+            <span className="text-white font-bold text-lg">
+              {fmtM(totalMes)} <span className="text-white/40 font-normal text-sm">({ventasMes}v)</span>
+            </span>
           </div>
-          <div className="text-right text-white/40 text-xs mb-3">{ventasMes}v</div>
 
           <ChannelRow>
             <Chan label="TO" color="text-blue-400" value={fmtM(online.monto)} />
@@ -78,25 +79,31 @@ export default function Resumen() {
         <Card className="mt-3">
           <div className="flex items-baseline justify-between mb-1">
             <span className="text-emerald-400 font-bold text-sm tracking-wide">HOY</span>
-            <span className="text-white font-bold text-lg">{fmtFull(ml.today.amount)}</span>
+            <span className="text-white font-bold text-lg">
+              {fmtFull(ml.today.amount)} <span className="text-white/40 font-normal text-sm">({ml.today.orders}v)</span>
+            </span>
           </div>
-          <div className="text-xs text-white/40">{ml.today.orders} ventas · solo Mercado Libre (único canal con dato en tiempo real)</div>
+          <div className="text-xs text-white/40">solo Mercado Libre (único canal con dato en tiempo real)</div>
         </Card>
 
         <Card className="mt-3">
           <div className="flex items-baseline justify-between mb-1">
             <span className="text-blue-400 font-bold text-sm tracking-wide">AYER</span>
-            <span className="text-white font-bold text-lg">{fmtFull(ml.yesterday_full.amount)}</span>
+            <span className="text-white font-bold text-lg">
+              {fmtFull(ml.yesterday_full.amount)} <span className="text-white/40 font-normal text-sm">({ml.yesterday_full.orders}v)</span>
+            </span>
           </div>
-          <div className="text-xs text-white/40">{ml.yesterday_full.orders} ventas · Mercado Libre</div>
+          <div className="text-xs text-white/40">Mercado Libre</div>
         </Card>
 
         <Card className="mt-3">
           <div className="flex items-baseline justify-between mb-1">
             <span className="text-purple-400 font-bold text-sm tracking-wide">ÚLTIMOS 7 DÍAS</span>
-            <span className="text-white font-bold text-lg">{fmtFull(ml.last_7_days.amount)}</span>
+            <span className="text-white font-bold text-lg">
+              {fmtFull(ml.last_7_days.amount)} <span className="text-white/40 font-normal text-sm">({ml.last_7_days.orders}v)</span>
+            </span>
           </div>
-          <div className="text-xs text-white/40">{ml.last_7_days.orders} ventas · Mercado Libre</div>
+          <div className="text-xs text-white/40">Mercado Libre</div>
         </Card>
 
         <p className="text-center text-white/30 text-xs mt-6">
