@@ -9,12 +9,10 @@ const fmtM = (n: number) => {
   if (n >= 1_000) return '$' + (n / 1_000).toFixed(0) + 'K';
   return '$' + n.toFixed(0);
 };
-const fmtFull = (n: number) => '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
-
 type Sum = { orders: number; amount: number };
 
 export default function Resumen() {
-  const [ml, setMl] = useState<{ today: Sum; yesterday_full: Sum; last_7_days: Sum; month_to_date: Sum } | null>(null);
+  const [ml, setMl] = useState<{ month_to_date: Sum } | null>(null);
   const [mayorista, setMayorista] = useState<{ orders: number; amount: number } | null>(null);
   const [online, setOnline] = useState({ monto: 0, cant: 0 });
   const [local, setLocal] = useState({ monto: 0, cant: 0 });
@@ -74,36 +72,6 @@ export default function Resumen() {
           <div className="mt-3 pt-3 border-t border-white/10 text-xs text-white/40">
             Promedio diario {fmtM(promedioDiario)} · {diasTranscurridos}d del mes
           </div>
-        </Card>
-
-        <Card className="mt-3">
-          <div className="flex items-baseline justify-between mb-1">
-            <span className="text-emerald-400 font-bold text-sm tracking-wide">HOY</span>
-            <span className="text-white font-bold text-lg">
-              {fmtFull(ml.today.amount)} <span className="text-white/40 font-normal text-sm">({ml.today.orders}v)</span>
-            </span>
-          </div>
-          <div className="text-xs text-white/40">solo Mercado Libre (único canal con dato en tiempo real)</div>
-        </Card>
-
-        <Card className="mt-3">
-          <div className="flex items-baseline justify-between mb-1">
-            <span className="text-blue-400 font-bold text-sm tracking-wide">AYER</span>
-            <span className="text-white font-bold text-lg">
-              {fmtFull(ml.yesterday_full.amount)} <span className="text-white/40 font-normal text-sm">({ml.yesterday_full.orders}v)</span>
-            </span>
-          </div>
-          <div className="text-xs text-white/40">Mercado Libre</div>
-        </Card>
-
-        <Card className="mt-3">
-          <div className="flex items-baseline justify-between mb-1">
-            <span className="text-purple-400 font-bold text-sm tracking-wide">ÚLTIMOS 7 DÍAS</span>
-            <span className="text-white font-bold text-lg">
-              {fmtFull(ml.last_7_days.amount)} <span className="text-white/40 font-normal text-sm">({ml.last_7_days.orders}v)</span>
-            </span>
-          </div>
-          <div className="text-xs text-white/40">Mercado Libre</div>
         </Card>
 
         <p className="text-center text-white/30 text-xs mt-6">
