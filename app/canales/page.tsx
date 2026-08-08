@@ -2,16 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { EmpretiendaManual, emptyEmpretiendaManual, loadEmpretiendaManual, splitEmpretienda, EMPRETIENDA_STORAGE_KEY } from '@/lib/manual';
 
 const fmt = (n: number) => '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
-
-const STORAGE_KEY = 'mateando-empretienda-manual';
-
-type Manual = { totalMonto: string; totalCant: string; localMonto: string; localCant: string; updatedAt: string };
-
-function emptyManual(): Manual {
-  return { totalMonto: '', totalCant: '', localMonto: '', localCant: '', updatedAt: '' };
-}
 
 function empretiendaMetricasUrl(paymentMethod?: number) {
   const now = new Date();
@@ -30,7 +23,7 @@ export default function Canales() {
   const [mlErr, setMlErr] = useState('');
   const [mayorista, setMayorista] = useState<{ orders: number; amount: number; tab: string } | null>(null);
   const [mayoristaErr, setMayoristaErr] = useState('');
-  const [manual, setManual] = useState<Manual>(emptyManual());
+  const [manual, setManual] = useState<EmpretiendaManual>(emptyEmpretiendaManual());
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
@@ -44,24 +37,16 @@ export default function Canales() {
       .then((d) => (d.error ? setMayoristaErr(d.error) : setMayorista(d)))
       .catch((e) => setMayoristaErr(String(e)));
 
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) setManual(JSON.parse(saved));
+    setManual(loadEmpretiendaManual());
   }, []);
 
-  function saveManual(next: Manual) {
+  function saveManual(next: EmpretiendaManual) {
     next.updatedAt = new Date().toISOString();
     setManual(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    localStorage.setItem(EMPRETIENDA_STORAGE_KEY, JSON.stringify(next));
   }
 
-  const num = (s: string) => Number(s.replace(/\./g, '').replace(',', '.')) || 0;
-
-  const totalMonto = num(manual.totalMonto);
-  const totalCant = num(manual.totalCant);
-  const localMonto = num(manual.localMonto);
-  const localCant = num(manual.localCant);
-  const onlineMonto = Math.max(0, totalMonto - localMonto);
-  const onlineCant = Math.max(0, totalCant - localCant);
+  const { onlineMonto, onlineCant, localMonto, localCant } = splitEmpretienda(manual);
 
   const canales = [
     { nombre: 'Tienda Online (.com)', monto: onlineMonto, cantidad: onlineCant, fuente: 'Empretienda − Local' },
@@ -81,6 +66,7 @@ export default function Canales() {
           <nav className="flex gap-3 text-sm">
             <Link href="/" className="text-slate-600 hover:text-slate-900">Mercado Libre</Link>
             <Link href="/canales" className="font-medium text-emerald-700">Canales</Link>
+            <Link href="/resumen" className="text-slate-600 hover:text-slate-900">Resumen 📱</Link>
             <Link href="/preguntas" className="text-slate-600 hover:text-slate-900">Preguntas</Link>
           </nav>
         </div>
