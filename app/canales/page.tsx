@@ -28,6 +28,8 @@ export default function Canales() {
   const [mayoristaErr, setMayoristaErr] = useState('');
   const [mp, setMp] = useState<{ orders: number; amount: number } | null>(null);
   const [mpErr, setMpErr] = useState('');
+  const [comprobantes, setComprobantes] = useState<{ orders: number; amount: number } | null>(null);
+  const [comprobantesErr, setComprobantesErr] = useState('');
   const [manual, setManual] = useState<EmpretiendaManual | null>(null);
   const [form, setForm] = useState<Form>({ totalMonto: '', totalCant: '', localMonto: '', localCant: '' });
   const [editing, setEditing] = useState(false);
@@ -48,6 +50,11 @@ export default function Canales() {
       .then((r) => r.json())
       .then((d) => (d.error ? setMpErr(d.error) : setMp(d.month_to_date)))
       .catch((e) => setMpErr(String(e)));
+
+    fetch('/api/comprobantes', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => (d.error ? setComprobantesErr(d.error) : setComprobantes(d)))
+      .catch((e) => setComprobantesErr(String(e)));
 
     fetchEmpretiendaManual().then((m) => {
       setManual(m);
@@ -79,15 +86,18 @@ export default function Canales() {
 
   const mpMonto = mp?.amount ?? 0;
   const mpCant = mp?.orders ?? 0;
-  const otrosMonto = Math.max(0, onlineMonto - mpMonto);
-  const otrosCant = Math.max(0, onlineCant - mpCant);
+  const compMonto = comprobantes?.amount ?? 0;
+  const compCant = comprobantes?.orders ?? 0;
+  const otrosMonto = Math.max(0, onlineMonto - mpMonto - compMonto);
+  const otrosCant = Math.max(0, onlineCant - mpCant - compCant);
 
   const canales = [
     {
       nombre: 'Tienda Online (.com)', monto: onlineMonto, cantidad: onlineCant, fuente: 'Empretienda − Local',
       sub: [
         { nombre: 'Mercado Pago', monto: mpMonto, cantidad: mpCant, fuente: mpErr ? `Error: ${mpErr}` : 'API en vivo' },
-        { nombre: 'Otros medios (Transferencia, GOcuotas, Ualá Bis)', monto: otrosMonto, cantidad: otrosCant, fuente: 'manual, por diferencia' },
+        { nombre: 'Transferencias (comprobantes)', monto: compMonto, cantidad: compCant, fuente: comprobantesErr ? `Error: ${comprobantesErr}` : 'Google Sheets en vivo' },
+        { nombre: 'Otros medios (GOcuotas, Ualá Bis)', monto: otrosMonto, cantidad: otrosCant, fuente: 'manual, por diferencia' },
       ],
     },
     { nombre: 'Mercado Libre', monto: ml?.amount ?? 0, cantidad: ml?.orders ?? 0, fuente: mlErr ? `Error: ${mlErr}` : 'API en vivo' },

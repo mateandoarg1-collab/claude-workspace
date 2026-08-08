@@ -16,7 +16,7 @@ function parseMonto(raw: string | undefined): number {
   return Number(raw.replace(/\$/g, '').replace(/\./g, '').replace(',', '.')) || 0;
 }
 
-function getAuth() {
+export function getAuth() {
   const scopes = ['https://www.googleapis.com/auth/spreadsheets'];
   return process.env.GOOGLE_SERVICE_ACCOUNT_KEY
     ? new google.auth.GoogleAuth({ credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY), scopes })
