@@ -9,6 +9,7 @@ const fmtM = (n: number) => {
   if (n >= 1_000) return '$' + (n / 1_000).toFixed(0) + 'K';
   return '$' + n.toFixed(0);
 };
+const fmtFull = (n: number) => '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
 type Sum = { orders: number; amount: number };
 
 export default function Resumen() {
@@ -62,12 +63,12 @@ export default function Resumen() {
             </span>
           </div>
 
-          <ChannelRow>
-            <Chan label="TO" color="text-blue-400" value={fmtM(online.monto)} />
-            <Chan label="LOC" color="text-emerald-400" value={fmtM(local.monto)} />
-            <Chan label="ML" color="text-yellow-400" value={fmtM(ml.month_to_date.amount)} />
-            <Chan label="MAY" color="text-purple-400" value={fmtM(mayorista?.amount ?? 0)} />
-          </ChannelRow>
+          <div className="space-y-2">
+            <ChanRow label="Tienda Online" color="text-blue-400" monto={online.monto} cant={online.cant} />
+            <ChanRow label="Local Físico" color="text-emerald-400" monto={local.monto} cant={local.cant} />
+            <ChanRow label="Mercado Libre" color="text-yellow-400" monto={ml.month_to_date.amount} cant={ml.month_to_date.orders} />
+            <ChanRow label="Mayorista" color="text-purple-400" monto={mayorista?.amount ?? 0} cant={mayorista?.orders ?? 0} />
+          </div>
 
           <div className="mt-3 pt-3 border-t border-white/10 text-xs text-white/40">
             Promedio diario {fmtM(promedioDiario)} · {diasTranscurridos}d del mes
@@ -90,15 +91,13 @@ function Card({ children, className = '' }: { children: React.ReactNode; classNa
   );
 }
 
-function ChannelRow({ children }: { children: React.ReactNode }) {
-  return <div className="flex flex-wrap gap-x-4 gap-y-1">{children}</div>;
-}
-
-function Chan({ label, color, value }: { label: string; color: string; value: string }) {
+function ChanRow({ label, color, monto, cant }: { label: string; color: string; monto: number; cant: number }) {
   return (
-    <div className="text-sm">
-      <span className={`font-semibold ${color}`}>{label}</span>{' '}
-      <span className="text-white">{value}</span>
+    <div className="flex items-baseline justify-between text-sm">
+      <span className={`font-semibold ${color}`}>{label}:</span>
+      <span className="text-white">
+        {fmtFull(monto)} <span className="text-white/40">({cant} ventas)</span>
+      </span>
     </div>
   );
 }
