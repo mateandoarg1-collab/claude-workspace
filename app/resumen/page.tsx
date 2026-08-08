@@ -56,11 +56,11 @@ export default function Resumen() {
         </div>
 
         <Card>
-          <div className="flex items-baseline justify-between mb-3">
-            <span className="text-yellow-400 font-bold text-sm tracking-wide">MES — POR CANAL</span>
-            <span className="text-white font-bold text-lg">
-              {fmtM(totalMes)} <span className="text-white/40 font-normal text-sm">({ventasMes}v)</span>
-            </span>
+          <div className="mb-3">
+            <div className="text-yellow-400 font-bold text-sm tracking-wide mb-1">MES — POR CANAL</div>
+            <div className="text-white font-bold text-xl">
+              {fmtFull(totalMes)} <span className="text-white/40 font-normal text-sm">({ventasMes} ventas)</span>
+            </div>
           </div>
 
           <div className="space-y-2">
