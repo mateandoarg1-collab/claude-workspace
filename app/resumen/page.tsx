@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { fetchEmpretiendaManual, splitEmpretienda } from '@/lib/manual';
+import { fetchEmpretiendaManual } from '@/lib/manual';
 
 const fmtM = (n: number) => {
   if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(1) + 'M';
@@ -17,7 +17,7 @@ export default function Resumen() {
   const [mayorista, setMayorista] = useState<{ orders: number; amount: number } | null>(null);
   const [mp, setMp] = useState({ orders: 0, amount: 0 });
   const [comprobantes, setComprobantes] = useState({ orders: 0, amount: 0 });
-  const [online, setOnline] = useState({ monto: 0, cant: 0 });
+  const [gocuotas, setGocuotas] = useState({ monto: 0, cant: 0 });
   const [local, setLocal] = useState({ monto: 0, cant: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -33,9 +33,8 @@ export default function Resumen() {
       if (!mayoristaData.error) setMayorista(mayoristaData);
       if (!mpData.error) setMp(mpData.month_to_date);
       if (!compData.error) setComprobantes(compData);
-      const s = splitEmpretienda(manual);
-      setOnline({ monto: s.onlineMonto, cant: s.onlineCant });
-      setLocal({ monto: s.localMonto, cant: s.localCant });
+      setGocuotas({ monto: manual.gocuotasMonto, cant: manual.gocuotasCant });
+      setLocal({ monto: manual.localMonto, cant: manual.localCant });
       setLoading(false);
     });
   }, []);
@@ -49,6 +48,7 @@ export default function Resumen() {
   }
 
   const diasTranscurridos = new Date().getDate();
+  const online = { monto: mp.amount + comprobantes.amount + gocuotas.monto, cant: mp.orders + comprobantes.orders + gocuotas.cant };
   const totalMes = online.monto + ml.month_to_date.amount + local.monto + (mayorista?.amount ?? 0);
   const ventasMes = online.cant + ml.month_to_date.orders + local.cant + (mayorista?.orders ?? 0);
   const promedioDiario = totalMes / diasTranscurridos;
@@ -73,6 +73,7 @@ export default function Resumen() {
             <ChanRow label="Tienda Online" color="text-blue-400" monto={online.monto} cant={online.cant} />
             <ChanRow label="  └ Mercado Pago" color="text-blue-400/60" monto={mp.amount} cant={mp.orders} small />
             <ChanRow label="  └ Transferencias" color="text-blue-400/60" monto={comprobantes.amount} cant={comprobantes.orders} small />
+            <ChanRow label="  └ GOcuotas" color="text-blue-400/60" monto={gocuotas.monto} cant={gocuotas.cant} small />
             <ChanRow label="Local Físico" color="text-emerald-400" monto={local.monto} cant={local.cant} />
             <ChanRow label="Mercado Libre" color="text-yellow-400" monto={ml.month_to_date.amount} cant={ml.month_to_date.orders} />
             <ChanRow label="Mayorista" color="text-purple-400" monto={mayorista?.amount ?? 0} cant={mayorista?.orders ?? 0} />
@@ -84,7 +85,7 @@ export default function Resumen() {
         </Card>
 
         <p className="text-center text-white/30 text-xs mt-6">
-          TO (excepto MP y Transferencias) y Local se actualizan a mano en /canales · el resto, en vivo
+          GOcuotas y Local se actualizan a mano en /canales · el resto, en vivo
         </p>
       </div>
     </div>

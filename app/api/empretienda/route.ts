@@ -14,8 +14,8 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const data = await setEmpretiendaManual({
-      totalMonto: Number(body.totalMonto) || 0,
-      totalCant: Number(body.totalCant) || 0,
+      gocuotasMonto: Number(body.gocuotasMonto) || 0,
+      gocuotasCant: Number(body.gocuotasCant) || 0,
       localMonto: Number(body.localMonto) || 0,
       localCant: Number(body.localCant) || 0,
     });

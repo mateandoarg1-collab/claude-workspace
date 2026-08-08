@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { EmpretiendaManual, fetchEmpretiendaManual, saveEmpretiendaManual, splitEmpretienda } from '@/lib/manual';
+import { EmpretiendaManual, fetchEmpretiendaManual, saveEmpretiendaManual } from '@/lib/manual';
 
 const fmt = (n: number) => '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
 
@@ -18,7 +18,7 @@ function empretiendaMetricasUrl(paymentMethod?: number) {
   return `https://panel.empretienda.com/metricas?${params.toString()}`;
 }
 
-type Form = { totalMonto: string; totalCant: string; localMonto: string; localCant: string };
+type Form = { gocuotasMonto: string; gocuotasCant: string; localMonto: string; localCant: string };
 const num = (s: string) => Number(s.replace(/\./g, '').replace(',', '.')) || 0;
 
 export default function Canales() {
@@ -31,7 +31,7 @@ export default function Canales() {
   const [comprobantes, setComprobantes] = useState<{ orders: number; amount: number } | null>(null);
   const [comprobantesErr, setComprobantesErr] = useState('');
   const [manual, setManual] = useState<EmpretiendaManual | null>(null);
-  const [form, setForm] = useState<Form>({ totalMonto: '', totalCant: '', localMonto: '', localCant: '' });
+  const [form, setForm] = useState<Form>({ gocuotasMonto: '', gocuotasCant: '', localMonto: '', localCant: '' });
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -59,8 +59,8 @@ export default function Canales() {
     fetchEmpretiendaManual().then((m) => {
       setManual(m);
       setForm({
-        totalMonto: String(m.totalMonto || ''),
-        totalCant: String(m.totalCant || ''),
+        gocuotasMonto: String(m.gocuotasMonto || ''),
+        gocuotasCant: String(m.gocuotasCant || ''),
         localMonto: String(m.localMonto || ''),
         localCant: String(m.localCant || ''),
       });
@@ -70,8 +70,8 @@ export default function Canales() {
   async function handleSave() {
     setSaving(true);
     const saved = await saveEmpretiendaManual({
-      totalMonto: num(form.totalMonto),
-      totalCant: num(form.totalCant),
+      gocuotasMonto: num(form.gocuotasMonto),
+      gocuotasCant: num(form.gocuotasCant),
       localMonto: num(form.localMonto),
       localCant: num(form.localCant),
     });
@@ -80,24 +80,25 @@ export default function Canales() {
     setEditing(false);
   }
 
-  const { onlineMonto, onlineCant, localMonto, localCant } = manual ? splitEmpretienda(manual) : { onlineMonto: 0, onlineCant: 0, localMonto: 0, localCant: 0 };
-  const formOnlineMonto = Math.max(0, num(form.totalMonto) - num(form.localMonto));
-  const formOnlineCant = Math.max(0, num(form.totalCant) - num(form.localCant));
-
   const mpMonto = mp?.amount ?? 0;
   const mpCant = mp?.orders ?? 0;
   const compMonto = comprobantes?.amount ?? 0;
   const compCant = comprobantes?.orders ?? 0;
-  const otrosMonto = Math.max(0, onlineMonto - mpMonto - compMonto);
-  const otrosCant = Math.max(0, onlineCant - mpCant - compCant);
+  const gocuotasMonto = manual?.gocuotasMonto ?? 0;
+  const gocuotasCant = manual?.gocuotasCant ?? 0;
+  const localMonto = manual?.localMonto ?? 0;
+  const localCant = manual?.localCant ?? 0;
+
+  const onlineMonto = mpMonto + compMonto + gocuotasMonto;
+  const onlineCant = mpCant + compCant + gocuotasCant;
 
   const canales = [
     {
-      nombre: 'Tienda Online (.com)', monto: onlineMonto, cantidad: onlineCant, fuente: 'Empretienda − Local',
+      nombre: 'Tienda Online (.com)', monto: onlineMonto, cantidad: onlineCant, fuente: 'MP + Transferencias + GOcuotas',
       sub: [
         { nombre: 'Mercado Pago', monto: mpMonto, cantidad: mpCant, fuente: mpErr ? `Error: ${mpErr}` : 'API en vivo' },
         { nombre: 'Transferencias (comprobantes)', monto: compMonto, cantidad: compCant, fuente: comprobantesErr ? `Error: ${comprobantesErr}` : 'Google Sheets en vivo' },
-        { nombre: 'Otros medios (GOcuotas, Ualá Bis)', monto: otrosMonto, cantidad: otrosCant, fuente: 'manual, por diferencia' },
+        { nombre: 'GOcuotas', monto: gocuotasMonto, cantidad: gocuotasCant, fuente: 'manual' },
       ],
     },
     { nombre: 'Mercado Libre', monto: ml?.amount ?? 0, cantidad: ml?.orders ?? 0, fuente: mlErr ? `Error: ${mlErr}` : 'API en vivo' },
@@ -165,7 +166,7 @@ export default function Canales() {
 
         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">Empretienda (Online + Local) — carga manual</h2>
+            <h2 className="text-lg font-semibold">GOcuotas + Local Físico — carga manual</h2>
             <button
               onClick={() => setEditing((v) => !v)}
               className="text-sm px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
@@ -185,31 +186,29 @@ export default function Canales() {
           {editing && (
             <div className="space-y-4">
               <p className="text-sm text-slate-600">
-                Abrí el panel de Empretienda, sección <strong>Métricas</strong>, y copiá los dos totales del mes:
+                Mercado Pago y Transferencias ya se calculan solos. Acá solo cargás lo que falta:
+                GOcuotas (parte de Tienda Online) y Local Físico (Acordar). Abrí el panel de Empretienda,
+                sección <strong>Métricas</strong>, filtrá por cada método de pago y copiá los totales.
               </p>
               <div className="flex gap-3 text-sm">
                 <a href={empretiendaMetricasUrl()} target="_blank" className="text-emerald-700 underline">
-                  Ver Total (todos los métodos)
+                  Abrir Métricas (elegí el filtro ahí)
                 </a>
                 <a href={empretiendaMetricasUrl(3)} target="_blank" className="text-emerald-700 underline">
-                  Ver Local (filtro Acordar)
+                  Ver Local directo (filtro Acordar)
                 </a>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Total Empretienda — Volumen de ventas ($)" value={form.totalMonto}
-                  onChange={(v) => setForm({ ...form, totalMonto: v })} />
-                <Field label="Total Empretienda — Cantidad de ventas" value={form.totalCant}
-                  onChange={(v) => setForm({ ...form, totalCant: v })} />
+                <Field label="GOcuotas — Volumen de ventas ($)" value={form.gocuotasMonto}
+                  onChange={(v) => setForm({ ...form, gocuotasMonto: v })} />
+                <Field label="GOcuotas — Cantidad de ventas" value={form.gocuotasCant}
+                  onChange={(v) => setForm({ ...form, gocuotasCant: v })} />
                 <Field label="Local (Acordar) — Volumen de ventas ($)" value={form.localMonto}
                   onChange={(v) => setForm({ ...form, localMonto: v })} />
                 <Field label="Local (Acordar) — Cantidad de ventas" value={form.localCant}
                   onChange={(v) => setForm({ ...form, localCant: v })} />
               </div>
-
-              <p className="text-xs text-slate-500">
-                Tienda Online se calcula solo: Total − Local = {fmt(formOnlineMonto)} · {formOnlineCant} ventas.
-              </p>
 
               <button
                 onClick={handleSave}

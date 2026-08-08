@@ -42,8 +42,8 @@ export async function getMayoristaSummary() {
 const MANUAL_TAB = 'dashboard_manual';
 
 export type EmpretiendaManualData = {
-  totalMonto: number;
-  totalCant: number;
+  gocuotasMonto: number;
+  gocuotasCant: number;
   localMonto: number;
   localCant: number;
   updatedAt: string;
@@ -57,8 +57,8 @@ export async function getEmpretiendaManual(): Promise<EmpretiendaManualData> {
   });
   const row = res.data.values?.[0] ?? [];
   return {
-    totalMonto: Number(row[0]) || 0,
-    totalCant: Number(row[1]) || 0,
+    gocuotasMonto: Number(row[0]) || 0,
+    gocuotasCant: Number(row[1]) || 0,
     localMonto: Number(row[2]) || 0,
     localCant: Number(row[3]) || 0,
     updatedAt: row[4] ?? '',
@@ -72,7 +72,7 @@ export async function setEmpretiendaManual(data: Omit<EmpretiendaManualData, 'up
     spreadsheetId: SPREADSHEET_ID,
     range: `'${MANUAL_TAB}'!A2:E2`,
     valueInputOption: 'RAW',
-    requestBody: { values: [[data.totalMonto, data.totalCant, data.localMonto, data.localCant, updatedAt]] },
+    requestBody: { values: [[data.gocuotasMonto, data.gocuotasCant, data.localMonto, data.localCant, updatedAt]] },
   });
   return { ...data, updatedAt };
 }

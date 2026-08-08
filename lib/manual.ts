@@ -1,6 +1,6 @@
 export type EmpretiendaManual = {
-  totalMonto: number;
-  totalCant: number;
+  gocuotasMonto: number;
+  gocuotasCant: number;
   localMonto: number;
   localCant: number;
   updatedAt: string;
@@ -18,13 +18,4 @@ export async function saveEmpretiendaManual(data: Omit<EmpretiendaManual, 'updat
     body: JSON.stringify(data),
   });
   return r.json();
-}
-
-export function splitEmpretienda(m: EmpretiendaManual) {
-  return {
-    onlineMonto: Math.max(0, m.totalMonto - m.localMonto),
-    onlineCant: Math.max(0, m.totalCant - m.localCant),
-    localMonto: m.localMonto,
-    localCant: m.localCant,
-  };
 }
