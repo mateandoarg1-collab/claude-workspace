@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { loadEmpretiendaManual, splitEmpretienda } from '@/lib/manual';
+import { fetchEmpretiendaManual, splitEmpretienda } from '@/lib/manual';
 
 const fmtM = (n: number) => {
   if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(1) + 'M';
@@ -24,10 +24,10 @@ export default function Resumen() {
     Promise.all([
       fetch('/api/ml/sales', { cache: 'no-store' }).then((r) => r.json()),
       fetch('/api/mayorista', { cache: 'no-store' }).then((r) => r.json()),
-    ]).then(([mlData, mayoristaData]) => {
+      fetchEmpretiendaManual(),
+    ]).then(([mlData, mayoristaData, manual]) => {
       setMl(mlData);
       if (!mayoristaData.error) setMayorista(mayoristaData);
-      const manual = loadEmpretiendaManual();
       const s = splitEmpretienda(manual);
       setOnline({ monto: s.onlineMonto, cant: s.onlineCant });
       setLocal({ monto: s.localMonto, cant: s.localCant });
@@ -64,7 +64,7 @@ export default function Resumen() {
           <div className="text-right text-white/40 text-xs mb-3">{ventasMes}v</div>
 
           <ChannelRow>
-            <Chan label="TN" color="text-blue-400" value={fmtM(online.monto)} />
+            <Chan label="TO" color="text-blue-400" value={fmtM(online.monto)} />
             <Chan label="LOC" color="text-emerald-400" value={fmtM(local.monto)} />
             <Chan label="ML" color="text-yellow-400" value={fmtM(ml.month_to_date.amount)} />
             <Chan label="MAY" color="text-purple-400" value={fmtM(mayorista?.amount ?? 0)} />
@@ -100,7 +100,7 @@ export default function Resumen() {
         </Card>
 
         <p className="text-center text-white/30 text-xs mt-6">
-          TN y Local se actualizan a mano en /canales · Mayorista y ML en vivo
+          TO y Local se actualizan a mano en /canales · Mayorista y ML en vivo
         </p>
       </div>
     </div>

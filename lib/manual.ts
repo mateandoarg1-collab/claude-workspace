@@ -1,33 +1,30 @@
-export const EMPRETIENDA_STORAGE_KEY = 'mateando-empretienda-manual';
-
 export type EmpretiendaManual = {
-  totalMonto: string;
-  totalCant: string;
-  localMonto: string;
-  localCant: string;
+  totalMonto: number;
+  totalCant: number;
+  localMonto: number;
+  localCant: number;
   updatedAt: string;
 };
 
-export function emptyEmpretiendaManual(): EmpretiendaManual {
-  return { totalMonto: '', totalCant: '', localMonto: '', localCant: '', updatedAt: '' };
+export async function fetchEmpretiendaManual(): Promise<EmpretiendaManual> {
+  const r = await fetch('/api/empretienda', { cache: 'no-store' });
+  return r.json();
 }
 
-export function loadEmpretiendaManual(): EmpretiendaManual {
-  const saved = localStorage.getItem(EMPRETIENDA_STORAGE_KEY);
-  return saved ? JSON.parse(saved) : emptyEmpretiendaManual();
+export async function saveEmpretiendaManual(data: Omit<EmpretiendaManual, 'updatedAt'>): Promise<EmpretiendaManual> {
+  const r = await fetch('/api/empretienda', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return r.json();
 }
-
-const num = (s: string) => Number(s.replace(/\./g, '').replace(',', '.')) || 0;
 
 export function splitEmpretienda(m: EmpretiendaManual) {
-  const totalMonto = num(m.totalMonto);
-  const totalCant = num(m.totalCant);
-  const localMonto = num(m.localMonto);
-  const localCant = num(m.localCant);
   return {
-    onlineMonto: Math.max(0, totalMonto - localMonto),
-    onlineCant: Math.max(0, totalCant - localCant),
-    localMonto,
-    localCant,
+    onlineMonto: Math.max(0, m.totalMonto - m.localMonto),
+    onlineCant: Math.max(0, m.totalCant - m.localCant),
+    localMonto: m.localMonto,
+    localCant: m.localCant,
   };
 }

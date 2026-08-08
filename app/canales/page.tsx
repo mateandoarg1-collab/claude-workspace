@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { EmpretiendaManual, emptyEmpretiendaManual, loadEmpretiendaManual, splitEmpretienda, EMPRETIENDA_STORAGE_KEY } from '@/lib/manual';
+import { EmpretiendaManual, fetchEmpretiendaManual, saveEmpretiendaManual, splitEmpretienda } from '@/lib/manual';
 
 const fmt = (n: number) => '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
 
@@ -18,13 +18,18 @@ function empretiendaMetricasUrl(paymentMethod?: number) {
   return `https://panel.empretienda.com/metricas?${params.toString()}`;
 }
 
+type Form = { totalMonto: string; totalCant: string; localMonto: string; localCant: string };
+const num = (s: string) => Number(s.replace(/\./g, '').replace(',', '.')) || 0;
+
 export default function Canales() {
   const [ml, setMl] = useState<{ orders: number; amount: number } | null>(null);
   const [mlErr, setMlErr] = useState('');
   const [mayorista, setMayorista] = useState<{ orders: number; amount: number; tab: string } | null>(null);
   const [mayoristaErr, setMayoristaErr] = useState('');
-  const [manual, setManual] = useState<EmpretiendaManual>(emptyEmpretiendaManual());
+  const [manual, setManual] = useState<EmpretiendaManual | null>(null);
+  const [form, setForm] = useState<Form>({ totalMonto: '', totalCant: '', localMonto: '', localCant: '' });
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetch('/api/ml/sales', { cache: 'no-store' })
@@ -37,16 +42,33 @@ export default function Canales() {
       .then((d) => (d.error ? setMayoristaErr(d.error) : setMayorista(d)))
       .catch((e) => setMayoristaErr(String(e)));
 
-    setManual(loadEmpretiendaManual());
+    fetchEmpretiendaManual().then((m) => {
+      setManual(m);
+      setForm({
+        totalMonto: String(m.totalMonto || ''),
+        totalCant: String(m.totalCant || ''),
+        localMonto: String(m.localMonto || ''),
+        localCant: String(m.localCant || ''),
+      });
+    });
   }, []);
 
-  function saveManual(next: EmpretiendaManual) {
-    next.updatedAt = new Date().toISOString();
-    setManual(next);
-    localStorage.setItem(EMPRETIENDA_STORAGE_KEY, JSON.stringify(next));
+  async function handleSave() {
+    setSaving(true);
+    const saved = await saveEmpretiendaManual({
+      totalMonto: num(form.totalMonto),
+      totalCant: num(form.totalCant),
+      localMonto: num(form.localMonto),
+      localCant: num(form.localCant),
+    });
+    setManual(saved);
+    setSaving(false);
+    setEditing(false);
   }
 
-  const { onlineMonto, onlineCant, localMonto, localCant } = splitEmpretienda(manual);
+  const { onlineMonto, onlineCant, localMonto, localCant } = manual ? splitEmpretienda(manual) : { onlineMonto: 0, onlineCant: 0, localMonto: 0, localCant: 0 };
+  const formOnlineMonto = Math.max(0, num(form.totalMonto) - num(form.localMonto));
+  const formOnlineCant = Math.max(0, num(form.totalCant) - num(form.localCant));
 
   const canales = [
     { nombre: 'Tienda Online (.com)', monto: onlineMonto, cantidad: onlineCant, fuente: 'Empretienda − Local' },
@@ -116,8 +138,8 @@ export default function Canales() {
 
           {!editing && (
             <p className="text-sm text-slate-500">
-              {manual.updatedAt
-                ? `Última carga: ${new Date(manual.updatedAt).toLocaleString('es-AR')}`
+              {manual?.updatedAt
+                ? `Última carga: ${new Date(manual.updatedAt).toLocaleString('es-AR')} (se ve igual en todos los dispositivos)`
                 : 'Todavía no cargaste números. Tocá "Actualizar números".'}
             </p>
           )}
@@ -137,25 +159,26 @@ export default function Canales() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Total Empretienda — Volumen de ventas ($)" value={manual.totalMonto}
-                  onChange={(v) => setManual({ ...manual, totalMonto: v })} />
-                <Field label="Total Empretienda — Cantidad de ventas" value={manual.totalCant}
-                  onChange={(v) => setManual({ ...manual, totalCant: v })} />
-                <Field label="Local (Acordar) — Volumen de ventas ($)" value={manual.localMonto}
-                  onChange={(v) => setManual({ ...manual, localMonto: v })} />
-                <Field label="Local (Acordar) — Cantidad de ventas" value={manual.localCant}
-                  onChange={(v) => setManual({ ...manual, localCant: v })} />
+                <Field label="Total Empretienda — Volumen de ventas ($)" value={form.totalMonto}
+                  onChange={(v) => setForm({ ...form, totalMonto: v })} />
+                <Field label="Total Empretienda — Cantidad de ventas" value={form.totalCant}
+                  onChange={(v) => setForm({ ...form, totalCant: v })} />
+                <Field label="Local (Acordar) — Volumen de ventas ($)" value={form.localMonto}
+                  onChange={(v) => setForm({ ...form, localMonto: v })} />
+                <Field label="Local (Acordar) — Cantidad de ventas" value={form.localCant}
+                  onChange={(v) => setForm({ ...form, localCant: v })} />
               </div>
 
               <p className="text-xs text-slate-500">
-                Tienda Online se calcula solo: Total − Local = {fmt(onlineMonto)} · {onlineCant} ventas.
+                Tienda Online se calcula solo: Total − Local = {fmt(formOnlineMonto)} · {formOnlineCant} ventas.
               </p>
 
               <button
-                onClick={() => { saveManual(manual); setEditing(false); }}
-                className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700"
+                onClick={handleSave}
+                disabled={saving}
+                className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
               >
-                Guardar
+                {saving ? 'Guardando…' : 'Guardar'}
               </button>
             </div>
           )}
