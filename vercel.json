@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/competencia/check",
+      "schedule": "0 13 * * *"
+    }
+  ]
+}
