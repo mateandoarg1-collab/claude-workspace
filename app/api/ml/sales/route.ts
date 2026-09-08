@@ -1,4 +1,6 @@
-import { fetchOrdersInRange, fmtTZ, isValidOrder, type MLOrder } from '@/lib/ml';
+import { fetchOrdersInRange, fetchThumbnails, fmtTZ, isValidOrder, type MLOrder } from '@/lib/ml';
+
+export const maxDuration = 30;
 
 async function fetchOrders(from: string, to: string): Promise<MLOrder[]> {
   return fetchOrdersInRange(new Date(from), new Date(to));
@@ -58,10 +60,12 @@ export async function GET() {
         prodMap.set(key, e);
       });
     });
-    const topToday = Array.from(prodMap.entries())
+    const topSorted = Array.from(prodMap.entries())
       .map(([title, v]) => ({ title, ...v }))
       .sort((a, b) => b.qty - a.qty)
       .slice(0, 10);
+    const thumbs = await fetchThumbnails(topSorted.map((p) => p.id));
+    const topToday = topSorted.map((p) => ({ ...p, thumbnail: thumbs.get(p.id) || null }));
 
     return Response.json({
       generated_at: now.toISOString(),

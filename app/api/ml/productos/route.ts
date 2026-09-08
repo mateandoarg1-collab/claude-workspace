@@ -1,33 +1,6 @@
-import { fetchOrdersInRange, isValidOrder, mlFetch } from '@/lib/ml';
+import { fetchOrdersInRange, fetchThumbnails, isValidOrder } from '@/lib/ml';
 
 export const maxDuration = 30;
-
-type ItemThumbBody = { id: string; thumbnail?: string; secure_thumbnail?: string };
-type MultigetResult = { code: number; body: ItemThumbBody };
-
-async function fetchThumbnails(ids: string[]): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
-  const chunks: string[][] = [];
-  for (let i = 0; i < ids.length; i += 20) chunks.push(ids.slice(i, i + 20));
-
-  await Promise.all(
-    chunks.map(async (chunk) => {
-      try {
-        const results = await mlFetch<MultigetResult[]>(
-          `/items?ids=${chunk.join(',')}&attributes=id,thumbnail,secure_thumbnail`,
-        );
-        results.forEach((r) => {
-          if (r.code === 200 && r.body) {
-            map.set(r.body.id, r.body.secure_thumbnail || r.body.thumbnail || '');
-          }
-        });
-      } catch {
-        // los thumbnails son "nice to have": si falla un lote, seguimos sin esas fotos
-      }
-    }),
-  );
-  return map;
-}
 
 const RANGE_KEYS = ['today', '7d', '15d', '30d', 'month', 'prev_month', 'year'] as const;
 type RangeKey = (typeof RANGE_KEYS)[number];

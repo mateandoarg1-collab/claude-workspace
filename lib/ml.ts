@@ -96,6 +96,34 @@ export function fmtTZ(d: Date) {
   return d.toISOString().replace('Z', '-00:00');
 }
 
+type ItemThumbBody = { id: string; thumbnail?: string; secure_thumbnail?: string };
+type MultigetResult = { code: number; body: ItemThumbBody };
+
+export async function fetchThumbnails(ids: string[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += 20) chunks.push(ids.slice(i, i + 20));
+
+  await Promise.all(
+    chunks.map(async (chunk) => {
+      try {
+        const results = await mlFetch<MultigetResult[]>(
+          `/items?ids=${chunk.join(',')}&attributes=id,thumbnail,secure_thumbnail`,
+        );
+        results.forEach((r) => {
+          if (r.code === 200 && r.body) {
+            const url = r.body.secure_thumbnail || r.body.thumbnail || '';
+            map.set(r.body.id, url.replace(/^http:\/\//, 'https://'));
+          }
+        });
+      } catch {
+        // los thumbnails son "nice to have": si falla un lote, seguimos sin esas fotos
+      }
+    }),
+  );
+  return map;
+}
+
 export async function fetchOrdersInRange(from: Date, to: Date): Promise<MLOrder[]> {
   const out: MLOrder[] = [];
   let offset = 0;

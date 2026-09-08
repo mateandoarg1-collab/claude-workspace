@@ -11,7 +11,7 @@ type SalesData = {
   yesterday_full: Sum;
   last_7_days: Sum;
   month_to_date: Sum;
-  top_products_today: Array<{ title: string; qty: number; revenue: number; id: string }>;
+  top_products_today: Array<{ title: string; qty: number; revenue: number; id: string; thumbnail: string | null }>;
 };
 
 const fmt = (n: number) => '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
@@ -191,7 +191,23 @@ export default function Dashboard() {
               <tbody>
                 {data.top_products_today.map((p) => (
                   <tr key={p.id} className="border-t border-slate-100">
-                    <td className="py-2 pr-2">{p.title}</td>
+                    <td className="py-2 pr-2">
+                      <div className="flex items-center gap-3">
+                        {p.thumbnail ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={p.thumbnail}
+                            alt=""
+                            className="w-9 h-9 rounded-lg object-cover flex-shrink-0 bg-slate-100 border border-slate-200"
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-lg flex-shrink-0 bg-slate-100 border border-slate-200 flex items-center justify-center text-xs">
+                            🧉
+                          </div>
+                        )}
+                        <span>{p.title}</span>
+                      </div>
+                    </td>
                     <td className="text-right tabular-nums">{p.qty}</td>
                     <td className="text-right tabular-nums">{fmt(p.revenue)}</td>
                   </tr>
