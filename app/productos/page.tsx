@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
-type ProductRow = { id: string; title: string; qty: number; revenue: number };
+type ProductRow = { id: string; title: string; qty: number; revenue: number; thumbnail: string | null };
 type Data = { generated_at: string; range: string; from: string; to: string; products: ProductRow[] };
 
 const fmt = (n: number) => '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
@@ -119,7 +119,23 @@ export default function Productos() {
               <tbody>
                 {data.products.map((p) => (
                   <tr key={p.id} className="border-t border-slate-100">
-                    <td className="py-2.5 px-4 max-w-[240px] truncate" title={p.title}>{p.title}</td>
+                    <td className="py-2 px-4">
+                      <div className="flex items-center gap-3">
+                        {p.thumbnail ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={p.thumbnail}
+                            alt=""
+                            className="w-9 h-9 rounded-lg object-cover flex-shrink-0 bg-slate-100 border border-slate-200"
+                          />
+                        ) : (
+                          <div className="w-9 h-9 rounded-lg flex-shrink-0 bg-slate-100 border border-slate-200 flex items-center justify-center text-xs">
+                            🧉
+                          </div>
+                        )}
+                        <span className="max-w-[220px] truncate" title={p.title}>{p.title}</span>
+                      </div>
+                    </td>
                     <td className="text-right px-3 tabular-nums">{p.qty}</td>
                     <td className="text-right px-4 tabular-nums font-medium">{fmt(p.revenue)}</td>
                   </tr>
