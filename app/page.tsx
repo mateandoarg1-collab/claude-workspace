@@ -15,13 +15,20 @@ type SalesData = {
 };
 
 const fmt = (n: number) => '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
+const fmtK = (n: number) =>
+  (n / 1000).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'k';
 const pct = (a: number, b: number) => {
   if (!b) return '—';
   const d = ((a - b) / b) * 100;
   return `${d >= 0 ? '+' : ''}${d.toFixed(1)}%`;
 };
+const pctAbs = (a: number, b: number) => {
+  if (!b) return '—';
+  return Math.abs(((a - b) / b) * 100).toFixed(1) + '%';
+};
 const tone = (a: number, b: number) =>
   !b ? 'text-slate-500' : a >= b ? 'text-emerald-600' : 'text-red-600';
+const arrow = (a: number, b: number) => (a >= b ? '↑' : '↓');
 
 export default function Dashboard() {
   const [data, setData] = useState<SalesData | null>(null);
@@ -87,6 +94,7 @@ export default function Dashboard() {
           </div>
           <nav className="flex gap-3 text-sm">
             <Link href="/" className="font-medium text-emerald-700">Mercado Libre</Link>
+            <Link href="/productos" className="text-slate-600 hover:text-slate-900">Productos</Link>
             <Link href="/canales" className="text-slate-600 hover:text-slate-900">Canales</Link>
             <Link href="/competencia" className="text-slate-600 hover:text-slate-900">Competencia</Link>
             <Link href="/resumen" className="text-slate-600 hover:text-slate-900">Resumen 📱</Link>
@@ -100,11 +108,51 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-6 space-y-6">
+        <section className="rounded-3xl p-6 text-white shadow-lg bg-gradient-to-br from-blue-600 to-blue-500">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-bold">Ventas de Hoy</h2>
+              <p className="text-xs text-white/70 mt-0.5">
+                {new Date(data.generated_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
+                {' '}
+                {new Date(data.generated_at).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}
+              </p>
+            </div>
+            <button
+              onClick={load}
+              aria-label="Actualizar"
+              className={`w-9 h-9 rounded-full border border-white/30 flex items-center justify-center text-lg hover:bg-white/10 ${refreshing ? 'animate-spin' : ''}`}
+            >
+              ↻
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <div className="text-sm text-white/70">Pedidos</div>
+              <div className="text-3xl font-bold mt-1 tabular-nums">{t.orders}</div>
+              <div className="text-sm mt-1 text-white/80">
+                Ayer {y.orders}{' '}
+                <span className={t.orders >= y.orders ? 'text-emerald-300' : 'text-red-300'}>
+                  {arrow(t.orders, y.orders)}{pctAbs(t.orders, y.orders)}
+                </span>
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-white/70">Monto $</div>
+              <div className="text-3xl font-bold mt-1 tabular-nums">{fmtK(t.amount)}</div>
+              <div className="text-sm mt-1 text-white/80">
+                Ayer {fmtK(y.amount)}{' '}
+                <span className={t.amount >= y.amount ? 'text-emerald-300' : 'text-red-300'}>
+                  {arrow(t.amount, y.amount)}{pctAbs(t.amount, y.amount)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
           <h2 className="text-lg font-semibold mb-4">Hoy ({t.elapsed_hours?.toFixed(1)}hs transcurridas)</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Stat label="Órdenes" value={t.orders} sub={`Ayer a esta hora: ${y.orders}`} change={pct(t.orders, y.orders)} tone={tone(t.orders, y.orders)} />
-            <Stat label="Facturación" value={fmt(t.amount)} sub={`Ayer: ${fmt(y.amount)}`} change={pct(t.amount, y.amount)} tone={tone(t.amount, y.amount)} />
+          <div className="grid grid-cols-2 gap-4">
             <Stat label="Unidades" value={t.units} sub={`Canceladas hoy: ${t.cancelled ?? 0}`} />
             <Stat label="Proyección día" value={fmt(projAmt)} sub={`~${projN.toFixed(0)} órdenes · ayer total ${fmt(yf.amount)}`} change={pct(projAmt, yf.amount)} tone={tone(projAmt, yf.amount)} />
           </div>

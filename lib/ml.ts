@@ -73,3 +73,46 @@ export async function mlFetch<T = unknown>(path: string, init?: RequestInit): Pr
 }
 
 export const ML_USER_ID = () => ENV.user_id;
+
+export type MLOrder = {
+  id: number;
+  status: string;
+  date_created: string;
+  total_amount: number;
+  order_items: Array<{
+    item: { id: string; title: string };
+    quantity: number;
+    unit_price: number;
+  }>;
+};
+
+type MLOrderSearch = { results: MLOrder[]; paging: { total: number } };
+
+export function isValidOrder(o: MLOrder) {
+  return o.status === 'paid' || o.status === 'confirmed';
+}
+
+export function fmtTZ(d: Date) {
+  return d.toISOString().replace('Z', '-00:00');
+}
+
+export async function fetchOrdersInRange(from: Date, to: Date): Promise<MLOrder[]> {
+  const out: MLOrder[] = [];
+  let offset = 0;
+  while (true) {
+    const q = new URLSearchParams({
+      seller: ML_USER_ID(),
+      'order.date_created.from': fmtTZ(from),
+      'order.date_created.to': fmtTZ(to),
+      sort: 'date_desc',
+      limit: '50',
+      offset: String(offset),
+    });
+    const data = await mlFetch<MLOrderSearch>(`/orders/search?${q}`);
+    out.push(...data.results);
+    if (data.results.length < 50) break;
+    offset += 50;
+    if (offset > 5000) break; // safety
+  }
+  return out;
+}

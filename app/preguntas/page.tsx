@@ -69,6 +69,7 @@ export default function Preguntas() {
           </div>
           <nav className="flex gap-3 text-sm">
             <Link href="/" className="text-slate-600 hover:text-slate-900">Ventas</Link>
+            <Link href="/productos" className="text-slate-600 hover:text-slate-900">Productos</Link>
             <Link href="/preguntas" className="font-medium text-emerald-700">Preguntas</Link>
             <button
               onClick={async () => { await fetch('/api/auth', { method: 'DELETE' }); location.href = '/login'; }}

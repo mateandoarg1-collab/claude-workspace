@@ -1,50 +1,11 @@
-import { mlFetch, ML_USER_ID } from '@/lib/ml';
+import { fetchOrdersInRange, fmtTZ, isValidOrder, type MLOrder } from '@/lib/ml';
 
-type Order = {
-  id: number;
-  status: string;
-  date_created: string;
-  total_amount: number;
-  order_items: Array<{
-    item: { id: string; title: string };
-    quantity: number;
-    unit_price: number;
-  }>;
-};
-
-type Search = { results: Order[]; paging: { total: number } };
-
-async function fetchOrders(from: string, to: string): Promise<Order[]> {
-  const out: Order[] = [];
-  let offset = 0;
-  while (true) {
-    const q = new URLSearchParams({
-      seller: ML_USER_ID(),
-      'order.date_created.from': from,
-      'order.date_created.to': to,
-      sort: 'date_desc',
-      limit: '50',
-      offset: String(offset),
-    });
-    const data = await mlFetch<Search>(`/orders/search?${q}`);
-    out.push(...data.results);
-    if (data.results.length < 50) break;
-    offset += 50;
-    if (offset > 5000) break; // safety
-  }
-  return out;
+async function fetchOrders(from: string, to: string): Promise<MLOrder[]> {
+  return fetchOrdersInRange(new Date(from), new Date(to));
 }
 
-function isValid(o: Order) {
-  return o.status === 'paid' || o.status === 'confirmed';
-}
-
-function fmtTZ(d: Date) {
-  return d.toISOString().replace('Z', '-00:00');
-}
-
-function summarize(orders: Order[]) {
-  const valid = orders.filter(isValid);
+function summarize(orders: MLOrder[]) {
+  const valid = orders.filter(isValidOrder);
   return {
     orders: valid.length,
     amount: valid.reduce((s, o) => s + (o.total_amount || 0), 0),
@@ -88,7 +49,7 @@ export async function GET() {
 
     // Top productos de hoy
     const prodMap = new Map<string, { qty: number; revenue: number; id: string }>();
-    today.filter(isValid).forEach((o) => {
+    today.filter(isValidOrder).forEach((o) => {
       o.order_items.forEach((it) => {
         const key = it.item.title;
         const e = prodMap.get(key) ?? { qty: 0, revenue: 0, id: it.item.id };
