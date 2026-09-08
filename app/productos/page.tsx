@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import PreguntasBadge from '../components/PreguntasBadge';
 
 type ProductRow = { id: string; title: string; qty: number; revenue: number; thumbnail: string | null };
 type Data = { generated_at: string; range: string; from: string; to: string; products: ProductRow[] };
@@ -62,7 +63,7 @@ export default function Productos() {
           <nav className="flex gap-3 text-sm">
             <Link href="/" className="text-slate-600 hover:text-slate-900">Ventas</Link>
             <Link href="/productos" className="font-medium text-emerald-700">Productos</Link>
-            <Link href="/preguntas" className="text-slate-600 hover:text-slate-900">Preguntas</Link>
+            <Link href="/preguntas" className="text-slate-600 hover:text-slate-900 flex items-center">Preguntas<PreguntasBadge /></Link>
             <button
               onClick={async () => { await fetch('/api/auth', { method: 'DELETE' }); location.href = '/login'; }}
               className="text-slate-500 hover:text-red-600"

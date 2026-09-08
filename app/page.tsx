@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import PreguntasBadge from './components/PreguntasBadge';
 
 type Sum = { orders: number; amount: number; units: number; cancelled?: number; elapsed_hours?: number };
 type SalesData = {
@@ -98,7 +99,7 @@ export default function Dashboard() {
             <Link href="/canales" className="text-slate-600 hover:text-slate-900">Canales</Link>
             <Link href="/competencia" className="text-slate-600 hover:text-slate-900">Competencia</Link>
             <Link href="/resumen" className="text-slate-600 hover:text-slate-900">Resumen 📱</Link>
-            <Link href="/preguntas" className="text-slate-600 hover:text-slate-900">Preguntas</Link>
+            <Link href="/preguntas" className="text-slate-600 hover:text-slate-900 flex items-center">Preguntas<PreguntasBadge /></Link>
             <button
               onClick={async () => { await fetch('/api/auth', { method: 'DELETE' }); location.href = '/login'; }}
               className="text-slate-500 hover:text-red-600"
