@@ -98,22 +98,22 @@ export default function Productos() {
         {err && <div className="bg-red-50 text-red-700 p-3 rounded">{err}</div>}
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex items-center justify-between">
-          <span className="text-sm text-slate-500">Publicaciones con ventas</span>
+          <span className="text-sm text-slate-500">Publicaciones con ventas concretadas</span>
           <span className="text-2xl font-bold text-blue-600 tabular-nums">{data?.products.length ?? '—'}</span>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           {loading && <div className="p-6 text-slate-500">Cargando {rangeLabel.toLowerCase()}…</div>}
           {!loading && data && data.products.length === 0 && (
-            <div className="p-8 text-center text-slate-500">Sin ventas en este período</div>
+            <div className="p-8 text-center text-slate-500">Sin ventas concretadas en este período</div>
           )}
           {!loading && data && data.products.length > 0 && (
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase text-slate-500 border-b border-slate-200">
                 <tr>
                   <th className="py-3 px-4">Producto</th>
-                  <th className="text-right px-3">Unid</th>
-                  <th className="text-right px-4">Facturado</th>
+                  <th className="text-right px-3">Unid. Concretadas</th>
+                  <th className="text-right px-4">Concretado</th>
                 </tr>
               </thead>
               <tbody>

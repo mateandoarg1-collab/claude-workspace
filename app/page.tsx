@@ -128,7 +128,7 @@ export default function Dashboard() {
           </div>
           <div className="grid grid-cols-2 gap-6">
             <div>
-              <div className="text-sm text-white/70">Pedidos</div>
+              <div className="text-sm text-white/70">Pedidos Concretados</div>
               <div className="text-3xl font-bold mt-1 tabular-nums">{t.orders}</div>
               <div className="text-sm mt-1 text-white/80">
                 Ayer {y.orders}{' '}
@@ -138,7 +138,7 @@ export default function Dashboard() {
               </div>
             </div>
             <div>
-              <div className="text-sm text-white/70">Monto $</div>
+              <div className="text-sm text-white/70">Ventas Concretadas $</div>
               <div className="text-3xl font-bold mt-1 tabular-nums">{fmtK(t.amount)}</div>
               <div className="text-sm mt-1 text-white/80">
                 Ayer {fmtK(y.amount)}{' '}
@@ -153,7 +153,7 @@ export default function Dashboard() {
         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
           <h2 className="text-lg font-semibold mb-4">Hoy ({t.elapsed_hours?.toFixed(1)}hs transcurridas)</h2>
           <div className="grid grid-cols-2 gap-4">
-            <Stat label="Unidades" value={t.units} sub={`Canceladas hoy: ${t.cancelled ?? 0}`} />
+            <Stat label="Unidades Concretadas" value={t.units} sub={`Canceladas hoy: ${t.cancelled ?? 0}`} />
             <Stat label="Proyección día" value={fmt(projAmt)} sub={`~${projN.toFixed(0)} órdenes · ayer total ${fmt(yf.amount)}`} change={pct(projAmt, yf.amount)} tone={tone(projAmt, yf.amount)} />
           </div>
         </section>
@@ -162,31 +162,31 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold mb-4">Comparativos</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card title="Últimos 7 días" lines={[
-              ['Órdenes', w.orders.toString()],
-              ['Facturación', fmt(w.amount)],
+              ['Pedidos Concretados', w.orders.toString()],
+              ['Ventas Concretadas', fmt(w.amount)],
               ['Prom diario', fmt(w.amount / 7)],
             ]} />
             <Card title="Mes a la fecha" lines={[
-              ['Órdenes', m.orders.toString()],
-              ['Facturación', fmt(m.amount)],
+              ['Pedidos Concretados', m.orders.toString()],
+              ['Ventas Concretadas', fmt(m.amount)],
               ['Ticket prom', m.orders ? fmt(m.amount / m.orders) : '$0'],
             ]} />
             <Card title="Ayer completo" lines={[
-              ['Órdenes', yf.orders.toString()],
-              ['Facturación', fmt(yf.amount)],
-              ['Unidades', yf.units.toString()],
+              ['Pedidos Concretados', yf.orders.toString()],
+              ['Ventas Concretadas', fmt(yf.amount)],
+              ['Unidades Concretadas', yf.units.toString()],
             ]} />
           </div>
         </section>
 
         <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <h2 className="text-lg font-semibold mb-4">Top productos de hoy</h2>
+          <h2 className="text-lg font-semibold mb-4">Top productos concretados de hoy</h2>
           {data.top_products_today.length === 0 ? (
             <p className="text-slate-500">Sin ventas todavía.</p>
           ) : (
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase text-slate-500">
-                <tr><th className="py-2">Producto</th><th className="text-right">Unid</th><th className="text-right">Facturado</th></tr>
+                <tr><th className="py-2">Producto</th><th className="text-right">Unid</th><th className="text-right">Concretado</th></tr>
               </thead>
               <tbody>
                 {data.top_products_today.map((p) => (
