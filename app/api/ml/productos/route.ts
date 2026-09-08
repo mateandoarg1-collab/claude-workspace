@@ -1,64 +1,74 @@
-import { fetchOrdersInRange, isValidOrder, type MLOrder } from '@/lib/ml';
+import { fetchOrdersInRange, isValidOrder } from '@/lib/ml';
 
 export const maxDuration = 30;
 
-type Bucket = { qty: number; revenue: number };
-type ProductRow = { id: string; title: string; day: Bucket; week: Bucket; month: Bucket; last30: Bucket };
-type BucketKey = 'day' | 'week' | 'month' | 'last30';
+const RANGE_KEYS = ['today', '7d', '15d', '30d', 'month', 'prev_month', 'year'] as const;
+type RangeKey = (typeof RANGE_KEYS)[number];
 
-function emptyBucket(): Bucket {
-  return { qty: 0, revenue: 0 };
+function computeRange(key: RangeKey, now: Date): { from: Date; to: Date } {
+  // Hora AR = UTC - 3.
+  const arNow = new Date(now.getTime() - 3 * 3600 * 1000);
+  const arYear = arNow.getUTCFullYear();
+  const arMonth = arNow.getUTCMonth();
+  const arDay = arNow.getUTCDate();
+  const todayStart = new Date(Date.UTC(arYear, arMonth, arDay, 3, 0, 0));
+  const monthStart = new Date(Date.UTC(arYear, arMonth, 1, 3, 0, 0));
+
+  switch (key) {
+    case 'today':
+      return { from: todayStart, to: now };
+    case '7d':
+      return { from: new Date(todayStart.getTime() - 6 * 24 * 3600 * 1000), to: now };
+    case '15d':
+      return { from: new Date(todayStart.getTime() - 14 * 24 * 3600 * 1000), to: now };
+    case '30d':
+      return { from: new Date(todayStart.getTime() - 29 * 24 * 3600 * 1000), to: now };
+    case 'month':
+      return { from: monthStart, to: now };
+    case 'prev_month': {
+      const prevStart = new Date(Date.UTC(arYear, arMonth - 1, 1, 3, 0, 0));
+      const prevEnd = new Date(monthStart.getTime() - 1000);
+      return { from: prevStart, to: prevEnd };
+    }
+    case 'year':
+      return { from: new Date(Date.UTC(arYear, 0, 1, 3, 0, 0)), to: now };
+  }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const url = new URL(req.url);
+    const rangeParam = url.searchParams.get('range') ?? 'month';
+    const range: RangeKey = (RANGE_KEYS as readonly string[]).includes(rangeParam)
+      ? (rangeParam as RangeKey)
+      : 'month';
+
     const now = new Date();
-    // Hora AR = UTC - 3.
-    const arNow = new Date(now.getTime() - 3 * 3600 * 1000);
-    const arYear = arNow.getUTCFullYear();
-    const arMonth = arNow.getUTCMonth();
-    const arDay = arNow.getUTCDate();
-    const todayStart = new Date(Date.UTC(arYear, arMonth, arDay, 3, 0, 0));
+    const { from, to } = computeRange(range, now);
 
-    // Semana empieza el lunes.
-    const dow = arNow.getUTCDay(); // 0 = domingo
-    const daysSinceMonday = (dow + 6) % 7;
-    const weekStart = new Date(todayStart.getTime() - daysSinceMonday * 24 * 3600 * 1000);
-
-    const monthStart = new Date(Date.UTC(arYear, arMonth, 1, 3, 0, 0));
-    const last30Start = new Date(todayStart.getTime() - 29 * 24 * 3600 * 1000);
-
-    const fetchFrom = new Date(Math.min(monthStart.getTime(), last30Start.getTime()));
-
-    const orders = await fetchOrdersInRange(fetchFrom, now);
+    const orders = await fetchOrdersInRange(from, to);
     const valid = orders.filter(isValidOrder);
 
-    const map = new Map<string, ProductRow>();
-
-    function addOrder(o: MLOrder, bucket: BucketKey) {
+    const map = new Map<string, { id: string; title: string; qty: number; revenue: number }>();
+    valid.forEach((o) => {
       o.order_items.forEach((it) => {
         const key = it.item.id;
-        let row = map.get(key);
-        if (!row) {
-          row = { id: key, title: it.item.title, day: emptyBucket(), week: emptyBucket(), month: emptyBucket(), last30: emptyBucket() };
-          map.set(key, row);
-        }
-        row[bucket].qty += it.quantity;
-        row[bucket].revenue += it.quantity * it.unit_price;
+        const row = map.get(key) ?? { id: key, title: it.item.title, qty: 0, revenue: 0 };
+        row.qty += it.quantity;
+        row.revenue += it.quantity * it.unit_price;
+        map.set(key, row);
       });
-    }
-
-    valid.forEach((o) => {
-      const d = new Date(o.date_created);
-      if (d >= last30Start) addOrder(o, 'last30');
-      if (d >= monthStart) addOrder(o, 'month');
-      if (d >= weekStart) addOrder(o, 'week');
-      if (d >= todayStart) addOrder(o, 'day');
     });
 
-    const products = Array.from(map.values()).sort((a, b) => b.last30.revenue - a.last30.revenue);
+    const products = Array.from(map.values()).sort((a, b) => b.revenue - a.revenue);
 
-    return Response.json({ generated_at: now.toISOString(), products });
+    return Response.json({
+      generated_at: now.toISOString(),
+      range,
+      from: from.toISOString(),
+      to: to.toISOString(),
+      products,
+    });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     return Response.json({ error: msg }, { status: 500 });
