@@ -8,8 +8,12 @@ async function fetchOrders(from: string, to: string): Promise<MLOrder[]> {
 
 function summarize(orders: MLOrder[]) {
   const valid = orders.filter(isValidOrder);
+  // Meli crea una "orden" por cada línea de producto dentro de una misma compra,
+  // pero todas comparten pack_id. Upseller (y cualquier vendedor) cuenta "pedidos"
+  // como compras reales del cliente, no como líneas de producto.
+  const realOrders = new Set(valid.map((o) => o.pack_id ?? o.id));
   return {
-    orders: valid.length,
+    orders: realOrders.size,
     amount: valid.reduce((s, o) => s + (o.total_amount || 0), 0),
     units: valid.reduce(
       (s, o) => s + o.order_items.reduce((sx, it) => sx + (it.quantity || 0), 0),

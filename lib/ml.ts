@@ -79,6 +79,7 @@ export type MLOrder = {
   status: string;
   date_created: string;
   total_amount: number;
+  pack_id?: number | null;
   order_items: Array<{
     item: { id: string; title: string };
     quantity: number;
