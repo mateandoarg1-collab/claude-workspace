@@ -32,7 +32,12 @@ export async function getClarityInsights(days: 1 | 2 | 3 = 3): Promise<ClarityIn
   const url = new URL('https://www.clarity.ms/export-data/api/v1/project-live-insights');
   url.searchParams.set('numOfDays', String(days));
 
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+  // Clarity limita a ~10 consultas/día por proyecto. Cacheamos cada ventana (1/2/3 días)
+  // por separado, así el equipo puede entrar todo el día sin agotar la cuota.
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, next: { revalidate: 28800 } });
+  if (res.status === 429) {
+    throw new Error('Se alcanzó el límite diario de consultas a Clarity (~10/día). Los datos vuelven a actualizarse mañana; mientras tanto se puede ver todo en clarity.microsoft.com.');
+  }
   if (!res.ok) throw new Error(`Clarity API ${res.status}: ${await res.text()}`);
 
   const data: ClarityMetric[] = await res.json();
