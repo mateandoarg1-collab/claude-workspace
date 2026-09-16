@@ -119,6 +119,7 @@ export default function Canales() {
             <Link href="/" className="text-slate-600 hover:text-slate-900">Mercado Libre</Link>
             <Link href="/canales" className="font-medium text-emerald-700">Canales</Link>
             <Link href="/competencia" className="text-slate-600 hover:text-slate-900">Competencia</Link>
+            <Link href="/comportamiento" className="text-slate-600 hover:text-slate-900">Comportamiento</Link>
             <Link href="/resumen" className="text-slate-600 hover:text-slate-900">Resumen 📱</Link>
             <Link href="/preguntas" className="text-slate-600 hover:text-slate-900">Preguntas</Link>
           </nav>
