@@ -1,13 +1,13 @@
 // Monitor de stock en Mercado Libre Full.
 // Lee el stock en los depósitos de Full, calcula el ritmo de venta de los
-// últimos N días y avisa por WhatsApp (ManyChat) qué hay que reponer.
+// últimos N días y avisa al grupo de WhatsApp (vía bot/wa.mjs) qué hay que reponer.
 //
 // Uso:
 //   node scripts/full-stock.mjs            → reporte en consola + WhatsApp
 //   node scripts/full-stock.mjs --dry      → solo consola, no manda nada
 //
 // Config: data/full-config.json. Credenciales: ~/.claude/.mercadolibre (vía
-// ml-token.sh) y ~/.claude/.manychat — nunca en el repo.
+// ml-token.sh) y la sesión del bot en ~/.claude/.wa-bot-auth — nunca en el repo.
 
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -22,15 +22,6 @@ const DRY = process.argv.includes('--dry');
 
 const ML_TOKEN = execSync(`bash ${HOME}/.claude/scripts/ml-token.sh`).toString().trim();
 const ML_USER = '1136055893';
-
-function readEnvFile(path) {
-  return Object.fromEntries(
-    readFileSync(path, 'utf8')
-      .split('\n')
-      .filter((l) => l.includes('='))
-      .map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).replace(/^"|"$/g, '')]),
-  );
-}
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -174,41 +165,9 @@ function buildMessage(rows, cfg) {
   return out.join('\n');
 }
 
-// --- 5. WhatsApp vía ManyChat ---
-async function sendWhatsApp(text, cfg) {
-  const mc = readEnvFile(join(HOME, '.claude/.manychat'));
-  const headers = { Authorization: `Bearer ${mc.MANYCHAT_WA_TOKEN}`, 'Content-Type': 'application/json' };
-  for (const subscriber_id of cfg.whatsapp_subscriber_ids) {
-    const res = await fetch('https://api.manychat.com/fb/sending/sendContent', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        subscriber_id,
-        data: { version: 'v2', content: { type: 'whatsapp', messages: [{ type: 'text', text }] } },
-      }),
-    });
-    const body = await res.json();
-    if (body.status === 'success') {
-      console.log(`WhatsApp enviado a ${subscriber_id}`);
-      continue;
-    }
-    // Fuera de la ventana de 24 h WhatsApp solo acepta plantillas: disparamos
-    // el flow con plantilla aprobada (si está configurado) para reabrir la charla.
-    console.error(`WhatsApp directo falló para ${subscriber_id}:`, JSON.stringify(body));
-    if (cfg.whatsapp_fallback_flow_ns) {
-      await fetch('https://api.manychat.com/fb/subscriber/setCustomFieldByName', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ subscriber_id, field_name: 'reporte_full', field_value: text.slice(0, 1000) }),
-      });
-      const r2 = await fetch('https://api.manychat.com/fb/sending/sendFlow', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ subscriber_id, flow_ns: cfg.whatsapp_fallback_flow_ns }),
-      });
-      console.log('Fallback flow:', JSON.stringify(await r2.json()));
-    }
-  }
+// --- 5. WhatsApp: el bot (número propio, bot/wa.mjs) lo manda al grupo ---
+function sendWhatsApp(text, cfg) {
+  execSync(`node ${join(ROOT, 'bot/wa.mjs')} send ${cfg.whatsapp_group_id}`, { input: text, stdio: ['pipe', 'inherit', 'inherit'] });
 }
 
 // --- main ---
@@ -226,5 +185,5 @@ const msg = buildMessage(rows, CONFIG);
 console.log(msg);
 console.log(`\n(${rows.length} unidades en Full revisadas)`);
 
-if (!DRY && CONFIG.whatsapp_subscriber_ids.length) await sendWhatsApp(msg, CONFIG);
-else if (!DRY) console.log('\nSin whatsapp_subscriber_ids en data/full-config.json — no se envió nada.');
+if (!DRY && CONFIG.whatsapp_group_id) sendWhatsApp(msg, CONFIG);
+else if (!DRY) console.log('\nSin whatsapp_group_id en data/full-config.json — no se envió nada.');

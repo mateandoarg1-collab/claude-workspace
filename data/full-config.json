@@ -3,6 +3,5 @@
   "dias_reposicion": 10,
   "dias_alerta": 20,
   "dias_cobertura": 45,
-  "whatsapp_subscriber_ids": [],
-  "whatsapp_fallback_flow_ns": null
+  "whatsapp_group_id": null
 }
