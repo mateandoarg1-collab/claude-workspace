@@ -86,17 +86,6 @@ async function fullStock(inventoryId) {
   return { available: s.available_quantity ?? 0, total: s.total ?? 0, notAvail };
 }
 
-// Stock propio (depósito del vendedor, vende por Flex/ME2) para publicaciones híbridas
-async function ownStock(userProductId) {
-  if (!userProductId) return 0;
-  try {
-    const s = await ml(`/user-products/${userProductId}/stock`);
-    return (s.locations ?? []).filter((l) => l.type === 'selling_address').reduce((a, l) => a + l.quantity, 0);
-  } catch {
-    return 0;
-  }
-}
-
 // --- 3. Ventas de los últimos N días, contadas por item/variante ---
 async function salesByUnit(days) {
   const from = new Date(Date.now() - days * 864e5).toISOString().replace('Z', '-00:00');
@@ -124,7 +113,7 @@ function classify(u, cfg) {
   const days = perDay > 0 ? u.available / perDay : Infinity;
   const suggest = Math.max(0, Math.ceil(perDay * cfg.dias_cobertura - u.available));
   let level;
-  if (u.available === 0 && u.sold > 0) level = u.own > 0 ? 'full_vacio' : 'sin_stock';
+  if (u.available === 0 && u.sold > 0) level = 'sin_stock';
   else if (days <= cfg.dias_reposicion) level = 'rojo';
   else if (days <= cfg.dias_alerta) level = 'amarillo';
   else level = 'ok';
@@ -141,8 +130,7 @@ function buildMessage(rows, cfg) {
   const out = [`📦 *Stock Full MATEANDO* — ${new Date().toLocaleDateString('es-AR')}`];
 
   const sections = [
-    ['sin_stock', '⛔ *CORTADO* (0 en Full y 0 en depósito)'],
-    ['full_vacio', '🟠 *Full en 0* (vende desde depósito propio, sin envío Full)'],
+    ['sin_stock', '⛔ *Quebró stock en Full*'],
     ['rojo', `🔴 *Mandar YA* (≤${cfg.dias_reposicion} días)`],
     ['amarillo', `🟡 *Preparar envío* (≤${cfg.dias_alerta} días)`],
   ];
@@ -151,8 +139,7 @@ function buildMessage(rows, cfg) {
     if (!list.length) continue;
     out.push('', head);
     for (const r of list) {
-      const own = r.own ? ` (+${r.own} depósito)` : '';
-      out.push(`• ${name(r)}\n   Full ${r.available}${own} · vende ${r.perDay.toFixed(1)}/día · ${fmtDays(r.days)} → mandar *${r.suggest}*`);
+      out.push(`• ${name(r)}\n   Full ${r.available} · vende ${r.perDay.toFixed(1)}/día · ${fmtDays(r.days)} → mandar *${r.suggest}*`);
     }
   }
 
@@ -189,23 +176,23 @@ ${extra}</tr>`;
       : '';
   const byDays = (a, b) => a.days - b.days || b.perDay - a.perDay;
 
-  const quebro = rows.filter((r) => r.level === 'sin_stock' || r.level === 'full_vacio').sort((a, b) => b.perDay - a.perDay);
+  const quebro = rows.filter((r) => r.level === 'sin_stock').sort((a, b) => b.perDay - a.perDay);
   const rojo = rows.filter((r) => r.level === 'rojo').sort(byDays);
   const amarillo = rows.filter((r) => r.level === 'amarillo').sort(byDays);
   const ok = rows.filter((r) => r.level === 'ok').sort(byDays);
   const aMandar = [...quebro, ...rojo, ...amarillo];
   const totalUnidades = aMandar.reduce((a, r) => a + r.suggest, 0);
   const stuck = rows.filter((r) => Object.keys(r.notAvail).length);
-  const urgentCells = (r) => num(r.available) + num(r.own || '—') + num(r.perDay.toFixed(1)) + num(r.suggest, true) + `<td ${td} align="center" style="font-size:18px">☐</td>`;
-  const urgentHead = ['Full', 'Depósito', 'Vende/día', 'Mandar', 'Armado'];
+  const urgentCells = (r) => num(r.available) + num(r.perDay.toFixed(1)) + num(r.suggest, true) + `<td ${td} align="center" style="font-size:18px">☐</td>`;
+  const urgentHead = ['Full', 'Vende/día', `Mandar (${cfg.dias_cobertura} días)`, 'Armado'];
   const daysCells = (r) => num(r.available) + num(Math.floor(r.days)) + num(r.perDay.toFixed(1)) + num(r.suggest, true) + `<td ${td} align="center" style="font-size:18px">☐</td>`;
-  const daysHead = ['Full', 'Días', 'Vende/día', 'Mandar', 'Armado'];
+  const daysHead = ['Full', 'Días', 'Vende/día', `Mandar (${cfg.dias_cobertura} días)`, 'Armado'];
 
   return `<div style="font-family:Arial,sans-serif;color:#222;max-width:760px">
 <h2 style="margin:0">📦 Stock en Full — ${new Date().toLocaleDateString('es-AR')}</h2>
 <p style="color:#555;margin:6px 0 0">A armar: <b>${aMandar.length} publicaciones · ${totalUnidades} unidades</b> · ${ok.length} OK.<br>
-<span style="font-size:12px;color:#888">"Mandar" = unidades para cubrir ${cfg.dias_cobertura} días al ritmo de venta de los últimos ${cfg.dias_ventas}. Tocá la foto o el MLA para abrir la publicación.</span></p>
-${section('#b00020', '⛔ Quebró stock en Full', 'Sin unidades en Full. Si tiene depósito, sigue vendiendo pero sin envío Full (más lento, menos ventas).', quebro, urgentHead, urgentCells)}
+<span style="font-size:12px;color:#888">"Mandar" = unidades para tener ${cfg.dias_cobertura} días de venta en Full (ritmo de los últimos ${cfg.dias_ventas} días, descontando lo que ya hay en Full). Tocá la foto o el MLA para abrir la publicación.</span></p>
+${section('#b00020', '⛔ Quebró stock en Full', 'Sin unidades en Full y con ventas en los últimos días.', quebro, urgentHead, urgentCells)}
 ${section('#c0392b', '🔴 Por quebrar — mandar YA', `Menos de ${cfg.dias_reposicion} días de stock en Full.`, rojo, daysHead, daysCells)}
 ${section('#b7950b', '🟡 Próximo a quebrar — preparar', `Entre ${cfg.dias_reposicion} y ${cfg.dias_alerta} días de stock en Full.`, amarillo, daysHead, daysCells)}
 ${section('#27ae60', '✅ Está bien', `Más de ${cfg.dias_alerta} días de stock en Full.`, ok, ['Full', 'Días', 'Vende/día'], (r) => num(r.available) + num(r.days === Infinity ? 'sin ventas' : Math.floor(r.days)) + num(r.perDay.toFixed(1)))}
@@ -224,7 +211,6 @@ const sold = await salesByUnit(CONFIG.dias_ventas);
 const rows = [];
 for (const u of units) {
   const s = await fullStock(u.inventory_id);
-  s.own = await ownStock(u.user_product_id);
   const k = `${u.item_id}|${u.variation_id ?? ''}`;
   rows.push(classify({ ...u, ...s, sold: sold.get(k) ?? 0 }, CONFIG));
 }
