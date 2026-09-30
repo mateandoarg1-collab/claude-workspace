@@ -1,24 +1,27 @@
 // Monitor de stock en Mercado Libre Full.
 // Lee el stock en los depósitos de Full, calcula el ritmo de venta de los
-// últimos N días y avisa al grupo de WhatsApp (vía bot/wa.mjs) qué hay que reponer.
+// últimos N días y arma un reporte (mail + PDF) de qué hay que reponer.
 //
 // Uso:
-//   node scripts/full-stock.mjs            → reporte en consola + WhatsApp
-//   node scripts/full-stock.mjs --dry      → solo consola, no manda nada
+//   node scripts/full-stock.mjs              → solo reporte en consola
+//   node scripts/full-stock.mjs --mail       → PDF en ~/Downloads/Stock Full + mail a mail_to
+//   node scripts/full-stock.mjs --pdf x.pdf  → solo genera el PDF
+//   node scripts/full-stock.mjs --whatsapp   → manda el resumen al grupo vía bot/wa.mjs
 //
 // Config: data/full-config.json. Credenciales: ~/.claude/.mercadolibre (vía
-// ml-token.sh) y la sesión del bot en ~/.claude/.wa-bot-auth — nunca en el repo.
+// ml-token.sh), ~/.claude/.gmail-smtp y ~/.claude/.wa-bot-auth — nunca en el repo.
 
 import { execSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HOME = homedir();
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CONFIG = JSON.parse(readFileSync(join(ROOT, 'data/full-config.json'), 'utf8'));
-const DRY = process.argv.includes('--dry');
+const MAIL = process.argv.includes('--mail');
+const WHATSAPP = process.argv.includes('--whatsapp');
 const argVal = (flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : null);
 const HTML_OUT = argVal('--html');
 const PDF_OUT = argVal('--pdf'); // PDF para reenviar al grupo de WhatsApp
@@ -222,12 +225,79 @@ if (HTML_OUT) {
   writeFileSync(HTML_OUT, buildHtml(rows, CONFIG));
   console.log(`HTML guardado en ${HTML_OUT}`);
 }
-if (PDF_OUT) {
-  const tmp = `${PDF_OUT}.html`;
+
+function makePdf(path) {
+  const tmp = `${path}.html`;
   writeFileSync(tmp, `<!doctype html><meta charset="utf-8"><style>@page{size:A4;margin:12mm} body{margin:0} tr{page-break-inside:avoid}</style>${buildHtml(rows, CONFIG)}`);
-  execSync(`"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --disable-gpu --no-pdf-header-footer --virtual-time-budget=15000 --print-to-pdf="${PDF_OUT}" "file://${tmp}"`, { stdio: 'ignore' });
-  console.log(`PDF guardado en ${PDF_OUT}`);
+  execSync(`"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless --disable-gpu --no-pdf-header-footer --virtual-time-budget=15000 --print-to-pdf="${path}" "file://${tmp}"`, { stdio: 'ignore' });
+  unlinkSync(tmp);
+  console.log(`PDF guardado en ${path}`);
 }
 
-if (!DRY && CONFIG.whatsapp_group_id) sendWhatsApp(msg, CONFIG);
-else if (!DRY) console.log('\nSin whatsapp_group_id en data/full-config.json — no se envió nada.');
+// Mail con el reporte en el cuerpo + PDF adjunto (para reenviar al grupo de WhatsApp).
+// Sale por SMTP de Gmail con contraseña de aplicación guardada en ~/.claude/.gmail-smtp.
+function sendMail(pdfPath, cfg) {
+  const creds = Object.fromEntries(
+    readFileSync(join(HOME, '.claude/.gmail-smtp'), 'utf8')
+      .split('\n')
+      .filter((l) => l.includes('='))
+      .map((l) => [l.slice(0, l.indexOf('=')).trim(), l.slice(l.indexOf('=') + 1).trim()]),
+  );
+  const b64 = (t) => Buffer.from(t).toString('base64');
+  const wrap = (t) => t.replace(/.{1,76}/g, '$&\r\n');
+  const boundary = `mateando-${Date.now()}`;
+  const fecha = new Date().toLocaleDateString('es-AR');
+  const mime = [
+    `From: Stock Full MATEANDO <${creds.GMAIL_USER}>`,
+    `To: ${cfg.mail_to.join(', ')}`,
+    `Subject: =?UTF-8?B?${b64(`📦 Stock Full MATEANDO — ${fecha}`)}?=`,
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/mixed; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/html; charset=UTF-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    wrap(b64(buildHtml(rows, cfg))),
+    `--${boundary}`,
+    `Content-Type: application/pdf; name="${basename(pdfPath)}"`,
+    `Content-Disposition: attachment; filename="${basename(pdfPath)}"`,
+    'Content-Transfer-Encoding: base64',
+    '',
+    wrap(readFileSync(pdfPath).toString('base64')),
+    `--${boundary}--`,
+    '',
+  ].join('\r\n');
+  const mimePath = `${pdfPath}.eml`;
+  writeFileSync(mimePath, mime);
+  // credenciales por stdin (-K -) para que no queden a la vista en la lista de procesos
+  const curlCfg = [
+    `url = "smtps://smtp.gmail.com:465"`,
+    `user = "${creds.GMAIL_USER}:${creds.GMAIL_APP_PASSWORD.replace(/\s/g, '')}"`,
+    `mail-from = "${creds.GMAIL_USER}"`,
+    ...cfg.mail_to.map((r) => `mail-rcpt = "${r}"`),
+    `upload-file = "${mimePath}"`,
+    'ssl-reqd',
+    'silent',
+    'show-error',
+  ].join('\n');
+  try {
+    execSync('curl -K -', { input: curlCfg, stdio: ['pipe', 'inherit', 'inherit'] });
+    console.log(`Mail enviado a ${cfg.mail_to.join(', ')}`);
+  } finally {
+    unlinkSync(mimePath);
+  }
+}
+
+if (PDF_OUT) makePdf(PDF_OUT);
+
+if (MAIL) {
+  const dir = join(HOME, 'Downloads/Stock Full');
+  mkdirSync(dir, { recursive: true });
+  const d = new Date();
+  const pdf = join(dir, `Stock-Full-Mateando-${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}.pdf`);
+  makePdf(pdf);
+  sendMail(pdf, CONFIG);
+}
+
+if (WHATSAPP && CONFIG.whatsapp_group_id) sendWhatsApp(msg, CONFIG);
