@@ -76,9 +76,10 @@ export default function Productos() {
               {data ? `Actualizado ${new Date(data.generated_at).toLocaleTimeString('es-AR')}` : 'Cargando…'}
             </p>
           </div>
-          <nav className="flex gap-3 text-sm">
+          <nav className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
             <Link href="/" className="text-slate-600 hover:text-slate-900">Ventas</Link>
             <Link href="/productos" className="font-medium text-emerald-700">Productos</Link>
+            <Link href="/comportamiento" className="text-slate-600 hover:text-slate-900">Comportamiento</Link>
             <Link href="/preguntas" className="text-slate-600 hover:text-slate-900 flex items-center">Preguntas<PreguntasBadge /></Link>
             <button
               onClick={async () => { await fetch('/api/auth', { method: 'DELETE' }); location.href = '/login'; }}

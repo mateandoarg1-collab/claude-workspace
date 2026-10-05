@@ -116,9 +116,10 @@ export default function Preguntas() {
               {pendingCount > 0 ? `${pendingCount} sin responder — ¡el tiempo de respuesta importa!` : 'Todo al día ✅'}
             </p>
           </div>
-          <nav className="flex gap-3 text-sm">
+          <nav className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
             <Link href="/" className="text-slate-600 hover:text-slate-900">Ventas</Link>
             <Link href="/productos" className="text-slate-600 hover:text-slate-900">Productos</Link>
+            <Link href="/comportamiento" className="text-slate-600 hover:text-slate-900">Comportamiento</Link>
             <Link href="/preguntas" className="font-medium text-emerald-700 flex items-center">Preguntas<PreguntasBadge /></Link>
             <button
               onClick={async () => { await fetch('/api/auth', { method: 'DELETE' }); location.href = '/login'; }}

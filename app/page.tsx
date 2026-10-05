@@ -93,11 +93,12 @@ export default function Dashboard() {
               {refreshing ? ' · refrescando…' : ''}
             </p>
           </div>
-          <nav className="flex gap-3 text-sm">
+          <nav className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
             <Link href="/" className="font-medium text-emerald-700">Mercado Libre</Link>
             <Link href="/productos" className="text-slate-600 hover:text-slate-900">Productos</Link>
             <Link href="/canales" className="text-slate-600 hover:text-slate-900">Canales</Link>
             <Link href="/competencia" className="text-slate-600 hover:text-slate-900">Competencia</Link>
+            <Link href="/comportamiento" className="text-slate-600 hover:text-slate-900">Comportamiento</Link>
             <Link href="/resumen" className="text-slate-600 hover:text-slate-900">Resumen 📱</Link>
             <Link href="/preguntas" className="text-slate-600 hover:text-slate-900 flex items-center">Preguntas<PreguntasBadge /></Link>
             <button
