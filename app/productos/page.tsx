@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import PreguntasBadge from '../components/PreguntasBadge';
+import ChinaDailyChart from '../components/ChinaDailyChart';
 
 type ProductRow = {
   id: string;
@@ -139,6 +140,8 @@ export default function Productos() {
             </span>
           </div>
         )}
+
+        <ChinaDailyChart />
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           {loading && <div className="p-6 text-slate-500">Cargando {rangeLabel.toLowerCase()}…</div>}
