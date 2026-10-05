@@ -81,7 +81,11 @@ export type MLOrder = {
   total_amount: number;
   pack_id?: number | null;
   order_items: Array<{
-    item: { id: string; title: string };
+    item: {
+      id: string;
+      title: string;
+      variation_attributes?: Array<{ id: string; name: string; value_name: string | null }>;
+    };
     quantity: number;
     unit_price: number;
   }>;
@@ -119,6 +123,50 @@ export async function fetchThumbnails(ids: string[]): Promise<Map<string, string
         });
       } catch {
         // los thumbnails son "nice to have": si falla un lote, seguimos sin esas fotos
+      }
+    }),
+  );
+  return map;
+}
+
+// Productos importados de China (container sep-2026). MeLi no expone el origen, así que se
+// identifican por family_id: cada color es un user product distinto dentro de la familia.
+export const CHINA_FAMILY_IDS = new Set<number>([
+  6990630313309266, // Termo Autocebante Automate doble pico
+  1127462538336336, // Mate Acero 236ml Térmico + Bombilla
+  7376544667388880, // Set Matero Termo 1L + Mate + Bombilla
+  5506649408378769, // Set Matero Termo 750cc + Mate + Bombilla
+  6585242783220880, // Termo Mateando 1 Lt Pico Cebador
+  3923350767025297, // Termo Mateando 750ml Pico Cebador
+]);
+
+type ItemMeta = { color: string | null; isChina: boolean };
+
+// Color (atributo COLOR de la ficha) y origen China (por family_id) de cada publicación.
+// El color se usa cuando la orden no trae variation_attributes (pasa en algunos user products).
+export async function fetchItemMeta(ids: string[]): Promise<Map<string, ItemMeta>> {
+  const map = new Map<string, ItemMeta>();
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += 20) chunks.push(ids.slice(i, i + 20));
+
+  await Promise.all(
+    chunks.map(async (chunk) => {
+      try {
+        const results = await mlFetch<
+          Array<{
+            code: number;
+            body: { id: string; family_id?: number | null; attributes?: Array<{ id: string; value_name: string | null }> };
+          }>
+        >(`/items?ids=${chunk.join(',')}&attributes=id,family_id,attributes`);
+        results.forEach((r) => {
+          if (r.code !== 200 || !r.body) return;
+          map.set(r.body.id, {
+            color: r.body.attributes?.find((a) => a.id === 'COLOR')?.value_name ?? null,
+            isChina: r.body.family_id != null && CHINA_FAMILY_IDS.has(r.body.family_id),
+          });
+        });
+      } catch {
+        // igual que los thumbnails: si falla un lote, esas filas quedan sin color ni bandera
       }
     }),
   );

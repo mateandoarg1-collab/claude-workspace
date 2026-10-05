@@ -4,7 +4,15 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import PreguntasBadge from '../components/PreguntasBadge';
 
-type ProductRow = { id: string; title: string; qty: number; revenue: number; thumbnail: string | null };
+type ProductRow = {
+  id: string;
+  title: string;
+  color: string | null;
+  is_china: boolean;
+  qty: number;
+  revenue: number;
+  thumbnail: string | null;
+};
 type Data = { generated_at: string; range: string; from: string; to: string; products: ProductRow[] };
 
 const fmt = (n: number) => '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
@@ -18,6 +26,13 @@ const RANGES: Array<{ key: string; label: string }> = [
   { key: 'prev_month', label: 'Mes anterior' },
   { key: 'year', label: 'Año actual' },
 ];
+
+// El título de ML termina con el color ("... Antideslizante Rosa"); lo sacamos porque va en el chip.
+function stripColor(title: string, color: string | null) {
+  if (!color) return title;
+  const suffix = ' ' + color;
+  return title.toLowerCase().endsWith(suffix.toLowerCase()) ? title.slice(0, -suffix.length) : title;
+}
 
 function fmtDateShort(iso: string) {
   return new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: 'short' }).replace('.', '');
@@ -99,9 +114,31 @@ export default function Productos() {
         {err && <div className="bg-red-50 text-red-700 p-3 rounded">{err}</div>}
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex items-center justify-between">
-          <span className="text-sm text-slate-500">Publicaciones con ventas concretadas</span>
-          <span className="text-2xl font-bold text-blue-600 tabular-nums">{data?.products.length ?? '—'}</span>
+          <div>
+            <span className="text-sm text-slate-500">Unidades vendidas</span>
+            {data && (
+              <p className="text-xs text-slate-400">en {data.products.length} publicaciones</p>
+            )}
+          </div>
+          <span className="text-2xl font-bold text-blue-600 tabular-nums">
+            {data ? data.products.reduce((s, p) => s + p.qty, 0) : '—'}
+          </span>
         </div>
+
+        {data && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex items-center justify-between">
+            <div>
+              <span className="text-sm text-slate-500">🇨🇳 Unidades importadas de China</span>
+              <p className="text-xs text-slate-400">
+                {fmt(data.products.filter((p) => p.is_china).reduce((s, p) => s + p.revenue, 0))} en{' '}
+                {data.products.filter((p) => p.is_china).length} publicaciones
+              </p>
+            </div>
+            <span className="text-2xl font-bold text-red-600 tabular-nums">
+              {data.products.filter((p) => p.is_china).reduce((s, p) => s + p.qty, 0)}
+            </span>
+          </div>
+        )}
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           {loading && <div className="p-6 text-slate-500">Cargando {rangeLabel.toLowerCase()}…</div>}
@@ -113,8 +150,8 @@ export default function Productos() {
               <thead className="text-left text-xs uppercase text-slate-500 border-b border-slate-200">
                 <tr>
                   <th className="py-3 px-4">Producto</th>
-                  <th className="text-right px-3">Unid. Concretadas</th>
-                  <th className="text-right px-4">Concretado</th>
+                  <th className="text-right px-3">Unidades</th>
+                  <th className="hidden sm:table-cell text-right px-4">Concretado</th>
                 </tr>
               </thead>
               <tbody>
@@ -134,11 +171,25 @@ export default function Productos() {
                             🧉
                           </div>
                         )}
-                        <span className="max-w-[220px] truncate" title={p.title}>{p.title}</span>
+                        <div className="min-w-0">
+                          <span className="line-clamp-2" title={p.title}>
+                            {p.is_china && <span title="Importado de China">🇨🇳 </span>}
+                            {stripColor(p.title, p.color)}
+                          </span>
+                          {p.color && (
+                            <span className="inline-block mt-0.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-full px-2 py-0.5">
+                              {p.color}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
-                    <td className="text-right px-3 tabular-nums">{p.qty}</td>
-                    <td className="text-right px-4 tabular-nums font-medium">{fmt(p.revenue)}</td>
+                    <td className="text-right px-3 tabular-nums align-middle">
+                      <span className="font-semibold">{p.qty}</span>
+                      {/* En celular la columna de $ no entra: el monto va debajo de las unidades */}
+                      <span className="block sm:hidden text-xs text-slate-500 whitespace-nowrap">{fmt(p.revenue)}</span>
+                    </td>
+                    <td className="hidden sm:table-cell text-right px-4 tabular-nums font-medium">{fmt(p.revenue)}</td>
                   </tr>
                 ))}
               </tbody>

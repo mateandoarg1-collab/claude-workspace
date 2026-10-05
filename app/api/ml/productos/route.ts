@@ -1,4 +1,4 @@
-import { fetchOrdersInRange, fetchThumbnails, isValidOrder } from '@/lib/ml';
+import { fetchItemMeta, fetchOrdersInRange, fetchThumbnails, isValidOrder } from '@/lib/ml';
 
 export const maxDuration = 30;
 
@@ -49,11 +49,14 @@ export async function GET(req: Request) {
     const orders = await fetchOrdersInRange(from, to);
     const valid = orders.filter(isValidOrder);
 
-    const map = new Map<string, { id: string; title: string; qty: number; revenue: number }>();
+    // Cada publicación de ML es un color (user product), así que agrupamos por item.id
+    // y mostramos el color aparte para distinguir p. ej. Termo 1 L Rosa de Termo 1 L Negro.
+    const map = new Map<string, { id: string; title: string; color: string | null; qty: number; revenue: number }>();
     valid.forEach((o) => {
       o.order_items.forEach((it) => {
         const key = it.item.id;
-        const row = map.get(key) ?? { id: key, title: it.item.title, qty: 0, revenue: 0 };
+        const color = it.item.variation_attributes?.find((a) => a.id === 'COLOR')?.value_name ?? null;
+        const row = map.get(key) ?? { id: key, title: it.item.title, color, qty: 0, revenue: 0 };
         row.qty += it.quantity;
         row.revenue += it.quantity * it.unit_price;
         map.set(key, row);
@@ -61,8 +64,14 @@ export async function GET(req: Request) {
     });
 
     const sorted = Array.from(map.values()).sort((a, b) => b.revenue - a.revenue);
-    const thumbs = await fetchThumbnails(sorted.map((p) => p.id));
-    const products = sorted.map((p) => ({ ...p, thumbnail: thumbs.get(p.id) || null }));
+    const ids = sorted.map((p) => p.id);
+    const [thumbs, meta] = await Promise.all([fetchThumbnails(ids), fetchItemMeta(ids)]);
+    const products = sorted.map((p) => ({
+      ...p,
+      color: p.color ?? meta.get(p.id)?.color ?? null,
+      is_china: meta.get(p.id)?.isChina ?? false,
+      thumbnail: thumbs.get(p.id) || null,
+    }));
 
     return Response.json({
       generated_at: now.toISOString(),
