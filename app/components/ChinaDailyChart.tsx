@@ -51,7 +51,18 @@ export default function ChinaDailyChart() {
   const H = 140; // alto del área de barras en px
   const past = data ? data.days.filter((d) => d.day <= data.today) : [];
   const total = past.reduce((s, d) => s + d.qty, 0);
-  const max = niceMax(Math.max(0, ...past.map((d) => d.qty)));
+  const totalRev = past.reduce((s, d) => s + d.revenue, 0);
+  // Proyección del mes: ritmo de los últimos 7 días cerrados (hoy está a medias). El día de hoy
+  // cuenta como mínimo ese ritmo, y los días que faltan se proyectan al mismo ritmo.
+  const closed = past.filter((d) => d.day < (data?.today ?? 0)).slice(-7);
+  const base = closed.length ? closed : past;
+  const rate = base.reduce((s, d) => s + d.qty, 0) / Math.max(1, base.length);
+  const rateRev = base.reduce((s, d) => s + d.revenue, 0) / Math.max(1, base.length);
+  const todayDay = data ? past.find((d) => d.day === data.today) : undefined;
+  const left = data ? data.days.length - data.today : 0;
+  const projQty = Math.round(total + left * rate + Math.max(0, rate - (todayDay?.qty ?? 0)));
+  const projRev = totalRev + left * rateRev + Math.max(0, rateRev - (todayDay?.revenue ?? 0));
+  const max = niceMax(Math.max(0, rate, ...past.map((d) => d.qty)));
   const best = past.reduce<Day | null>((b, d) => (d.qty > (b?.qty ?? 0) ? d : b), null);
   const shown = active != null && data ? data.days[active - 1] : null;
   const mon = data ? MONTHS[data.month - 1].slice(0, 3) : '';
@@ -69,6 +80,12 @@ export default function ChinaDailyChart() {
           <p className="text-xs text-slate-400">
             {data ? `${MONTHS[data.month - 1]} ${data.year} · ${total} unidades · promedio ${(total / Math.max(1, data.today)).toFixed(1)}/día` : err || 'Cargando…'}
           </p>
+          {data && left > 0 && (
+            <p className="text-xs text-slate-500 mt-0.5" title={`Ritmo de los últimos ${base.length} días cerrados: ${rate.toFixed(1)} u./día`}>
+              Proyección del mes: <span className="font-semibold text-slate-800 tabular-nums">~{projQty} u.</span>
+              <span className="text-slate-400 tabular-nums"> · {fmt(projRev)} · a {rate.toFixed(1)} u./día</span>
+            </p>
+          )}
         </div>
         {/* Detalle del día con hover / tap */}
         <div className="text-right text-xs text-slate-500 min-h-[2rem] tabular-nums whitespace-nowrap">
@@ -119,10 +136,18 @@ export default function ChinaDailyChart() {
                           {d.qty}
                         </span>
                       )}
-                      <span
-                        className={`block w-full max-w-[24px] rounded-t-[4px] ${isActive || picked === d.day ? 'bg-red-700' : d.day === data.today ? 'bg-red-500' : 'bg-red-400'}`}
-                        style={{ height: d.qty > 0 ? Math.max(h, 2) : 0 }}
-                      />
+                      {future ? (
+                        // Día que falta: barra fantasma al ritmo proyectado
+                        <span
+                          className="block w-full max-w-[24px] rounded-t-[4px] border border-dashed border-red-300 border-b-0 bg-red-50"
+                          style={{ height: Math.round((rate / max) * H) }}
+                        />
+                      ) : (
+                        <span
+                          className={`block w-full max-w-[24px] rounded-t-[4px] ${isActive || picked === d.day ? 'bg-red-700' : d.day === data.today ? 'bg-red-500' : 'bg-red-400'}`}
+                          style={{ height: d.qty > 0 ? Math.max(h, 2) : 0 }}
+                        />
+                      )}
                     </button>
                   );
                 })}
