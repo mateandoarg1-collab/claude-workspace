@@ -10,7 +10,11 @@ const fmtM = (n: number) => {
   return '$' + n.toFixed(0);
 };
 const fmtFull = (n: number) => '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
+const fmtFecha = (iso: string) =>
+  new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Argentina/Buenos_Aires' });
 type Sum = { orders: number; amount: number };
+type LocalData = Sum & { mp: Sum; efectivo: Sum; transferencias: Sum & { actualizadoHasta: string | null } };
+const VACIO = { orders: 0, amount: 0 };
 
 export default function Resumen() {
   const [ml, setMl] = useState<{ month_to_date: Sum } | null>(null);
@@ -18,7 +22,7 @@ export default function Resumen() {
   const [mp, setMp] = useState({ orders: 0, amount: 0 });
   const [comprobantes, setComprobantes] = useState({ orders: 0, amount: 0 });
   const [gocuotas, setGocuotas] = useState({ monto: 0, cant: 0 });
-  const [local, setLocal] = useState({ monto: 0, cant: 0 });
+  const [local, setLocal] = useState<LocalData>({ orders: 0, amount: 0, mp: VACIO, efectivo: VACIO, transferencias: { ...VACIO, actualizadoHasta: null } });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,7 +38,7 @@ export default function Resumen() {
       if (!mayoristaData.error) setMayorista(mayoristaData);
       if (!mpData.error) setMp(mpData.month_to_date);
       if (!compData.error) setComprobantes(compData);
-      if (!localData.error) setLocal({ monto: localData.amount, cant: localData.orders });
+      if (!localData.error) setLocal(localData);
       setGocuotas({ monto: manual.gocuotasMonto, cant: manual.gocuotasCant });
       setLoading(false);
     });
@@ -50,8 +54,8 @@ export default function Resumen() {
 
   const diasTranscurridos = new Date().getDate();
   const online = { monto: mp.amount + comprobantes.amount + gocuotas.monto, cant: mp.orders + comprobantes.orders + gocuotas.cant };
-  const totalMes = online.monto + ml.month_to_date.amount + local.monto + (mayorista?.amount ?? 0);
-  const ventasMes = online.cant + ml.month_to_date.orders + local.cant + (mayorista?.orders ?? 0);
+  const totalMes = online.monto + ml.month_to_date.amount + local.amount + (mayorista?.amount ?? 0);
+  const ventasMes = online.cant + ml.month_to_date.orders + local.orders + (mayorista?.orders ?? 0);
   const promedioDiario = totalMes / diasTranscurridos;
 
   return (
@@ -75,7 +79,10 @@ export default function Resumen() {
             <ChanRow label="  └ Mercado Pago" color="text-blue-400/60" monto={mp.amount} cant={mp.orders} small />
             <ChanRow label="  └ Transferencias" color="text-blue-400/60" monto={comprobantes.amount} cant={comprobantes.orders} small />
             <ChanRow label="  └ GOcuotas" color="text-blue-400/60" monto={gocuotas.monto} cant={gocuotas.cant} small />
-            <ChanRow label="Local Físico" color="text-emerald-400" monto={local.monto} cant={local.cant} />
+            <ChanRow label="Local Físico" color="text-emerald-400" monto={local.amount} cant={local.orders} />
+            <ChanRow label="  └ Point / QR" color="text-emerald-400/60" monto={local.mp.amount} cant={local.mp.orders} small />
+            <ChanRow label="  └ Efectivo" color="text-emerald-400/60" monto={local.efectivo.amount} cant={local.efectivo.orders} small />
+            <ChanRow label="  └ Transferencias" color="text-emerald-400/60" monto={local.transferencias.amount} cant={local.transferencias.orders} small />
             <ChanRow label="Mercado Libre" color="text-yellow-400" monto={ml.month_to_date.amount} cant={ml.month_to_date.orders} />
             <ChanRow label="Mayorista" color="text-purple-400" monto={mayorista?.amount ?? 0} cant={mayorista?.orders ?? 0} />
           </div>
@@ -86,8 +93,13 @@ export default function Resumen() {
         </Card>
 
         <p className="text-center text-white/30 text-xs mt-6">
-          GOcuotas se actualiza a mano en /canales · el resto, en vivo (Local vía /caja)
+          GOcuotas se actualiza a mano en /canales · el resto, en vivo
         </p>
+        {local.transferencias.actualizadoHasta && (
+          <p className="text-center text-white/30 text-xs mt-1">
+            Transferencias del local hasta {fmtFecha(local.transferencias.actualizadoHasta)} (se actualiza al tildar con mateandobot)
+          </p>
+        )}
       </div>
     </div>
   );

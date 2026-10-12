@@ -2,9 +2,8 @@ import { addLocalVenta, getLocalVentasSummary } from '@/lib/localVentas';
 
 export async function GET() {
   try {
-    const now = new Date();
-    const prefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    const data = await getLocalVentasSummary(prefix);
+    const ar = new Date(Date.now() - 3 * 3600 * 1000);
+    const data = await getLocalVentasSummary(ar.getUTCFullYear(), ar.getUTCMonth() + 1);
     return Response.json(data);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
