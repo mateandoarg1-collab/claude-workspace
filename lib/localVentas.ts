@@ -4,7 +4,8 @@ import { getMercadoPagoLocalSummary } from './mercadopago';
 
 // Venta del local físico (Costa Rica), armada de tres fuentes:
 //   1. Mercado Pago Point / QR del local (API de MP).
-//   2. Efectivo: planilla "Mateando_Flujo_Efectivo COSTA RICA" que llenan las chicas.
+//   2. Efectivo: planilla "Mateando_Flujo_Efectivo COSTA RICA" que llenan las chicas
+//      (las ventas en dólares se pasan a pesos a COTIZACION_USD).
 //   3. Transferencias: movimientos de la recaudadora (pestaña recaudadora_movs, la llena
 //      scripts/recaudadora-sync.mjs) que NO están en el Excel de comprobantes — las que sí
 //      están son ventas de la tienda online. Las de $1M o más se descartan (mayorista).
@@ -15,6 +16,7 @@ const RECAUDADORA_TAB = 'recaudadora_movs';
 const EFECTIVO_ID = '1Gy8M6ccHZr-BX86bC2CHW5M2Ryzz8LX7EmHaZvX57wc';
 const COMPROBANTES_ID = '1UpKb4hhNDZFrNoxH2kIIBXIWBnHStHVflHJ1RKrvXYo';
 const TOPE_TRANSFERENCIA_LOCAL = 1_000_000;
+const COTIZACION_USD = 1600;
 
 type Sum = { orders: number; amount: number };
 const DAY = 864e5;
@@ -65,17 +67,20 @@ function parseFechaEfectivo(v: unknown): number | null {
 async function getEfectivo(sheets: ReturnType<typeof google.sheets>, desde: number, hasta: number): Promise<Sum> {
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: EFECTIVO_ID,
-    range: `'Movimientos'!A4:E`,
+    range: `'Movimientos'!A4:H`,
     valueRenderOption: 'UNFORMATTED_VALUE',
   });
   let fecha: number | null = null;
   const out = { orders: 0, amount: 0 };
-  for (const [f, tipo, categoria, , ingreso] of res.data.values ?? []) {
+  for (const [f, , categoria, , ingreso, egreso, , usd] of res.data.values ?? []) {
     const nueva = parseFechaEfectivo(f);
     if (nueva !== null && (fecha === null || (nueva >= fecha && nueva - fecha <= 31))) fecha = nueva;
     if (fecha === null || fecha < desde || fecha >= hasta) continue;
-    const monto = Number(ingreso) || 0;
-    if (tipo !== 'Ingreso' || categoria !== 'Ventas mostrador' || monto <= 0) continue;
+    if (categoria !== 'Ventas mostrador') continue;
+    // Venta en dólares: se cobra en USD (col H) y a veces se da vuelto en pesos (col Egreso).
+    const dolares = Number(usd) || 0;
+    const monto = (Number(ingreso) || 0) + (dolares > 0 ? dolares * COTIZACION_USD - (Number(egreso) || 0) : 0);
+    if (monto <= 0) continue;
     out.orders++;
     out.amount += monto;
   }
