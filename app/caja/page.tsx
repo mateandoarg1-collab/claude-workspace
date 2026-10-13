@@ -31,12 +31,12 @@ export default function Caja() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-6">
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <div className="w-full max-w-sm bg-slate-900 rounded-2xl shadow-sm border border-slate-800 p-6 space-y-6">
         <h1 className="text-xl font-bold text-center">🧉 Registrar venta — Local</h1>
 
         <label className="block">
-          <span className="block text-sm text-slate-500 mb-2">Monto ($)</span>
+          <span className="block text-sm text-slate-400 mb-2">Monto ($)</span>
           <input
             type="text"
             inputMode="decimal"
@@ -44,22 +44,22 @@ export default function Caja() {
             onChange={(e) => { setMonto(e.target.value); setStatus('idle'); }}
             placeholder="0"
             autoFocus
-            className="w-full border border-slate-300 rounded-xl px-4 py-4 text-3xl text-center font-bold"
+            className="w-full border border-slate-700 rounded-xl px-4 py-4 text-3xl text-center font-bold"
           />
         </label>
 
         <div>
-          <span className="block text-sm text-slate-500 mb-2">Método de pago</span>
+          <span className="block text-sm text-slate-400 mb-2">Método de pago</span>
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={() => setMetodo('efectivo')}
-              className={`py-3 rounded-xl font-medium border-2 ${metodo === 'efectivo' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'}`}
+              className={`py-3 rounded-xl font-medium border-2 ${metodo === 'efectivo' ? 'border-emerald-600 bg-emerald-500/10 text-emerald-400' : 'border-slate-800 text-slate-400'}`}
             >
               Efectivo
             </button>
             <button
               onClick={() => setMetodo('transferencia')}
-              className={`py-3 rounded-xl font-medium border-2 ${metodo === 'transferencia' ? 'border-emerald-600 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'}`}
+              className={`py-3 rounded-xl font-medium border-2 ${metodo === 'transferencia' ? 'border-emerald-600 bg-emerald-500/10 text-emerald-400' : 'border-slate-800 text-slate-400'}`}
             >
               Transferencia
             </button>
@@ -75,10 +75,10 @@ export default function Caja() {
         </button>
 
         {status === 'ok' && (
-          <p className="text-center text-emerald-600 font-medium">✓ Venta registrada</p>
+          <p className="text-center text-emerald-400 font-medium">✓ Venta registrada</p>
         )}
         {status === 'error' && (
-          <p className="text-center text-red-600 font-medium">Error al registrar, probá de nuevo</p>
+          <p className="text-center text-red-400 font-medium">Error al registrar, probá de nuevo</p>
         )}
       </div>
     </div>

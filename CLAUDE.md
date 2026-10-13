@@ -23,3 +23,8 @@ Vercel despliega automáticamente en cada `git push` a `main`.
 ## Estructura
 - `app/` — páginas y componentes Next.js
 - `public/` — archivos estáticos
+
+## Diseño del panel
+- Tema **oscuro** único. La escala `slate` está redefinida en `app/globals.css` como neutro oscuro con tinte verde (950 = fondo, 900 = tarjetas, 800 = bordes, 100/300 = textos). Acento de marca: `emerald`.
+- Todas las páginas usan `<AppHeader title subtitle width />` (`app/components/AppHeader.tsx`) — el menú se edita en un solo lugar (`NAV`).
+- Mobile primero: padding `px-4 sm:px-6`, grids `grid-cols-1 sm:grid-cols-2`, tablas anchas con `overflow-x-auto` o columnas `hidden sm:table-cell`.

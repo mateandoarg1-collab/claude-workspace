@@ -37,15 +37,15 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-200">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 to-slate-800">
       <form
         onSubmit={submit}
-        className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md space-y-4 border border-slate-200"
+        className="bg-slate-900 p-8 rounded-2xl shadow-xl w-full max-w-md space-y-4 border border-slate-800"
       >
         <div className="text-center mb-2">
           <div className="text-2xl">🧉</div>
           <h1 className="text-2xl font-bold">Panel MATEANDO</h1>
-          <p className="text-sm text-slate-500">Ingresá tu contraseña</p>
+          <p className="text-sm text-slate-400">Ingresá tu contraseña</p>
         </div>
         <input
           type="password"
@@ -53,10 +53,10 @@ function LoginForm() {
           autoFocus
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          className="w-full px-4 py-3 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
           placeholder="Contraseña"
         />
-        {err && <p className="text-red-600 text-sm">{err}</p>}
+        {err && <p className="text-red-400 text-sm">{err}</p>}
         <button
           type="submit"
           disabled={loading}

@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import PreguntasBadge from './components/PreguntasBadge';
+import AppHeader from './components/AppHeader';
 
 type Sum = { orders: number; amount: number; units: number; cancelled?: number; elapsed_hours?: number };
 type SalesData = {
@@ -28,7 +27,7 @@ const pctAbs = (a: number, b: number) => {
   return Math.abs(((a - b) / b) * 100).toFixed(1) + '%';
 };
 const tone = (a: number, b: number) =>
-  !b ? 'text-slate-500' : a >= b ? 'text-emerald-600' : 'text-red-600';
+  !b ? 'text-slate-400' : a >= b ? 'text-emerald-400' : 'text-red-400';
 const arrow = (a: number, b: number) => (a >= b ? '↑' : '↓');
 
 export default function Dashboard() {
@@ -58,7 +57,7 @@ export default function Dashboard() {
 
   if (err) {
     return (
-      <div className="p-8 text-red-600">
+      <div className="p-8 text-red-400">
         Error: {err}
         <button onClick={load} className="ml-2 underline">reintentar</button>
       </div>
@@ -67,7 +66,7 @@ export default function Dashboard() {
 
   if (!data) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-slate-500">
+      <div className="min-h-screen flex items-center justify-center text-slate-400">
         Cargando datos de Mercado Libre…
       </div>
     );
@@ -83,86 +82,61 @@ export default function Dashboard() {
   const projN = t.elapsed_hours ? (t.orders / t.elapsed_hours) * 24 : 0;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">🧉 MATEANDO — Panel</h1>
-            <p className="text-xs text-slate-500">
-              Última actualización: {new Date(data.generated_at).toLocaleTimeString('es-AR')}
-              {refreshing ? ' · refrescando…' : ''}
-            </p>
-          </div>
-          <nav className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
-            <Link href="/" className="font-medium text-emerald-700">Mercado Libre</Link>
-            <Link href="/productos" className="text-slate-600 hover:text-slate-900">Productos</Link>
-            <Link href="/canales" className="text-slate-600 hover:text-slate-900">Canales</Link>
-            <Link href="/competencia" className="text-slate-600 hover:text-slate-900">Competencia</Link>
-            <Link href="/comportamiento" className="text-slate-600 hover:text-slate-900">Comportamiento</Link>
-            <Link href="/resumen" className="text-slate-600 hover:text-slate-900">Resumen 📱</Link>
-            <Link href="/preguntas" className="text-slate-600 hover:text-slate-900 flex items-center">Preguntas<PreguntasBadge /></Link>
-            <button
-              onClick={async () => { await fetch('/api/auth', { method: 'DELETE' }); location.href = '/login'; }}
-              className="text-slate-500 hover:text-red-600"
-            >Salir</button>
-          </nav>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-950">
+      <AppHeader title="Mercado Libre" subtitle={`Última actualización: ${new Date(data.generated_at).toLocaleTimeString('es-AR')}${refreshing ? ' · refrescando…' : ''}`} width="7xl" />
 
-      <main className="max-w-7xl mx-auto px-6 py-6 space-y-6">
-        <section className="rounded-3xl p-6 text-white shadow-lg bg-gradient-to-br from-blue-600 to-blue-500">
-          <div className="flex items-center justify-between mb-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <section className="relative overflow-hidden rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-900 p-5 sm:p-7 shadow-2xl shadow-emerald-950/40">
+          <div className="pointer-events-none absolute -top-24 -right-16 h-64 w-64 rounded-full bg-emerald-500/20 blur-3xl" />
+          <div className="relative flex items-start justify-between mb-6">
             <div>
-              <h2 className="text-xl font-bold">Ventas de Hoy</h2>
-              <p className="text-xs text-white/70 mt-0.5">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                </span>
+                <h2 className="text-sm font-medium tracking-wide text-emerald-300">Ventas de hoy</h2>
+              </div>
+              <p className="text-xs text-slate-400 mt-1 tabular-nums">
+                {new Date(data.generated_at).toLocaleDateString('es-AR', { weekday: 'long', day: '2-digit', month: '2-digit' })}
+                {' · '}
                 {new Date(data.generated_at).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-                {' '}
-                {new Date(data.generated_at).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' })}
               </p>
             </div>
             <button
               onClick={load}
               aria-label="Actualizar"
-              className={`w-9 h-9 rounded-full border border-white/30 flex items-center justify-center text-lg hover:bg-white/10 ${refreshing ? 'animate-spin' : ''}`}
+              className={`w-10 h-10 rounded-full bg-white/5 ring-1 ring-white/10 flex items-center justify-center text-lg text-slate-200 hover:bg-white/10 ${refreshing ? 'animate-spin' : ''}`}
             >
               ↻
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <div className="text-sm text-white/70">Pedidos Concretados</div>
-              <div className="text-3xl font-bold mt-1 tabular-nums">{t.orders}</div>
-              <div className="text-sm mt-1 text-white/80">
-                Ayer a esta hora: {y.orders}{' '}
-                <span className={t.orders >= y.orders ? 'text-emerald-300' : 'text-red-300'}>
-                  {arrow(t.orders, y.orders)}{pctAbs(t.orders, y.orders)}
-                </span>
-              </div>
+          <div className="relative grid grid-cols-2 gap-4 sm:gap-8">
+            <HeroMetric label="Pedidos concretados" value={t.orders.toLocaleString('es-AR')} prev={y.orders.toLocaleString('es-AR')} a={t.orders} b={y.orders} />
+            <HeroMetric label="Ventas concretadas" value={'$' + fmtK(t.amount)} prev={'$' + fmtK(y.amount)} a={t.amount} b={y.amount} />
+          </div>
+          <div className="relative mt-6">
+            <div className="flex justify-between text-[11px] text-slate-400 mb-1.5 tabular-nums">
+              <span>Día transcurrido {Math.round(((t.elapsed_hours ?? 0) / 24) * 100)}%</span>
+              <span>Proyección {fmt(projAmt)}</span>
             </div>
-            <div>
-              <div className="text-sm text-white/70">Ventas Concretadas $</div>
-              <div className="text-3xl font-bold mt-1 tabular-nums">{fmtK(t.amount)}</div>
-              <div className="text-sm mt-1 text-white/80">
-                Ayer a esta hora: {fmtK(y.amount)}{' '}
-                <span className={t.amount >= y.amount ? 'text-emerald-300' : 'text-red-300'}>
-                  {arrow(t.amount, y.amount)}{pctAbs(t.amount, y.amount)}
-                </span>
-              </div>
+            <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+              <div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-300" style={{ width: `${Math.min(100, ((t.elapsed_hours ?? 0) / 24) * 100)}%` }} />
             </div>
           </div>
         </section>
 
-        <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <h2 className="text-lg font-semibold mb-4">Hoy ({t.elapsed_hours?.toFixed(1)}hs transcurridas)</h2>
-          <div className="grid grid-cols-2 gap-4">
+        <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold mb-4 text-slate-100">Hoy ({t.elapsed_hours?.toFixed(1)}hs transcurridas)</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <Stat label="Unidades Concretadas" value={t.units} sub={`Canceladas hoy: ${t.cancelled ?? 0}`} />
             <Stat label="Proyección día" value={fmt(projAmt)} sub={`~${projN.toFixed(0)} órdenes · ayer total ${fmt(yf.amount)}`} change={pct(projAmt, yf.amount)} tone={tone(projAmt, yf.amount)} />
           </div>
         </section>
 
-        <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <h2 className="text-lg font-semibold mb-4">Comparativos</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold mb-4 text-slate-100">Comparativos</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
             <Card title="Últimos 7 días" lines={[
               ['Pedidos Concretados', w.orders.toString()],
               ['Ventas Concretadas', fmt(w.amount)],
@@ -181,18 +155,18 @@ export default function Dashboard() {
           </div>
         </section>
 
-        <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-          <h2 className="text-lg font-semibold mb-4">Top productos concretados de hoy</h2>
+        <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-semibold mb-4 text-slate-100">Top productos concretados de hoy</h2>
           {data.top_products_today.length === 0 ? (
-            <p className="text-slate-500">Sin ventas todavía.</p>
+            <p className="text-slate-400">Sin ventas todavía.</p>
           ) : (
             <table className="w-full text-sm">
-              <thead className="text-left text-xs uppercase text-slate-500">
+              <thead className="text-left text-xs uppercase text-slate-400">
                 <tr><th className="py-2">Producto</th><th className="text-right">Unid</th><th className="text-right">Concretado</th></tr>
               </thead>
               <tbody>
                 {data.top_products_today.map((p) => (
-                  <tr key={p.id} className="border-t border-slate-100">
+                  <tr key={p.id} className="border-t border-slate-900">
                     <td className="py-2 pr-2">
                       <div className="flex items-center gap-3">
                         {p.thumbnail ? (
@@ -200,10 +174,10 @@ export default function Dashboard() {
                           <img
                             src={p.thumbnail}
                             alt=""
-                            className="w-9 h-9 rounded-lg object-cover flex-shrink-0 bg-slate-100 border border-slate-200"
+                            className="w-9 h-9 rounded-lg object-cover flex-shrink-0 bg-slate-900 border border-slate-800"
                           />
                         ) : (
-                          <div className="w-9 h-9 rounded-lg flex-shrink-0 bg-slate-100 border border-slate-200 flex items-center justify-center text-xs">
+                          <div className="w-9 h-9 rounded-lg flex-shrink-0 bg-slate-900 border border-slate-800 flex items-center justify-center text-xs">
                             🧉
                           </div>
                         )}
@@ -225,27 +199,47 @@ export default function Dashboard() {
 
 function Stat({ label, value, sub, change, tone }: { label: string; value: string | number; sub?: string; change?: string; tone?: string }) {
   return (
-    <div className="border border-slate-100 rounded-lg p-4 bg-slate-50/60">
-      <div className="text-xs text-slate-500 uppercase tracking-wide">{label}</div>
-      <div className="text-2xl font-bold tabular-nums">{value}</div>
+    <div className="rounded-xl p-4 bg-slate-950/60 ring-1 ring-slate-800">
+      <div className="text-[11px] text-slate-400 uppercase tracking-wider">{label}</div>
+      <div className="text-2xl font-semibold tabular-nums text-slate-50 mt-1">{value}</div>
       {change && <div className={`text-xs font-medium ${tone}`}>{change}</div>}
-      {sub && <div className="text-xs text-slate-500 mt-1">{sub}</div>}
+      {sub && <div className="text-xs text-slate-400 mt-1">{sub}</div>}
     </div>
   );
 }
 
 function Card({ title, lines }: { title: string; lines: Array<[string, string]> }) {
   return (
-    <div className="border border-slate-100 rounded-lg p-4 bg-slate-50/60">
-      <div className="text-sm font-semibold text-slate-700 mb-2">{title}</div>
-      <dl className="text-sm space-y-1">
+    <div className="rounded-xl p-4 bg-slate-950/60 ring-1 ring-slate-800">
+      <div className="text-sm font-semibold text-emerald-300 mb-3">{title}</div>
+      <dl className="text-sm space-y-2">
         {lines.map(([k, v]) => (
           <div key={k} className="flex justify-between">
-            <dt className="text-slate-500">{k}</dt>
-            <dd className="tabular-nums font-medium">{v}</dd>
+            <dt className="text-slate-400">{k}</dt>
+            <dd className="tabular-nums font-medium text-slate-100">{v}</dd>
           </div>
         ))}
       </dl>
+    </div>
+  );
+}
+
+function HeroMetric({ label, value, prev, a, b }: { label: string; value: string; prev: string; a: number; b: number }) {
+  const up = a >= b;
+  return (
+    <div className="min-w-0">
+      <div className="text-xs sm:text-sm text-slate-400">{label}</div>
+      <div className="text-3xl sm:text-5xl font-semibold tracking-tight tabular-nums text-white mt-1 truncate">{value}</div>
+      <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm">
+        <span
+          className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium tabular-nums ${
+            !b ? 'bg-white/5 text-slate-400' : up ? 'bg-emerald-400/15 text-emerald-300' : 'bg-red-400/15 text-red-300'
+          }`}
+        >
+          {b ? `${arrow(a, b)} ${pctAbs(a, b)}` : '—'}
+        </span>
+        <span className="text-slate-400 tabular-nums">Ayer a esta hora: {prev}</span>
+      </div>
     </div>
   );
 }

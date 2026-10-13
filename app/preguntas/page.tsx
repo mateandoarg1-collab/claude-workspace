@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import PreguntasBadge from '../components/PreguntasBadge';
+import AppHeader from '../components/AppHeader';
 
 type GroupedQuestion = {
   id: number;
@@ -107,29 +106,10 @@ export default function Preguntas() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">🧉 MATEANDO — Preguntas</h1>
-            <p className="text-xs text-slate-500">
-              {pendingCount > 0 ? `${pendingCount} sin responder — ¡el tiempo de respuesta importa!` : 'Todo al día ✅'}
-            </p>
-          </div>
-          <nav className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
-            <Link href="/" className="text-slate-600 hover:text-slate-900">Ventas</Link>
-            <Link href="/productos" className="text-slate-600 hover:text-slate-900">Productos</Link>
-            <Link href="/comportamiento" className="text-slate-600 hover:text-slate-900">Comportamiento</Link>
-            <Link href="/preguntas" className="font-medium text-emerald-700 flex items-center">Preguntas<PreguntasBadge /></Link>
-            <button
-              onClick={async () => { await fetch('/api/auth', { method: 'DELETE' }); location.href = '/login'; }}
-              className="text-slate-500 hover:text-red-600"
-            >Salir</button>
-          </nav>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-950">
+      <AppHeader title="Preguntas" subtitle={pendingCount > 0 ? `${pendingCount} sin responder — ¡el tiempo de respuesta importa!` : 'Todo al día ✅'} width="4xl" />
 
-      <main className="max-w-4xl mx-auto px-6 py-6 space-y-4">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4">
         <div className="flex gap-2">
           <button
             onClick={() => setTab('pendientes')}
@@ -137,14 +117,14 @@ export default function Preguntas() {
               tab === 'pendientes'
                 ? 'bg-red-600 text-white'
                 : pendingCount > 0
-                  ? 'bg-red-50 text-red-700 border border-red-200'
-                  : 'bg-white text-slate-600 border border-slate-200'
+                  ? 'bg-red-500/10 text-red-400 border border-red-500/30'
+                  : 'bg-slate-900 text-slate-300 border border-slate-800'
             }`}
           >
             Pendientes
             {pendingCount > 0 && (
               <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1 rounded-full text-xs font-bold ${
-                tab === 'pendientes' ? 'bg-white text-red-600' : 'bg-red-600 text-white'
+                tab === 'pendientes' ? 'bg-slate-900 text-red-400' : 'bg-red-600 text-white'
               }`}>
                 {pendingCount}
               </span>
@@ -153,49 +133,49 @@ export default function Preguntas() {
           <button
             onClick={() => setTab('respondidas')}
             className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${
-              tab === 'respondidas' ? 'bg-slate-900 text-white' : 'bg-white text-slate-600 border border-slate-200'
+              tab === 'respondidas' ? 'bg-emerald-600 text-white' : 'bg-slate-900 text-slate-300 border border-slate-800'
             }`}
           >
             Respondidas
           </button>
         </div>
 
-        {err && <div className="bg-red-50 text-red-700 p-3 rounded">{err}</div>}
-        {!data && !err && <div className="text-slate-500">Cargando preguntas…</div>}
+        {err && <div className="bg-red-500/10 text-red-400 p-3 rounded">{err}</div>}
+        {!data && !err && <div className="text-slate-400">Cargando preguntas…</div>}
         {data && data.groups.length === 0 && (
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 text-center text-slate-500">
+          <div className="bg-slate-900 p-8 rounded-2xl border border-slate-800 text-center text-slate-400">
             {tab === 'pendientes' ? '✅ Sin preguntas pendientes' : 'Todavía no hay preguntas respondidas'}
           </div>
         )}
 
         {data?.groups.map((g) => (
-          <div key={g.item_id} className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div key={g.item_id} className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
             <a
               href={g.item_permalink}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-3 p-4 border-b border-slate-100 hover:bg-slate-50"
+              className="flex items-center gap-3 p-4 border-b border-slate-900 hover:bg-slate-950"
             >
               {g.item_thumbnail ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={g.item_thumbnail} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0 bg-slate-100 border border-slate-200" />
+                <img src={g.item_thumbnail} alt="" className="w-14 h-14 rounded-lg object-cover flex-shrink-0 bg-slate-900 border border-slate-800" />
               ) : (
-                <div className="w-14 h-14 rounded-lg flex-shrink-0 bg-slate-100 border border-slate-200 flex items-center justify-center">🧉</div>
+                <div className="w-14 h-14 rounded-lg flex-shrink-0 bg-slate-900 border border-slate-800 flex items-center justify-center">🧉</div>
               )}
               <div className="min-w-0">
-                <div className="text-sm font-medium text-slate-900 truncate">{g.item_title}</div>
-                <div className="text-xs text-slate-500 mt-0.5">{fmt(g.item_price)} · stock {g.item_stock}</div>
+                <div className="text-sm font-medium text-slate-50 truncate">{g.item_title}</div>
+                <div className="text-xs text-slate-400 mt-0.5">{fmt(g.item_price)} · stock {g.item_stock}</div>
               </div>
             </a>
 
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-slate-900">
               {g.questions.map((q) => (
                 <div key={q.id} className="p-4 space-y-2">
                   <div className="text-sm">{q.text}</div>
-                  <div className="text-xs text-slate-400">{timeAgo(q.date_created)}</div>
+                  <div className="text-xs text-slate-500">{timeAgo(q.date_created)}</div>
 
                   {q.answer ? (
-                    <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-3 text-sm text-emerald-900">
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3 text-sm text-emerald-200">
                       {q.answer.text}
                     </div>
                   ) : (
@@ -205,7 +185,7 @@ export default function Preguntas() {
                         onChange={(e) => setAnswers((s) => ({ ...s, [q.id]: e.target.value }))}
                         placeholder="Escribí tu respuesta…"
                         rows={2}
-                        className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                        className="flex-1 px-3 py-2 border border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
                       />
                       <button
                         onClick={() => send(q.id)}
@@ -227,7 +207,7 @@ export default function Preguntas() {
             <button
               onClick={() => load(tab, data.next_offset)}
               disabled={loadingMore}
-              className="px-5 py-2 rounded-full border border-slate-300 text-sm font-medium text-slate-600 hover:bg-white disabled:opacity-50"
+              className="px-5 py-2 rounded-full border border-slate-700 text-sm font-medium text-slate-300 hover:bg-slate-900 disabled:opacity-50"
             >
               {loadingMore ? 'Cargando…' : 'Ver más'}
             </button>

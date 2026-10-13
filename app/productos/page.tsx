@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import PreguntasBadge from '../components/PreguntasBadge';
+import AppHeader from '../components/AppHeader';
 import ChinaDailyChart from '../components/ChinaDailyChart';
 
 type ProductRow = {
@@ -67,34 +66,15 @@ export default function Productos() {
   const rangeLabel = RANGES.find((r) => r.key === range)?.label ?? '';
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">🧉 MATEANDO — Productos</h1>
-            <p className="text-xs text-slate-500">
-              {data ? `Actualizado ${new Date(data.generated_at).toLocaleTimeString('es-AR')}` : 'Cargando…'}
-            </p>
-          </div>
-          <nav className="flex flex-wrap gap-x-3 gap-y-1 text-sm">
-            <Link href="/" className="text-slate-600 hover:text-slate-900">Ventas</Link>
-            <Link href="/productos" className="font-medium text-emerald-700">Productos</Link>
-            <Link href="/comportamiento" className="text-slate-600 hover:text-slate-900">Comportamiento</Link>
-            <Link href="/preguntas" className="text-slate-600 hover:text-slate-900 flex items-center">Preguntas<PreguntasBadge /></Link>
-            <button
-              onClick={async () => { await fetch('/api/auth', { method: 'DELETE' }); location.href = '/login'; }}
-              className="text-slate-500 hover:text-red-600"
-            >Salir</button>
-          </nav>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-950">
+      <AppHeader title="Productos" subtitle={data ? `Actualizado ${new Date(data.generated_at).toLocaleTimeString('es-AR')}` : 'Cargando…'} width="4xl" />
 
-      <main className="max-w-4xl mx-auto px-6 py-6 space-y-4">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <select
             value={range}
             onChange={(e) => setRange(e.target.value)}
-            className="bg-slate-900 text-white text-sm font-medium px-4 py-2.5 rounded-full appearance-none cursor-pointer pr-8"
+            className="bg-slate-800 text-slate-100 ring-1 ring-slate-700 text-sm font-medium px-4 py-2.5 rounded-full appearance-none cursor-pointer pr-8"
             style={{
               backgroundImage:
                 "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='white'><path d='M5.5 7.5l4.5 4.5 4.5-4.5' stroke='white' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>\")",
@@ -107,36 +87,36 @@ export default function Productos() {
             ))}
           </select>
           {data && (
-            <span className="text-sm text-slate-500">
+            <span className="text-sm text-slate-400">
               {fmtDateShort(data.from)} – {fmtDateShort(data.to)}
             </span>
           )}
         </div>
 
-        {err && <div className="bg-red-50 text-red-700 p-3 rounded">{err}</div>}
+        {err && <div className="bg-red-500/10 text-red-400 p-3 rounded">{err}</div>}
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex items-center justify-between">
+        <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5 flex items-center justify-between">
           <div>
-            <span className="text-sm text-slate-500">Unidades vendidas</span>
+            <span className="text-sm text-slate-400">Unidades vendidas</span>
             {data && (
-              <p className="text-xs text-slate-400">en {data.products.length} publicaciones</p>
+              <p className="text-xs text-slate-500">en {data.products.length} publicaciones</p>
             )}
           </div>
-          <span className="text-2xl font-bold text-blue-600 tabular-nums">
+          <span className="text-2xl font-bold text-blue-400 tabular-nums">
             {data ? data.products.reduce((s, p) => s + p.qty, 0) : '—'}
           </span>
         </div>
 
         {data && (
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex items-center justify-between">
+          <div className="bg-slate-900 rounded-2xl border border-slate-800 p-5 flex items-center justify-between">
             <div>
-              <span className="text-sm text-slate-500">🇨🇳 Unidades importadas de China</span>
-              <p className="text-xs text-slate-400">
+              <span className="text-sm text-slate-400">🇨🇳 Unidades importadas de China</span>
+              <p className="text-xs text-slate-500">
                 {fmt(data.products.filter((p) => p.is_china).reduce((s, p) => s + p.revenue, 0))} en{' '}
                 {data.products.filter((p) => p.is_china).length} publicaciones
               </p>
             </div>
-            <span className="text-2xl font-bold text-red-600 tabular-nums">
+            <span className="text-2xl font-bold text-red-400 tabular-nums">
               {data.products.filter((p) => p.is_china).reduce((s, p) => s + p.qty, 0)}
             </span>
           </div>
@@ -144,14 +124,14 @@ export default function Productos() {
 
         <ChinaDailyChart />
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          {loading && <div className="p-6 text-slate-500">Cargando {rangeLabel.toLowerCase()}…</div>}
+        <div className="bg-slate-900 rounded-2xl border border-slate-800 overflow-hidden">
+          {loading && <div className="p-6 text-slate-400">Cargando {rangeLabel.toLowerCase()}…</div>}
           {!loading && data && data.products.length === 0 && (
-            <div className="p-8 text-center text-slate-500">Sin ventas concretadas en este período</div>
+            <div className="p-8 text-center text-slate-400">Sin ventas concretadas en este período</div>
           )}
           {!loading && data && data.products.length > 0 && (
             <table className="w-full text-sm">
-              <thead className="text-left text-xs uppercase text-slate-500 border-b border-slate-200">
+              <thead className="text-left text-xs uppercase text-slate-400 border-b border-slate-800">
                 <tr>
                   <th className="py-3 px-4">Producto</th>
                   <th className="text-right px-3">Unidades</th>
@@ -160,7 +140,7 @@ export default function Productos() {
               </thead>
               <tbody>
                 {data.products.map((p) => (
-                  <tr key={p.id} className="border-t border-slate-100">
+                  <tr key={p.id} className="border-t border-slate-900">
                     <td className="py-2 px-4">
                       <div className="flex items-center gap-3">
                         {p.thumbnail ? (
@@ -168,10 +148,10 @@ export default function Productos() {
                           <img
                             src={p.thumbnail}
                             alt=""
-                            className="w-9 h-9 rounded-lg object-cover flex-shrink-0 bg-slate-100 border border-slate-200"
+                            className="w-9 h-9 rounded-lg object-cover flex-shrink-0 bg-slate-900 border border-slate-800"
                           />
                         ) : (
-                          <div className="w-9 h-9 rounded-lg flex-shrink-0 bg-slate-100 border border-slate-200 flex items-center justify-center text-xs">
+                          <div className="w-9 h-9 rounded-lg flex-shrink-0 bg-slate-900 border border-slate-800 flex items-center justify-center text-xs">
                             🧉
                           </div>
                         )}
@@ -181,7 +161,7 @@ export default function Productos() {
                             {stripColor(p.title, p.color)}
                           </span>
                           {p.color && (
-                            <span className="inline-block mt-0.5 text-xs font-medium text-slate-600 bg-slate-100 rounded-full px-2 py-0.5">
+                            <span className="inline-block mt-0.5 text-xs font-medium text-slate-300 bg-slate-900 rounded-full px-2 py-0.5">
                               {p.color}
                             </span>
                           )}
@@ -191,7 +171,7 @@ export default function Productos() {
                     <td className="text-right px-3 tabular-nums align-middle">
                       <span className="font-semibold">{p.qty}</span>
                       {/* En celular la columna de $ no entra: el monto va debajo de las unidades */}
-                      <span className="block sm:hidden text-xs text-slate-500 whitespace-nowrap">{fmt(p.revenue)}</span>
+                      <span className="block sm:hidden text-xs text-slate-400 whitespace-nowrap">{fmt(p.revenue)}</span>
                     </td>
                     <td className="hidden sm:table-cell text-right px-4 tabular-nums font-medium">{fmt(p.revenue)}</td>
                   </tr>

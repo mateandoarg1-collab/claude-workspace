@@ -17,13 +17,13 @@ export const metadata: Metadata = {
   description: "Panel de gestión MATEANDO — preguntas, ventas y más",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black",
     title: "MATEANDO",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#059669",
+  themeColor: "#0b0f0d",
 };
 
 export default function RootLayout({
@@ -33,7 +33,7 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

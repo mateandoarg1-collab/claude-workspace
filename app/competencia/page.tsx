@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
+import AppHeader from '../components/AppHeader';
 
 const fmt = (n: number) => '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
 
@@ -76,24 +76,12 @@ export default function Competencia() {
   const latest = latestByItem(history);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold">🧉 MATEANDO — Competencia</h1>
-          <nav className="flex gap-3 text-sm">
-            <Link href="/" className="text-slate-600 hover:text-slate-900">Mercado Libre</Link>
-            <Link href="/canales" className="text-slate-600 hover:text-slate-900">Canales</Link>
-            <Link href="/competencia" className="font-medium text-emerald-700">Competencia</Link>
-            <Link href="/comportamiento" className="text-slate-600 hover:text-slate-900">Comportamiento</Link>
-            <Link href="/resumen" className="text-slate-600 hover:text-slate-900">Resumen 📱</Link>
-            <Link href="/preguntas" className="text-slate-600 hover:text-slate-900">Preguntas</Link>
-          </nav>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-950">
+      <AppHeader title="Competencia" width="5xl" />
 
-      <main className="max-w-5xl mx-auto px-6 py-6 space-y-6">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-400">
             Precios de publicaciones propias y de la competencia. Se revisa solo una vez por día; también podés forzar un chequeo ahora.
           </p>
           <button
@@ -106,20 +94,21 @@ export default function Competencia() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3">{error}</div>
+          <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg p-3">{error}</div>
         )}
 
-        {loading && <p className="text-sm text-slate-400">Cargando…</p>}
+        {loading && <p className="text-sm text-slate-500">Cargando…</p>}
 
         {!loading && grupos.map((g) => {
           const propio = g.items.find((i) => i.propio);
           const propioPrecio = propio ? latest.get(propio.item_id)?.precio : undefined;
 
           return (
-            <section key={g.grupo} className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <section key={g.grupo} className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-6">
               <h2 className="text-lg font-semibold mb-4">{g.grupo}</h2>
-              <table className="w-full text-sm">
-                <thead className="text-left text-xs uppercase text-slate-500">
+              <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto">
+              <table className="w-full text-sm min-w-[520px]">
+                <thead className="text-left text-xs uppercase text-slate-400">
                   <tr>
                     <th className="py-2">Vendedor</th>
                     <th className="text-right">Precio</th>
@@ -136,7 +125,7 @@ export default function Competencia() {
                         ? ((row.precio - propioPrecio) / propioPrecio) * 100
                         : null;
                     return (
-                      <tr key={it.item_id} className="border-t border-slate-100">
+                      <tr key={it.item_id} className="border-t border-slate-900">
                         <td className="py-3 font-medium">
                           {row?.permalink ? (
                             <a href={row.permalink} target="_blank" className="hover:underline">
@@ -149,27 +138,28 @@ export default function Competencia() {
                         <td className="text-right tabular-nums">{row ? fmt(row.precio) : '—'}</td>
                         <td className="text-right tabular-nums">
                           {delta === null ? '—' : (
-                            <span className={delta > 0 ? 'text-emerald-600' : delta < 0 ? 'text-red-600' : 'text-slate-500'}>
+                            <span className={delta > 0 ? 'text-emerald-400' : delta < 0 ? 'text-red-400' : 'text-slate-400'}>
                               {delta > 0 ? '+' : ''}{delta.toFixed(1)}%
                             </span>
                           )}
                         </td>
                         <td className="text-right tabular-nums">{row && row.disponible >= 0 ? row.disponible : '—'}</td>
-                        <td className="text-right text-xs text-slate-400">{row?.fecha ?? '—'}</td>
+                        <td className="text-right text-xs text-slate-500">{row?.fecha ?? '—'}</td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
+              </div>
 
-              <div className="mt-4 pt-4 border-t border-slate-100">
-                <p className="text-xs text-slate-400 mb-2">Historial de precios</p>
+              <div className="mt-4 pt-4 border-t border-slate-900">
+                <p className="text-xs text-slate-500 mb-2">Historial de precios</p>
                 <div className="space-y-1">
                   {g.items.map((it) => {
                     const h = historyForItem(history, it.item_id);
                     if (h.length === 0) return null;
                     return (
-                      <div key={it.item_id} className="text-xs text-slate-500 flex gap-2 flex-wrap">
+                      <div key={it.item_id} className="text-xs text-slate-400 flex gap-2 flex-wrap">
                         <span className="font-medium w-24 shrink-0">{it.vendedor}:</span>
                         {h.map((r, i) => (
                           <span key={i} className="tabular-nums">
@@ -186,7 +176,7 @@ export default function Competencia() {
         })}
 
         {!loading && grupos.length === 0 && (
-          <p className="text-sm text-slate-400">No hay grupos configurados en data/competencia.json.</p>
+          <p className="text-sm text-slate-500">No hay grupos configurados en data/competencia.json.</p>
         )}
       </main>
     </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useEffect, useState } from 'react';
-import Link from 'next/link';
+import AppHeader from '../components/AppHeader';
 import { EmpretiendaManual, fetchEmpretiendaManual, saveEmpretiendaManual } from '@/lib/manual';
 
 const fmt = (n: number) => '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
@@ -111,66 +111,60 @@ export default function Canales() {
   const totalVentas = canales.reduce((s, c) => s + c.cantidad, 0);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold">🧉 MATEANDO — Ventas por canal</h1>
-          <nav className="flex gap-3 text-sm">
-            <Link href="/" className="text-slate-600 hover:text-slate-900">Mercado Libre</Link>
-            <Link href="/canales" className="font-medium text-emerald-700">Canales</Link>
-            <Link href="/competencia" className="text-slate-600 hover:text-slate-900">Competencia</Link>
-            <Link href="/comportamiento" className="text-slate-600 hover:text-slate-900">Comportamiento</Link>
-            <Link href="/resumen" className="text-slate-600 hover:text-slate-900">Resumen 📱</Link>
-            <Link href="/preguntas" className="text-slate-600 hover:text-slate-900">Preguntas</Link>
-          </nav>
-        </div>
-      </header>
+    <div className="min-h-screen bg-slate-950">
+      <AppHeader title="Ventas por canal" width="5xl" />
 
-      <main className="max-w-5xl mx-auto px-6 py-6 space-y-6">
-        <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-6">
           <h2 className="text-lg font-semibold mb-4">Mes en curso</h2>
           <table className="w-full text-sm">
-            <thead className="text-left text-xs uppercase text-slate-500">
+            <thead className="text-left text-xs uppercase text-slate-400">
               <tr>
                 <th className="py-2">Canal</th>
                 <th className="text-right">Facturación</th>
                 <th className="text-right">Ventas</th>
-                <th className="text-right pl-4">Fuente</th>
+                <th className="hidden sm:table-cell text-right pl-4">Fuente</th>
               </tr>
             </thead>
             <tbody>
               {canales.map((c) => (
                 <Fragment key={c.nombre}>
-                  <tr className="border-t border-slate-100">
-                    <td className="py-3 font-medium">{c.nombre}</td>
+                  <tr className="border-t border-slate-900">
+                    <td className="py-3 font-medium">
+                      {c.nombre}
+                      {c.fuente.startsWith('Error') && <div className="sm:hidden text-xs font-normal text-red-400">{c.fuente}</div>}
+                    </td>
                     <td className="text-right tabular-nums">{fmt(c.monto)}</td>
                     <td className="text-right tabular-nums">{c.cantidad}</td>
-                    <td className="text-right text-xs text-slate-400 pl-4">{c.fuente}</td>
+                    <td className="hidden sm:table-cell text-right text-xs text-slate-500 pl-4">{c.fuente}</td>
                   </tr>
                   {c.sub?.map((s) => (
-                    <tr key={c.nombre + '-' + s.nombre} className="text-slate-500">
-                      <td className="py-1.5 pl-6 text-xs">└ {s.nombre}</td>
+                    <tr key={c.nombre + '-' + s.nombre} className="text-slate-400">
+                      <td className="py-1.5 pl-3 sm:pl-6 text-xs">
+                        └ {s.nombre}
+                        {s.fuente.startsWith('Error') && <div className="sm:hidden text-red-400">{s.fuente}</div>}
+                      </td>
                       <td className="text-right tabular-nums text-xs">{fmt(s.monto)}</td>
                       <td className="text-right tabular-nums text-xs">{s.cantidad}</td>
-                      <td className="text-right text-xs text-slate-400 pl-4">{s.fuente}</td>
+                      <td className="hidden sm:table-cell text-right text-xs text-slate-500 pl-4">{s.fuente}</td>
                     </tr>
                   ))}
                 </Fragment>
               ))}
-              <tr className="border-t-2 border-slate-300 font-bold">
+              <tr className="border-t-2 border-slate-700 font-bold">
                 <td className="py-3">Total</td>
                 <td className="text-right tabular-nums">{fmt(totalGeneral)}</td>
                 <td className="text-right tabular-nums">{totalVentas}</td>
-                <td></td>
+                <td className="hidden sm:table-cell"></td>
               </tr>
             </tbody>
           </table>
-          <p className="text-xs text-slate-400 mt-3">
-            Local Físico ahora se carga desde <a href="/caja" target="_blank" className="text-emerald-700 underline">/caja</a> — el equipo del local registra cada venta ahí y suma solo.
+          <p className="text-xs text-slate-500 mt-3">
+            Local Físico ahora se carga desde <a href="/caja" target="_blank" className="text-emerald-400 underline">/caja</a> — el equipo del local registra cada venta ahí y suma solo.
           </p>
         </section>
 
-        <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">GOcuotas — carga manual</h2>
             <button
@@ -182,7 +176,7 @@ export default function Canales() {
           </div>
 
           {!editing && (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-400">
               {manual?.updatedAt
                 ? `Última carga: ${new Date(manual.updatedAt).toLocaleString('es-AR')} (se ve igual en todos los dispositivos)`
                 : 'Todavía no cargaste números. Tocá "Actualizar números".'}
@@ -191,11 +185,11 @@ export default function Canales() {
 
           {editing && (
             <div className="space-y-4">
-              <p className="text-sm text-slate-600">
+              <p className="text-sm text-slate-300">
                 Mercado Pago, Transferencias y Local ya se calculan solos. Solo falta GOcuotas: abrí el panel de
                 Empretienda, sección <strong>Métricas</strong>, filtrá por método de pago GOcuotas y copiá los totales.
               </p>
-              <a href={empretiendaMetricasUrl()} target="_blank" className="text-emerald-700 underline text-sm">
+              <a href={empretiendaMetricasUrl()} target="_blank" className="text-emerald-400 underline text-sm">
                 Abrir Métricas
               </a>
 
@@ -224,13 +218,13 @@ export default function Canales() {
 function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <label className="block">
-      <span className="block text-xs text-slate-500 mb-1">{label}</span>
+      <span className="block text-xs text-slate-400 mb-1">{label}</span>
       <input
         type="text"
         inputMode="decimal"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"
+        className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm"
         placeholder="0"
       />
     </label>
