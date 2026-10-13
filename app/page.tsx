@@ -133,7 +133,7 @@ export default function Dashboard() {
               <div className="text-sm text-white/70">Pedidos Concretados</div>
               <div className="text-3xl font-bold mt-1 tabular-nums">{t.orders}</div>
               <div className="text-sm mt-1 text-white/80">
-                Ayer {y.orders}{' '}
+                Ayer a esta hora: {y.orders}{' '}
                 <span className={t.orders >= y.orders ? 'text-emerald-300' : 'text-red-300'}>
                   {arrow(t.orders, y.orders)}{pctAbs(t.orders, y.orders)}
                 </span>
@@ -143,7 +143,7 @@ export default function Dashboard() {
               <div className="text-sm text-white/70">Ventas Concretadas $</div>
               <div className="text-3xl font-bold mt-1 tabular-nums">{fmtK(t.amount)}</div>
               <div className="text-sm mt-1 text-white/80">
-                Ayer {fmtK(y.amount)}{' '}
+                Ayer a esta hora: {fmtK(y.amount)}{' '}
                 <span className={t.amount >= y.amount ? 'text-emerald-300' : 'text-red-300'}>
                   {arrow(t.amount, y.amount)}{pctAbs(t.amount, y.amount)}
                 </span>
