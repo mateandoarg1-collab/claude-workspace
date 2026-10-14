@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import PreguntasBadge from './PreguntasBadge';
+import Wordmark from './Wordmark';
 
 const NAV: Array<{ href: string; label: string; badge?: boolean }> = [
   { href: '/', label: 'Mercado Libre' },
@@ -37,12 +38,12 @@ export default function AppHeader({
   return (
     <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/85 backdrop-blur-md">
       <div className={`${WIDTHS[width]} mx-auto px-4 sm:px-6 pt-3 sm:pt-4 pb-2 sm:pb-3 flex flex-col gap-2 sm:gap-3 ${width === "7xl" ? "lg:flex-row lg:items-center lg:justify-between" : ""}`}>
-        <div className="min-w-0 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-800 flex items-center justify-center text-lg shadow-lg shadow-emerald-900/40 flex-shrink-0">
-            🧉
-          </div>
+        <div className="min-w-0 flex items-center gap-3 sm:gap-4">
+          <Link href="/" aria-label="Inicio" className="flex-shrink-0 text-white hover:text-emerald-300 transition-colors">
+            <Wordmark className="h-6 sm:h-7 w-auto" />
+          </Link>
+          <div className="w-px self-stretch bg-slate-800" />
           <div className="min-w-0">
-            <div className="text-[10px] font-semibold tracking-[0.2em] text-emerald-400">MATEANDO</div>
             <h1 className="text-base sm:text-lg font-semibold leading-tight truncate text-slate-50">{title}</h1>
             {subtitle && <p className="text-xs text-slate-500 truncate">{subtitle}</p>}
           </div>
