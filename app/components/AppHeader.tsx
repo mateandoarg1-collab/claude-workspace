@@ -23,10 +23,13 @@ const WIDTHS = { '4xl': 'max-w-4xl', '5xl': 'max-w-5xl', '7xl': 'max-w-7xl' } as
 export default function AppHeader({
   title,
   subtitle,
+  logo,
   width = '5xl',
 }: {
   title: string;
   subtitle?: React.ReactNode;
+  /** Imagen (en /public) que reemplaza visualmente al título, p. ej. el logo del canal. */
+  logo?: string;
   width?: keyof typeof WIDTHS;
 }) {
   const path = usePathname();
@@ -44,7 +47,15 @@ export default function AppHeader({
           </Link>
           <div className="w-px self-stretch bg-slate-800" />
           <div className="min-w-0">
-            <h1 className="text-base sm:text-lg font-semibold leading-tight truncate text-slate-50">{title}</h1>
+            {logo ? (
+              <h1 className="mb-0.5">
+                <span className="sr-only">{title}</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={logo} alt="" className="h-7 sm:h-8 w-auto rounded-md" />
+              </h1>
+            ) : (
+              <h1 className="text-base sm:text-lg font-semibold leading-tight truncate text-slate-50">{title}</h1>
+            )}
             {subtitle && <p className="text-xs text-slate-500 truncate">{subtitle}</p>}
           </div>
         </div>

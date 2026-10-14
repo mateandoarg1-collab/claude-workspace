@@ -86,7 +86,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-950">
-      <AppHeader title="Mercado Libre" subtitle={`Última actualización: ${new Date(data.generated_at).toLocaleTimeString('es-AR')}${refreshing ? ' · refrescando…' : ''}`} width="7xl" />
+      <AppHeader title="Mercado Libre" logo="/ml-logo.png" subtitle={`Última actualización: ${new Date(data.generated_at).toLocaleTimeString('es-AR')}${refreshing ? ' · refrescando…' : ''}`} width="7xl" />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         <section className="relative overflow-hidden rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-emerald-950 via-slate-900 to-slate-900 p-5 sm:p-7 shadow-2xl shadow-emerald-950/40">
