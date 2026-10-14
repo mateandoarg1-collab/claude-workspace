@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import AppHeader from './components/AppHeader';
 
-type Sum = { orders: number; amount: number; units: number; cancelled?: number; elapsed_hours?: number };
+type Sum = { orders: number; amount: number; units: number; cancelled?: number; elapsed_hours?: number; ads_cost?: number | null };
 type SalesData = {
   generated_at: string;
   today: Sum;
@@ -29,6 +29,9 @@ const pctAbs = (a: number, b: number) => {
 const tone = (a: number, b: number) =>
   !b ? 'text-slate-400' : a >= b ? 'text-emerald-400' : 'text-red-400';
 const arrow = (a: number, b: number) => (a >= b ? '↑' : '↓');
+// Inversión en publicidad ML + qué % de la venta representa (TACOS).
+const fmtAds = (s: Sum) =>
+  s.ads_cost == null ? '—' : `${fmt(s.ads_cost)}${s.amount ? ` · ${((s.ads_cost / s.amount) * 100).toFixed(1)}%` : ''}`;
 
 export default function Dashboard() {
   const [data, setData] = useState<SalesData | null>(null);
@@ -113,7 +116,13 @@ export default function Dashboard() {
           </div>
           <div className="relative grid grid-cols-2 gap-4 sm:gap-8">
             <HeroMetric label="Pedidos concretados" value={t.orders.toLocaleString('es-AR')} prev={y.orders.toLocaleString('es-AR')} a={t.orders} b={y.orders} />
-            <HeroMetric label="Ventas concretadas" value={'$' + fmtK(t.amount)} prev={'$' + fmtK(y.amount)} a={t.amount} b={y.amount} />
+            <div className="min-w-0">
+              <HeroMetric label="Ventas concretadas" value={'$' + fmtK(t.amount)} prev={'$' + fmtK(y.amount)} a={t.amount} b={y.amount} />
+              <div className="mt-2 text-xs sm:text-sm text-slate-400 tabular-nums">
+                Inversión ADS: <span className="text-amber-300 font-medium">{t.ads_cost == null ? '—' : '$' + fmtK(t.ads_cost)}</span>
+                {t.ads_cost != null && t.amount > 0 && <span> · {((t.ads_cost / t.amount) * 100).toFixed(1)}% de la venta</span>}
+              </div>
+            </div>
           </div>
           <div className="relative mt-6">
             <div className="flex justify-between text-[11px] text-slate-400 mb-1.5 tabular-nums">
@@ -141,16 +150,19 @@ export default function Dashboard() {
               ['Pedidos Concretados', w.orders.toString()],
               ['Ventas Concretadas', fmt(w.amount)],
               ['Prom diario', fmt(w.amount / 7)],
+              ['Inversión ADS', fmtAds(w)],
             ]} />
             <Card title="Mes a la fecha" lines={[
               ['Pedidos Concretados', m.orders.toString()],
               ['Ventas Concretadas', fmt(m.amount)],
               ['Ticket prom', m.orders ? fmt(m.amount / m.orders) : '$0'],
+              ['Inversión ADS', fmtAds(m)],
             ]} />
             <Card title="Ayer completo" lines={[
               ['Pedidos Concretados', yf.orders.toString()],
               ['Ventas Concretadas', fmt(yf.amount)],
               ['Unidades Concretadas', yf.units.toString()],
+              ['Inversión ADS', fmtAds(yf)],
             ]} />
           </div>
         </section>

@@ -193,3 +193,18 @@ export async function fetchOrdersInRange(from: Date, to: Date): Promise<MLOrder[
   }
   return out;
 }
+
+// Gasto de Product Ads (publicidad ML) entre dos días AR inclusive (YYYY-MM-DD).
+// Incluye el día en curso (ML lo va actualizando durante el día).
+const ADS_ADVERTISER_ID = 684717;
+export async function fetchAdsCost(dateFrom: string, dateTo: string): Promise<number> {
+  let total = 0;
+  for (let offset = 0; ; offset += 50) {
+    const j = await mlFetch<{ paging: { total: number }; results: Array<{ metrics?: { cost?: number } }> }>(
+      `/advertising/MLA/advertisers/${ADS_ADVERTISER_ID}/product_ads/campaigns/search?limit=50&offset=${offset}&date_from=${dateFrom}&date_to=${dateTo}&metrics=cost`,
+      { headers: { 'api-version': '2' } },
+    );
+    total += j.results.reduce((s, r) => s + (r.metrics?.cost ?? 0), 0);
+    if (offset + 50 >= j.paging.total) return total;
+  }
+}

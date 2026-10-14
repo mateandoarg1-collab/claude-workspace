@@ -1,4 +1,4 @@
-import { fetchOrdersInRange, fetchThumbnails, fmtTZ, isValidOrder, type MLOrder } from '@/lib/ml';
+import { fetchAdsCost, fetchOrdersInRange, fetchThumbnails, fmtTZ, isValidOrder, type MLOrder } from '@/lib/ml';
 
 export const maxDuration = 30;
 
@@ -41,7 +41,23 @@ export async function GET() {
   const monthStart = new Date(Date.UTC(arYear, arMonth, 1, 3, 0, 0));
   const sevenDaysAgo = new Date(todayStart.getTime() - 7 * 24 * 3600 * 1000);
 
+  // Días AR (YYYY-MM-DD) para la API de publicidad, que trabaja por día.
+  const arDate = (d: Date) => new Date(d.getTime() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+  const dToday = arDate(todayStart);
+  const dYest = arDate(yestStart);
+  const d7 = arDate(sevenDaysAgo);
+  const dMonth = arDate(monthStart);
+  // Si falla la API de publicidad no rompemos el panel: devolvemos null.
+  const ads = (from: string, to: string) => fetchAdsCost(from, to).catch(() => null);
+
   try {
+    // En paralelo con las órdenes.
+    const adsP = Promise.all([
+      ads(dToday, dToday),
+      ads(dYest, dYest),
+      ads(d7, dYest),
+      ads(dMonth, dToday),
+    ]);
     const [today, yestSame, yestFull, last7, monthOrders] = await Promise.all([
       fetchOrders(fmtTZ(todayStart), fmtTZ(now)),
       fetchOrders(fmtTZ(yestStart), fmtTZ(yestSameHour)),
@@ -50,6 +66,7 @@ export async function GET() {
       fetchOrders(fmtTZ(monthStart), fmtTZ(now)),
     ]);
 
+    const [adsToday, adsYest, adsLast7, adsMonth] = await adsP;
     const todayS = summarize(today);
     const monthS = summarize(monthOrders);
 
@@ -76,11 +93,12 @@ export async function GET() {
       today: {
         ...todayS,
         elapsed_hours: (now.getTime() - todayStart.getTime()) / 3.6e6,
+        ads_cost: adsToday,
       },
       yesterday_same_hour: summarize(yestSame),
-      yesterday_full: summarize(yestFull),
-      last_7_days: summarize(last7),
-      month_to_date: monthS,
+      yesterday_full: { ...summarize(yestFull), ads_cost: adsYest },
+      last_7_days: { ...summarize(last7), ads_cost: adsLast7 },
+      month_to_date: { ...monthS, ads_cost: adsMonth },
       top_products_today: topToday,
     });
   } catch (e: unknown) {
