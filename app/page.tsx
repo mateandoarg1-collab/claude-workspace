@@ -30,6 +30,8 @@ const arrow = (a: number, b: number) => (a >= b ? '↑' : '↓');
 // Inversión en publicidad ML + qué % de la venta representa (TACOS).
 const fmtAds = (s: Sum) =>
   s.ads_cost == null ? '—' : `${fmt(s.ads_cost)}${s.amount ? ` · ${((s.ads_cost / s.amount) * 100).toFixed(1)}%` : ''}`;
+// ROAS = venta / inversión en ads.
+const fmtRoas = (s: Sum) => (s.ads_cost ? (s.amount / s.ads_cost).toFixed(1) : '—');
 
 export default function Dashboard() {
   const [data, setData] = useState<SalesData | null>(null);
@@ -119,6 +121,7 @@ export default function Dashboard() {
               <div className="mt-2 text-xs sm:text-sm text-slate-400 tabular-nums">
                 Inversión ADS: <span className="text-amber-300 font-medium">{t.ads_cost == null ? '—' : fmt(t.ads_cost)}</span>
                 {t.ads_cost != null && t.amount > 0 && <span> · {((t.ads_cost / t.amount) * 100).toFixed(1)}% de la venta</span>}
+                {t.ads_cost ? <span> · ROAS <span className="text-amber-300 font-medium">{fmtRoas(t)}</span></span> : null}
               </div>
             </div>
           </div>
@@ -149,18 +152,21 @@ export default function Dashboard() {
               ['Ventas Concretadas', fmt(w.amount)],
               ['Prom diario', fmt(w.amount / 7)],
               ['Inversión ADS', fmtAds(w)],
+              ['ROAS', fmtRoas(w)],
             ]} />
             <Card title="Mes a la fecha" lines={[
               ['Pedidos Concretados', m.orders.toString()],
               ['Ventas Concretadas', fmt(m.amount)],
               ['Ticket prom', m.orders ? fmt(m.amount / m.orders) : '$0'],
               ['Inversión ADS', fmtAds(m)],
+              ['ROAS', fmtRoas(m)],
             ]} />
             <Card title="Ayer completo" lines={[
               ['Pedidos Concretados', yf.orders.toString()],
               ['Ventas Concretadas', fmt(yf.amount)],
               ['Unidades Concretadas', yf.units.toString()],
               ['Inversión ADS', fmtAds(yf)],
+              ['ROAS', fmtRoas(yf)],
             ]} />
           </div>
         </section>
