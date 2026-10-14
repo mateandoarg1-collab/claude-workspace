@@ -15,8 +15,6 @@ type SalesData = {
 };
 
 const fmt = (n: number) => '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
-const fmtK = (n: number) =>
-  (n / 1000).toLocaleString('es-AR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'k';
 const pct = (a: number, b: number) => {
   if (!b) return '—';
   const d = ((a - b) / b) * 100;
@@ -114,12 +112,12 @@ export default function Dashboard() {
               ↻
             </button>
           </div>
-          <div className="relative grid grid-cols-2 gap-4 sm:gap-8">
+          <div className="relative grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-8">
             <HeroMetric label="Pedidos concretados" value={t.orders.toLocaleString('es-AR')} prev={y.orders.toLocaleString('es-AR')} a={t.orders} b={y.orders} />
             <div className="min-w-0">
-              <HeroMetric label="Ventas concretadas" value={'$' + fmtK(t.amount)} prev={'$' + fmtK(y.amount)} a={t.amount} b={y.amount} />
+              <HeroMetric label="Ventas concretadas" value={fmt(t.amount)} prev={fmt(y.amount)} a={t.amount} b={y.amount} />
               <div className="mt-2 text-xs sm:text-sm text-slate-400 tabular-nums">
-                Inversión ADS: <span className="text-amber-300 font-medium">{t.ads_cost == null ? '—' : '$' + fmtK(t.ads_cost)}</span>
+                Inversión ADS: <span className="text-amber-300 font-medium">{t.ads_cost == null ? '—' : fmt(t.ads_cost)}</span>
                 {t.ads_cost != null && t.amount > 0 && <span> · {((t.ads_cost / t.amount) * 100).toFixed(1)}% de la venta</span>}
               </div>
             </div>
@@ -241,7 +239,7 @@ function HeroMetric({ label, value, prev, a, b }: { label: string; value: string
   return (
     <div className="min-w-0">
       <div className="text-xs sm:text-sm text-slate-400">{label}</div>
-      <div className="text-3xl sm:text-5xl font-semibold tracking-tight tabular-nums text-white mt-1 truncate">{value}</div>
+      <div className="text-4xl lg:text-5xl font-semibold tracking-tight tabular-nums text-white mt-1 truncate">{value}</div>
       <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm">
         <span
           className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium tabular-nums ${
