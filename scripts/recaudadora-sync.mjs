@@ -1,6 +1,6 @@
 // Excel de la recaudadora (Cobranza Integral / Lohas) → Google Sheet.
 //
-// Lee todos los `grid_movimientos_cuenta_usuario*.xlsx` de ~/Downloads (los mismos que usa
+// Lee todos los `grid_movimientos_cuenta_usuario*.xlsx` y `movimientos-*.xlsx` (formato nuevo) de ~/Downloads (los mismos que usa
 // mateandobot para conciliar) y agrega las "Transferencia entrante" a la pestaña
 // `recaudadora_movs` de la planilla MATEANDO MAYORISTA 2026, sin repetir por ID.
 // El dashboard (/resumen) cruza esa pestaña contra el Excel de comprobantes: lo que no
@@ -28,7 +28,7 @@ function toISO(s) {
 }
 
 async function readMovs() {
-  const files = readdirSync(DIR).filter((f) => /^grid_movimientos_cuenta_usuario.*\.xlsx$/.test(f));
+  const files = readdirSync(DIR).filter((f) => /^(grid_movimientos_cuenta_usuario|movimientos-).*\.xlsx$/.test(f));
   const movs = new Map();
   for (const f of files) {
     const path = join(DIR, f);
@@ -40,7 +40,23 @@ async function readMovs() {
       console.warn(`No se pudo leer ${f}`);
       continue;
     }
-    wb.worksheets[0].eachRow((row, i) => {
+    const ws = wb.worksheets[0];
+    const head = ws.getRow(1).values.slice(1).map((h) => String(h ?? '').trim());
+    if (head.includes('Nombre Contraparte')) {
+      // Formato nuevo del home banking (desde 16-oct-2026): CREDITO = transferencia entrante
+      const col = (n) => head.indexOf(n);
+      ws.eachRow((row, i) => {
+        if (i === 1) return;
+        const v = row.values.slice(1);
+        if (String(v[col('Tipo Transacción')] ?? '').trim().toUpperCase() !== 'CREDITO') return;
+        const id = v[col('Idtransacción')] || v[col('ID COELSA')];
+        const iso = toISO(v[col('Fecha y hora proceso')]);
+        if (!id || !iso) return;
+        movs.set(String(id), [String(id), iso, String(v[col('Nombre Contraparte')] ?? '').trim(), Number(v[col('Importe')]) || 0]);
+      });
+      continue;
+    }
+    ws.eachRow((row, i) => {
       if (i === 1) return;
       const [id, fecha, , nombre, , importe, tipo, estado] = row.values.slice(1);
       if (tipo !== 'Transferencia entrante' || estado !== 'Ejecutado') return;
