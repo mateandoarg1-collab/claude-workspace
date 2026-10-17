@@ -26,6 +26,8 @@ export default function Canales() {
   const [mlErr, setMlErr] = useState('');
   const [mayorista, setMayorista] = useState<{ orders: number; amount: number; tab: string } | null>(null);
   const [mayoristaErr, setMayoristaErr] = useState('');
+  const [shopify, setShopify] = useState<{ orders: number; amount: number } | null>(null);
+  const [shopifyErr, setShopifyErr] = useState('');
   const [mp, setMp] = useState<{ orders: number; amount: number } | null>(null);
   const [mpErr, setMpErr] = useState('');
   const [comprobantes, setComprobantes] = useState<{ orders: number; amount: number } | null>(null);
@@ -43,6 +45,10 @@ export default function Canales() {
       .then((d) => setMl(d.month_to_date))
       .catch((e) => setMlErr(String(e)));
 
+    fetch('/api/shopify', { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => (d.error ? setShopifyErr(d.error) : setShopify(d)))
+      .catch((e) => setShopifyErr(String(e)));
     fetch('/api/mayorista', { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => (d.error ? setMayoristaErr(d.error) : setMayorista(d)))
@@ -102,6 +108,7 @@ export default function Canales() {
     { nombre: 'Tienda Online (.com)', monto: emp.totalMonto - emp.acordarMonto, cantidad: emp.totalCant - emp.acordarCant, fuente: `${empFuente} (total − Acordar)` },
     { nombre: 'Mercado Libre', monto: ml?.amount ?? 0, cantidad: ml?.orders ?? 0, fuente: mlErr ? `Error: ${mlErr}` : 'API en vivo' },
     { nombre: 'Local Físico', monto: emp.acordarMonto, cantidad: emp.acordarCant, fuente: `${empFuente} (Acordar)` },
+    { nombre: 'Shopify (mateando.com)', monto: shopify?.amount ?? 0, cantidad: shopify?.orders ?? 0, fuente: shopifyErr ? `Error: ${shopifyErr}` : 'API en vivo · pedidos pagados (subtotal con IVA)' },
     { nombre: 'Mayorista', monto: mayorista?.amount ?? 0, cantidad: mayorista?.orders ?? 0, fuente: mayoristaErr ? `Error: ${mayoristaErr}` : `Google Sheets (${mayorista?.tab ?? '—'})` },
   ] : [
     {
@@ -114,6 +121,7 @@ export default function Canales() {
     },
     { nombre: 'Mercado Libre', monto: ml?.amount ?? 0, cantidad: ml?.orders ?? 0, fuente: mlErr ? `Error: ${mlErr}` : 'API en vivo' },
     { nombre: 'Local Físico', monto: local?.amount ?? 0, cantidad: local?.orders ?? 0, fuente: localErr ? `Error: ${localErr}` : 'Cargado en /caja — en vivo' },
+    { nombre: 'Shopify (mateando.com)', monto: shopify?.amount ?? 0, cantidad: shopify?.orders ?? 0, fuente: shopifyErr ? `Error: ${shopifyErr}` : 'API en vivo · pedidos pagados (subtotal con IVA)' },
     { nombre: 'Mayorista', monto: mayorista?.amount ?? 0, cantidad: mayorista?.orders ?? 0, fuente: mayoristaErr ? `Error: ${mayoristaErr}` : `Google Sheets (${mayorista?.tab ?? '—'})` },
   ];
 

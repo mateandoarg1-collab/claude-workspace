@@ -19,6 +19,7 @@ const VACIO = { orders: 0, amount: 0 };
 export default function Resumen() {
   const [ml, setMl] = useState<{ month_to_date: Sum } | null>(null);
   const [mayorista, setMayorista] = useState<{ orders: number; amount: number } | null>(null);
+  const [shopify, setShopify] = useState<Sum>(VACIO);
   const [mp, setMp] = useState({ orders: 0, amount: 0 });
   const [comprobantes, setComprobantes] = useState({ orders: 0, amount: 0 });
   const [gocuotas, setGocuotas] = useState({ monto: 0, cant: 0 });
@@ -34,7 +35,9 @@ export default function Resumen() {
       fetch('/api/comprobantes', { cache: 'no-store' }).then((r) => r.json()),
       fetch('/api/local', { cache: 'no-store' }).then((r) => r.json()),
       fetchEmpretiendaManual(),
-    ]).then(([mlData, mayoristaData, mpData, compData, localData, manual]) => {
+      fetch('/api/shopify', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ error: true })),
+    ]).then(([mlData, mayoristaData, mpData, compData, localData, manual, shopifyData]) => {
+      if (!shopifyData.error) setShopify(shopifyData);
       setMl(mlData);
       if (!mayoristaData.error) setMayorista(mayoristaData);
       if (!mpData.error) setMp(mpData.month_to_date);
@@ -61,8 +64,8 @@ export default function Resumen() {
     ? { monto: emp.totalMonto - emp.acordarMonto, cant: emp.totalCant - emp.acordarCant }
     : { monto: mp.amount + comprobantes.amount + gocuotas.monto, cant: mp.orders + comprobantes.orders + gocuotas.cant };
   const localMes = emp ? { monto: emp.acordarMonto, cant: emp.acordarCant } : { monto: local.amount, cant: local.orders };
-  const totalMes = online.monto + ml.month_to_date.amount + localMes.monto + (mayorista?.amount ?? 0);
-  const ventasMes = online.cant + ml.month_to_date.orders + localMes.cant + (mayorista?.orders ?? 0);
+  const totalMes = online.monto + ml.month_to_date.amount + localMes.monto + shopify.amount + (mayorista?.amount ?? 0);
+  const ventasMes = online.cant + ml.month_to_date.orders + localMes.cant + shopify.orders + (mayorista?.orders ?? 0);
   const promedioDiario = totalMes / diasTranscurridos;
 
   return (
@@ -98,6 +101,7 @@ export default function Resumen() {
                 <ChanRow label="  └ Transferencias" color="text-emerald-400/60" monto={local.transferencias.amount} cant={local.transferencias.orders} small />
               </>
             )}
+            <ChanRow label="Shopify" color="text-lime-400" monto={shopify.amount} cant={shopify.orders} />
             <ChanRow label="Mercado Libre" color="text-yellow-400" monto={ml.month_to_date.amount} cant={ml.month_to_date.orders} />
             <ChanRow label="Mayorista" color="text-purple-400" monto={mayorista?.amount ?? 0} cant={mayorista?.orders ?? 0} />
           </div>
