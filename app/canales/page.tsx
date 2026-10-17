@@ -181,7 +181,7 @@ export default function Canales() {
             </tbody>
           </table>
           <p className="text-xs text-slate-500 mt-3">
-            Local Físico ahora se carga desde <a href="/caja" target="_blank" className="text-emerald-400 underline">/caja</a> — el equipo del local registra cada venta ahí y suma solo.
+            Tienda Online y Local Físico salen de Métricas de Empretienda (Local = Acordar); las sube mateandobot solo, cada 30 min como mucho.
           </p>
         </section>
 

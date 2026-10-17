@@ -7,9 +7,9 @@ import PreguntasBadge from './PreguntasBadge';
 import Wordmark from './Wordmark';
 
 const NAV: Array<{ href: string; label: string; badge?: boolean }> = [
+  { href: '/canales', label: 'Canales' },
   { href: '/', label: 'Mercado Libre' },
   { href: '/productos', label: 'Productos' },
-  { href: '/canales', label: 'Canales' },
   { href: '/competencia', label: 'Competencia' },
   { href: '/comportamiento', label: 'Comportamiento' },
   { href: '/preguntas', label: 'Preguntas', badge: true },
