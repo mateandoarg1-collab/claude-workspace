@@ -14,6 +14,15 @@ const PERIODOS: { id: Periodo; label: string; titulo: string }[] = [
 ];
 
 type Venta = { orders: number; amount: number };
+
+// "hace 12 min", "hace 2 h"…
+function hace(iso: string, ahora: number) {
+  const min = Math.max(0, Math.round((ahora - new Date(iso).getTime()) / 60000));
+  if (min < 1) return 'recién';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  return h < 24 ? `hace ${h} h` : `hace ${Math.floor(h / 24)} d`;
+}
 type Estado<T> = { data: T | null; err: string };
 const VACIO = { data: null, err: '' };
 
@@ -37,8 +46,11 @@ export default function Canales() {
   const mayorista = useApi<Venta & { tab: string }>(`/api/mayorista?periodo=${periodo}`);
   const [manual, setManual] = useState<EmpretiendaManual | null>(null);
 
+  const [ahora, setAhora] = useState(() => Date.now());
   useEffect(() => {
     fetchEmpretiendaManual().then(setManual);
+    const t = setInterval(() => setAhora(Date.now()), 30000);
+    return () => clearInterval(t);
   }, []);
 
   // Empretienda (lo sube mateandobot): Acordar = Local, el resto = Online. Solo si es del período actual.
@@ -49,9 +61,9 @@ export default function Canales() {
 
   const fuente = (s: Estado<unknown>, ok: string) => (s.err ? `Error: ${s.err}` : s.data ? ok : 'Cargando…');
   const canales = [
-    { nombre: 'Tienda Online (.com)', monto: emp ? emp.totalMonto - emp.acordarMonto : 0, cantidad: emp ? emp.totalCant - emp.acordarCant : 0, fuente: emp ? `${empFuente} (total − Acordar)` : empFuente },
+    { nombre: 'Tienda Online (.com)', monto: emp ? emp.totalMonto - emp.acordarMonto : 0, cantidad: emp ? emp.totalCant - emp.acordarCant : 0, fuente: emp ? `${empFuente} (total − Acordar)` : empFuente, hace: emp ? hace(emp.updatedAt, ahora) : '' },
     { nombre: 'Mercado Libre', monto: ml.data?.amount ?? 0, cantidad: ml.data?.orders ?? 0, fuente: fuente(ml, 'API en vivo') },
-    { nombre: 'Local Físico', monto: emp?.acordarMonto ?? 0, cantidad: emp?.acordarCant ?? 0, fuente: emp ? `${empFuente} (Acordar)` : empFuente },
+    { nombre: 'Local Físico', monto: emp?.acordarMonto ?? 0, cantidad: emp?.acordarCant ?? 0, fuente: emp ? `${empFuente} (Acordar)` : empFuente, hace: emp ? hace(emp.updatedAt, ahora) : '' },
     { nombre: 'Shopify (mateando.com)', monto: shopify.data?.amount ?? 0, cantidad: shopify.data?.orders ?? 0, fuente: fuente(shopify, 'API en vivo · pedidos pagados (subtotal con IVA)') },
     { nombre: 'Mayorista', monto: mayorista.data?.amount ?? 0, cantidad: mayorista.data?.orders ?? 0, fuente: fuente(mayorista, `Google Sheets (${mayorista.data?.tab ?? '—'})`) },
   ];
@@ -96,6 +108,7 @@ export default function Canales() {
                     <span className="inline-flex items-center gap-2">
                       <img src={logoCanal(c.nombre)} alt="" className={`w-5 h-5 rounded object-contain p-0.5 ${logoCanal(c.nombre) === '/mate-logo.png' ? 'bg-emerald-700' : 'bg-white/90'}`} />
                       {c.nombre}
+                      {'hace' in c && c.hace && <span className="text-[11px] font-normal text-slate-500">({c.hace === 'recién' ? 'actualizado recién' : `actualizado ${c.hace}`})</span>}
                     </span>
                     {c.fuente.startsWith('Error') && <div className="sm:hidden text-xs font-normal text-red-400">{c.fuente}</div>}
                   </td>
