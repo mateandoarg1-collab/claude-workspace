@@ -40,7 +40,7 @@ export default function Resumen() {
       fetch('/api/shopify', { cache: 'no-store' }).then((r) => r.json()).catch(() => ({ error: true })),
     ]).then(([mlData, mayoristaData, mpData, compData, localData, manual, shopifyData]) => {
       if (!shopifyData.error) setShopify(shopifyData);
-      setMl(mlData);
+      setMl(mlData?.month_to_date ? mlData : { month_to_date: { orders: 0, amount: 0 } }); // si la API de ML falla, el resto se ve igual
       if (!mayoristaData.error) setMayorista(mayoristaData);
       if (!mpData.error) setMp(mpData.month_to_date);
       if (!compData.error) setComprobantes(compData);
