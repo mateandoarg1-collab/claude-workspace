@@ -113,7 +113,7 @@ export default function Canales() {
             </tbody>
           </table>
           <p className="text-xs text-slate-500 mt-3">
-            Tienda Online y Local Físico salen de Métricas de Empretienda (Local = Acordar); las sube mateandobot solo, cada 30 min como mucho.
+            Tienda Online y Local Físico salen de Métricas de Empretienda (Local = Acordar); se actualizan solas cada 30 min (GitHub Actions, no hace falta la Mac).
             Semana = últimos 7 días contando hoy.
           </p>
         </section>

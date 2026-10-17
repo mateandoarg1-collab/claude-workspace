@@ -1,0 +1,34 @@
+name: Métricas Empretienda
+
+# Lee Métricas de Empretienda (hoy / semana / mes) y actualiza la planilla que muestra /canales,
+# sin depender de la Mac. Ver scripts/empretienda-metricas.mjs.
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: empretienda-metricas
+  cancel-in-progress: false
+
+jobs:
+  metricas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar dependencias
+        run: |
+          npm install --no-save --no-audit --no-fund googleapis playwright
+          npx playwright install --with-deps chromium
+
+      - name: Leer Métricas y actualizar planilla
+        run: node scripts/empretienda-metricas.mjs
+        env:
+          EMPRETIENDA_STATE: ${{ secrets.EMPRETIENDA_STATE }}
+          GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
