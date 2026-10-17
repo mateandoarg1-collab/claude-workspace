@@ -2,24 +2,9 @@
 
 import { Fragment, useEffect, useState } from 'react';
 import AppHeader from '../components/AppHeader';
-import { EmpretiendaManual, fetchEmpretiendaManual, saveEmpretiendaManual } from '@/lib/manual';
+import { EmpretiendaManual, fetchEmpretiendaManual } from '@/lib/manual';
 
 const fmt = (n: number) => '$' + n.toLocaleString('es-AR', { maximumFractionDigits: 0 });
-
-function empretiendaMetricasUrl(paymentMethod?: number) {
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const y = now.getFullYear();
-  const m = pad(now.getMonth() + 1);
-  const from = `${y}-${m}-01_00-00-00L`;
-  const until = `${y}-${m}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}L`;
-  const params = new URLSearchParams({ from, until });
-  if (paymentMethod) params.set('payment_method', String(paymentMethod));
-  return `https://panel.empretienda.com/metricas?${params.toString()}`;
-}
-
-type Form = { gocuotasMonto: string; gocuotasCant: string };
-const num = (s: string) => Number(s.replace(/\./g, '').replace(',', '.')) || 0;
 
 export default function Canales() {
   const [ml, setMl] = useState<{ orders: number; amount: number } | null>(null);
@@ -35,9 +20,6 @@ export default function Canales() {
   const [local, setLocal] = useState<{ orders: number; amount: number } | null>(null);
   const [localErr, setLocalErr] = useState('');
   const [manual, setManual] = useState<EmpretiendaManual | null>(null);
-  const [form, setForm] = useState<Form>({ gocuotasMonto: '', gocuotasCant: '' });
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     fetch('/api/ml/sales', { cache: 'no-store' })
@@ -69,25 +51,8 @@ export default function Canales() {
       .then((d) => (d.error ? setLocalErr(d.error) : setLocal(d)))
       .catch((e) => setLocalErr(String(e)));
 
-    fetchEmpretiendaManual().then((m) => {
-      setManual(m);
-      setForm({
-        gocuotasMonto: String(m.gocuotasMonto || ''),
-        gocuotasCant: String(m.gocuotasCant || ''),
-      });
-    });
+    fetchEmpretiendaManual().then(setManual);
   }, []);
-
-  async function handleSave() {
-    setSaving(true);
-    const saved = await saveEmpretiendaManual({
-      gocuotasMonto: num(form.gocuotasMonto),
-      gocuotasCant: num(form.gocuotasCant),
-    });
-    setManual(saved);
-    setSaving(false);
-    setEditing(false);
-  }
 
   const mpMonto = mp?.amount ?? 0;
   const mpCant = mp?.orders ?? 0;
@@ -184,71 +149,8 @@ export default function Canales() {
             Tienda Online y Local Físico salen de Métricas de Empretienda (Local = Acordar); las sube mateandobot solo, cada 30 min como mucho.
           </p>
         </section>
-
-        <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">GOcuotas — carga manual</h2>
-            <button
-              onClick={() => setEditing((v) => !v)}
-              className="text-sm px-3 py-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
-            >
-              {editing ? 'Cerrar' : 'Actualizar números'}
-            </button>
-          </div>
-
-          {!editing && (
-            <p className="text-sm text-slate-400">
-              {manual?.updatedAt
-                ? `Última carga: ${new Date(manual.updatedAt).toLocaleString('es-AR')} (se ve igual en todos los dispositivos)`
-                : 'Todavía no cargaste números. Tocá "Actualizar números".'}
-            </p>
-          )}
-
-          {editing && (
-            <div className="space-y-4">
-              <p className="text-sm text-slate-300">
-                Mercado Pago, Transferencias y Local ya se calculan solos. Solo falta GOcuotas: abrí el panel de
-                Empretienda, sección <strong>Métricas</strong>, filtrá por método de pago GOcuotas y copiá los totales.
-              </p>
-              <a href={empretiendaMetricasUrl()} target="_blank" className="text-emerald-400 underline text-sm">
-                Abrir Métricas
-              </a>
-
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="GOcuotas — Volumen de ventas ($)" value={form.gocuotasMonto}
-                  onChange={(v) => setForm({ ...form, gocuotasMonto: v })} />
-                <Field label="GOcuotas — Cantidad de ventas" value={form.gocuotasCant}
-                  onChange={(v) => setForm({ ...form, gocuotasCant: v })} />
-              </div>
-
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
-              >
-                {saving ? 'Guardando…' : 'Guardar'}
-              </button>
-            </div>
-          )}
-        </section>
       </main>
     </div>
-  );
-}
-
-function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <label className="block">
-      <span className="block text-xs text-slate-400 mb-1">{label}</span>
-      <input
-        type="text"
-        inputMode="decimal"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full border border-slate-700 rounded-lg px-3 py-2 text-sm"
-        placeholder="0"
-      />
-    </label>
   );
 }
 
