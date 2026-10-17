@@ -149,7 +149,10 @@ export default function Canales() {
                 <Fragment key={c.nombre}>
                   <tr className="border-t border-slate-900">
                     <td className="py-3 font-medium">
-                      {c.nombre}
+                      <span className="inline-flex items-center gap-2">
+                        <img src={logoCanal(c.nombre)} alt="" className="w-5 h-5 rounded object-contain bg-white/90 p-0.5" />
+                        {c.nombre}
+                      </span>
                       {c.fuente.startsWith('Error') && <div className="sm:hidden text-xs font-normal text-red-400">{c.fuente}</div>}
                     </td>
                     <td className="text-right tabular-nums">{fmt(c.monto)}</td>
@@ -247,4 +250,11 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
       />
     </label>
   );
+}
+
+function logoCanal(nombre: string) {
+  if (nombre.startsWith('Tienda Online')) return '/canales/empretienda.png';
+  if (nombre.startsWith('Shopify')) return '/canales/shopify.png';
+  if (nombre.startsWith('Mercado Libre')) return '/canales/mercadolibre.png';
+  return '/mate-logo.png';
 }
