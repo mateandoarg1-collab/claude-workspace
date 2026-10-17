@@ -231,7 +231,14 @@ async function main() {
   console.log(`✅ ${filas.length} egresos nuevos (${pagos.length} pagos + ${payouts.length} transferencias CBU en el rango), ${updates.length} filas actualizadas, ${cbusNuevos.length} CBU nuevos, ${reglasNuevas.length} reglas aprendidas`);
 }
 
-main().catch((e) => {
-  console.error('❌', e.message);
-  process.exit(1);
-});
+// A las 8:00 la Mac puede estar recién despierta y sin red: reintentar antes de rendirse.
+for (let intento = 1; ; intento++) {
+  try {
+    await main();
+    break;
+  } catch (e) {
+    console.error(`❌ intento ${intento}:`, e.message);
+    if (intento === 6) process.exit(1);
+    await new Promise((r) => setTimeout(r, 5 * 60 * 1000));
+  }
+}

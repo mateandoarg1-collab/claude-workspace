@@ -17,11 +17,14 @@ async function getToken() {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       grant_type: 'client_credentials',
-      client_id: process.env.SHOPIFY_CLIENT_ID ?? '',
-      client_secret: process.env.SHOPIFY_CLIENT_SECRET ?? '',
+      client_id: (process.env.SHOPIFY_CLIENT_ID ?? '').trim(),
+      client_secret: (process.env.SHOPIFY_CLIENT_SECRET ?? '').trim(),
     }),
   });
-  if (!r.ok) throw new Error(`Shopify token ${r.status}: ${await r.text()}`);
+  if (!r.ok) {
+    const t = (await r.text()).match(/<title>([^<]*)/)?.[1] ?? r.status;
+    throw new Error(`Shopify token: ${t} (client_id "${process.env.SHOPIFY_CLIENT_ID ?? ''}")`);
+  }
   const d = await r.json();
   cached = { token: d.access_token, expires: Date.now() + (d.expires_in ?? 86400) * 1000 };
   return cached.token;
