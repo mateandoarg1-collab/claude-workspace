@@ -3,13 +3,14 @@ export type EmpretiendaManual = {
   gocuotasCant: number;
   updatedAt: string;
   metricas?: {
-    mes: string;
+    periodo: 'hoy' | 'semana' | 'mes';
+    desde: string;
     totalMonto: number;
     totalCant: number;
     acordarMonto: number;
     acordarCant: number;
     updatedAt: string;
-  } | null;
+  }[];
 };
 
 export async function fetchEmpretiendaManual(): Promise<EmpretiendaManual> {

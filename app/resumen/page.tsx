@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { fetchEmpretiendaManual } from '@/lib/manual';
+import { desdeAR } from '@/lib/periodo';
 
 const fmtM = (n: number) => {
   if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(1) + 'M';
@@ -44,8 +45,8 @@ export default function Resumen() {
       if (!compData.error) setComprobantes(compData);
       if (!localData.error) setLocal(localData);
       setGocuotas({ monto: manual.gocuotasMonto, cant: manual.gocuotasCant });
-      const mesAR = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).slice(0, 7);
-      if (manual.metricas && manual.metricas.mes === mesAR) setEmp(manual.metricas);
+      const mes = manual.metricas?.find((m) => m.periodo === 'mes' && m.desde === desdeAR('mes'));
+      if (mes) setEmp(mes);
       setLoading(false);
     });
   }, []);

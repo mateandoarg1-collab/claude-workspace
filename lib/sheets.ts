@@ -1,11 +1,11 @@
 import { google } from 'googleapis';
+import { desdeAR, type Periodo } from './periodo';
 
 const SPREADSHEET_ID = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
 
 const MESES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
 
-function currentTabName(): string {
-  const now = new Date();
+function currentTabName(now = new Date()): string {
   const mes = MESES[now.getMonth()];
   const yy = String(now.getFullYear()).slice(-2);
   return `${mes} ${yy}`;
@@ -39,6 +39,32 @@ export async function getMayoristaSummary() {
   return { tab, orders, amount };
 }
 
+// Mayorista de hoy / semana: la fecha (dd/mm) va en la col A solo en la 1ª fila de cada pedido;
+// las filas siguientes del pedido la heredan. Monto = col M de cada fila.
+export async function getMayoristaPeriodo(periodo: Periodo) {
+  if (periodo === 'mes') return getMayoristaSummary();
+  const desde = desdeAR(periodo);
+  const hasta = desdeAR('hoy');
+  const tabs = [...new Set([desde, hasta].map((d) => currentTabName(new Date(`${d}T12:00:00-03:00`))))];
+  const sheets = google.sheets({ version: 'v4', auth: getAuth() });
+  let orders = 0;
+  let amount = 0;
+  for (const tab of tabs) {
+    const anio = 2000 + Number(tab.slice(-2));
+    const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A3:M` });
+    let dia = '';
+    for (const r of res.data.values ?? []) {
+      const m = String(r[0] ?? '').trim().match(/^(\d{1,2})\/(\d{1,2})$/);
+      if (m) {
+        dia = `${anio}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+        if (dia >= desde && dia <= hasta) orders += 1;
+      }
+      if (dia && dia >= desde && dia <= hasta) amount += parseMonto(r[12]);
+    }
+  }
+  return { tab: tabs.join(' + '), orders, amount };
+}
+
 const MANUAL_TAB = 'dashboard_manual';
 
 export type EmpretiendaManualData = {
@@ -62,7 +88,8 @@ export async function getEmpretiendaManual(): Promise<EmpretiendaManualData> {
 }
 
 export type EmpretiendaMetricas = {
-  mes: string;
+  periodo: Periodo;
+  desde: string;
   totalMonto: number;
   totalCant: number;
   acordarMonto: number;
@@ -70,23 +97,22 @@ export type EmpretiendaMetricas = {
   updatedAt: string;
 };
 
-// Fila 5 de dashboard_manual: la escribe mateandobot (scripts/empretienda-sync.mjs) con Métricas de Empretienda.
-export async function getEmpretiendaMetricas(): Promise<EmpretiendaMetricas | null> {
+// Filas 5-7 de dashboard_manual (hoy, semana, mes): las escribe mateandobot (scripts/empretienda-sync.mjs).
+export async function getEmpretiendaMetricas(): Promise<EmpretiendaMetricas[]> {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `'${MANUAL_TAB}'!A5:F5`,
+    range: `'${MANUAL_TAB}'!A5:G7`,
   });
-  const r = res.data.values?.[0];
-  if (!r) return null;
-  return {
-    mes: r[0],
-    totalMonto: Number(r[1]) || 0,
-    totalCant: Number(r[2]) || 0,
-    acordarMonto: Number(r[3]) || 0,
-    acordarCant: Number(r[4]) || 0,
-    updatedAt: r[5] ?? '',
-  };
+  return (res.data.values ?? []).map((r) => ({
+    periodo: r[0],
+    desde: r[1],
+    totalMonto: Number(r[2]) || 0,
+    totalCant: Number(r[3]) || 0,
+    acordarMonto: Number(r[4]) || 0,
+    acordarCant: Number(r[5]) || 0,
+    updatedAt: r[6] ?? '',
+  }));
 }
 
 export async function setEmpretiendaManual(data: Omit<EmpretiendaManualData, 'updatedAt'>) {

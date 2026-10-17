@@ -1,11 +1,11 @@
-// Métricas del mes de Empretienda → Google Sheet (pestaña dashboard_manual, fila 5).
+// Métricas de Empretienda → Google Sheet (pestaña dashboard_manual, filas 5-7: hoy, semana, mes).
 //
 // Lo llama mateandobot (`empretienda_metricas.py`, con la sesión de Empretienda del bot) con
-// los números que leyó en panel.empretienda.com/metricas: total del mes y método "Acordar".
+// los números que leyó en panel.empretienda.com/metricas: total y método "Acordar" por período.
 // El dashboard toma Acordar = Local Físico y Total − Acordar = Tienda Online.
 //
 // Uso:
-//   node scripts/empretienda-sync.mjs '{"mes":"2026-10","totalMonto":1,"totalCant":1,"acordarMonto":1,"acordarCant":1}'
+//   node scripts/empretienda-sync.mjs '{"periodos":{"hoy":{"desde":"2026-10-17","totalMonto":1,"totalCant":1,"acordarMonto":1,"acordarCant":1},...}}'
 
 import { google } from 'googleapis';
 import { readFileSync } from 'fs';
@@ -13,9 +13,16 @@ import { homedir } from 'os';
 import { join } from 'path';
 
 const SPREADSHEET_ID = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
-const RANGE = "'dashboard_manual'!A5:F5";
+const RANGE = "'dashboard_manual'!A5:G7";
+const ORDEN = ['hoy', 'semana', 'mes'];
 
-const d = JSON.parse(process.argv[2]);
+const { periodos } = JSON.parse(process.argv[2]);
+const ahora = new Date().toISOString();
+const values = ORDEN.map((k) => {
+  const p = periodos[k];
+  return [k, p.desde, p.totalMonto, p.totalCant, p.acordarMonto, p.acordarCant, ahora];
+});
+
 const auth = new google.auth.GoogleAuth({
   credentials: JSON.parse(readFileSync(join(homedir(), '.claude/.mateando-credentials.json'), 'utf8')),
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
@@ -25,6 +32,6 @@ await sheets.spreadsheets.values.update({
   spreadsheetId: SPREADSHEET_ID,
   range: RANGE,
   valueInputOption: 'RAW',
-  requestBody: { values: [[d.mes, d.totalMonto, d.totalCant, d.acordarMonto, d.acordarCant, new Date().toISOString()]] },
+  requestBody: { values },
 });
-console.log('Empretienda métricas →', d);
+console.log('Empretienda métricas →', values);

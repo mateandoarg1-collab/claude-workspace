@@ -1,9 +1,11 @@
-// Shopify (mateando.com): ventas pagadas del mes en curso.
+// Shopify (mateando.com): ventas pagadas del período (hoy / semana / mes).
 // Usa la app "mateando-whatsapp-button" (Dev Dashboard, scope read_orders) con client credentials:
 // env SHOPIFY_CLIENT_ID + SHOPIFY_CLIENT_SECRET → token de 24 h.
 // Mismos pedidos que el informe VENTAS REALES (PAGADAS) de Shopify (estado de pago "Pagado"), pero el monto
 // es el subtotal (productos con IVA y con descuento, sin envío) para comparar con Empretienda/ML.
 // El informe muestra "ventas brutas" = (subtotal + descuentos) / 1,21.
+
+import { desdeAR, type Periodo } from './periodo';
 
 const SHOP = 'mateando-argentina.myshopify.com';
 const API_VERSION = '2026-10';
@@ -37,10 +39,9 @@ const QUERY = `query($q: String!, $after: String) {
   }
 }`;
 
-export async function getShopifyMonth() {
+export async function getShopifyVentas(periodo: Periodo = 'mes') {
   const token = await getToken();
-  const mes = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).slice(0, 7);
-  const q = `financial_status:paid created_at:>='${mes}-01T00:00:00-03:00' -test:true`;
+  const q = `financial_status:paid created_at:>='${desdeAR(periodo)}T00:00:00-03:00' -test:true`;
   let after: string | null = null;
   let orders = 0;
   let amount = 0;
