@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import AppHeader from '../components/AppHeader';
+import CanalMarca, { type CanalId } from '../components/CanalMarca';
 import { EmpretiendaManual, fetchEmpretiendaManual } from '@/lib/manual';
 import { desdeAR, type Periodo } from '@/lib/periodo';
 
@@ -61,11 +62,11 @@ export default function Canales() {
 
   const fuente = (s: Estado<unknown>, ok: string) => (s.err ? `Error: ${s.err}` : s.data ? ok : 'Cargando…');
   const canales = [
-    { nombre: 'Tienda Online (.com)', monto: emp ? emp.totalMonto - emp.acordarMonto : 0, cantidad: emp ? emp.totalCant - emp.acordarCant : 0, fuente: emp ? `${empFuente} (total − Acordar)` : empFuente, hace: emp ? hace(emp.updatedAt, ahora) : '' },
-    { nombre: 'Mercado Libre', monto: ml.data?.amount ?? 0, cantidad: ml.data?.orders ?? 0, fuente: fuente(ml, 'API en vivo') },
-    { nombre: 'Local Físico', monto: emp?.acordarMonto ?? 0, cantidad: emp?.acordarCant ?? 0, fuente: emp ? `${empFuente} (Acordar)` : empFuente, hace: emp ? hace(emp.updatedAt, ahora) : '' },
-    { nombre: 'Shopify (mateando.com)', monto: shopify.data?.amount ?? 0, cantidad: shopify.data?.orders ?? 0, fuente: fuente(shopify, 'API en vivo · pedidos pagados (subtotal con IVA)') },
-    { nombre: 'Mayorista', monto: mayorista.data?.amount ?? 0, cantidad: mayorista.data?.orders ?? 0, fuente: fuente(mayorista, `Google Sheets (${mayorista.data?.tab ?? '—'})`) },
+    { id: 'online' as CanalId, nombre: 'Tienda Online (.com)', monto: emp ? emp.totalMonto - emp.acordarMonto : 0, cantidad: emp ? emp.totalCant - emp.acordarCant : 0, fuente: emp ? `${empFuente} (total − Acordar)` : empFuente, hace: emp ? hace(emp.updatedAt, ahora) : '' },
+    { id: 'ml' as CanalId, nombre: 'Mercado Libre', monto: ml.data?.amount ?? 0, cantidad: ml.data?.orders ?? 0, fuente: fuente(ml, 'API en vivo') },
+    { id: 'local' as CanalId, nombre: 'Local Físico', monto: emp?.acordarMonto ?? 0, cantidad: emp?.acordarCant ?? 0, fuente: emp ? `${empFuente} (Acordar)` : empFuente, hace: emp ? hace(emp.updatedAt, ahora) : '' },
+    { id: 'shopify' as CanalId, nombre: 'Shopify (mateando.com)', monto: shopify.data?.amount ?? 0, cantidad: shopify.data?.orders ?? 0, fuente: fuente(shopify, 'API en vivo · pedidos pagados (subtotal con IVA)') },
+    { id: 'mayorista' as CanalId, nombre: 'Mayorista', monto: mayorista.data?.amount ?? 0, cantidad: mayorista.data?.orders ?? 0, fuente: fuente(mayorista, `Google Sheets (${mayorista.data?.tab ?? '—'})`) },
   ];
 
   const totalGeneral = canales.reduce((s, c) => s + c.monto, 0);
@@ -105,9 +106,8 @@ export default function Canales() {
               {canales.map((c) => (
                 <tr key={c.nombre} className="border-t border-slate-900">
                   <td className="py-3 font-medium">
-                    <span className="inline-flex items-center gap-2">
-                      <img src={logoCanal(c.nombre)} alt="" className={`w-5 h-5 rounded object-contain p-0.5 ${logoCanal(c.nombre) === '/mate-logo.png' ? 'bg-emerald-700' : 'bg-white/90'}`} />
-                      {c.nombre}
+                    <span className="inline-flex items-center gap-2 flex-wrap" title={c.nombre}>
+                      <CanalMarca id={c.id} />
                       {'hace' in c && c.hace && <span className="text-[11px] font-normal text-slate-500">({c.hace === 'recién' ? 'actualizado recién' : `actualizado ${c.hace}`})</span>}
                     </span>
                     {c.fuente.startsWith('Error') && <div className="sm:hidden text-xs font-normal text-red-400">{c.fuente}</div>}
@@ -135,9 +135,3 @@ export default function Canales() {
   );
 }
 
-function logoCanal(nombre: string) {
-  if (nombre.startsWith('Tienda Online')) return '/canales/empretienda.png';
-  if (nombre.startsWith('Shopify')) return '/canales/shopify.png';
-  if (nombre.startsWith('Mercado Libre')) return '/canales/mercadolibre.png';
-  return '/mate-logo.png';
-}

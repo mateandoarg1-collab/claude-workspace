@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import CanalMarca, { type CanalId } from '../components/CanalMarca';
 import { fetchEmpretiendaManual } from '@/lib/manual';
 import { desdeAR } from '@/lib/periodo';
 
@@ -86,7 +87,7 @@ export default function Resumen() {
           </div>
 
           <div className="space-y-2">
-            <ChanRow label="Tienda Online" logo="/canales/empretienda.png" color="text-blue-400" monto={online.monto} cant={online.cant} />
+            <ChanRow label="Tienda Online" canal="online" color="text-blue-400" monto={online.monto} cant={online.cant} />
             {!emp && (
               <>
                 <ChanRow label="  └ Mercado Pago" color="text-blue-400/60" monto={mp.amount} cant={mp.orders} small />
@@ -94,7 +95,7 @@ export default function Resumen() {
                 <ChanRow label="  └ GOcuotas" color="text-blue-400/60" monto={gocuotas.monto} cant={gocuotas.cant} small />
               </>
             )}
-            <ChanRow label="Local Físico" logo="/mate-logo.png" color="text-emerald-400" monto={localMes.monto} cant={localMes.cant} />
+            <ChanRow label="Local Físico" canal="local" color="text-emerald-400" monto={localMes.monto} cant={localMes.cant} />
             {!emp && (
               <>
                 <ChanRow label="  └ Point / QR" color="text-emerald-400/60" monto={local.mp.amount} cant={local.mp.orders} small />
@@ -102,9 +103,9 @@ export default function Resumen() {
                 <ChanRow label="  └ Transferencias" color="text-emerald-400/60" monto={local.transferencias.amount} cant={local.transferencias.orders} small />
               </>
             )}
-            <ChanRow label="Shopify" logo="/canales/shopify.png" color="text-lime-400" monto={shopify.amount} cant={shopify.orders} />
-            <ChanRow label="Mercado Libre" logo="/canales/mercadolibre.png" color="text-yellow-400" monto={ml.month_to_date.amount} cant={ml.month_to_date.orders} />
-            <ChanRow label="Mayorista" logo="/mate-logo.png" color="text-purple-400" monto={mayorista?.amount ?? 0} cant={mayorista?.orders ?? 0} />
+            <ChanRow label="Shopify" canal="shopify" color="text-lime-400" monto={shopify.amount} cant={shopify.orders} />
+            <ChanRow label="Mercado Libre" canal="ml" color="text-yellow-400" monto={ml.month_to_date.amount} cant={ml.month_to_date.orders} />
+            <ChanRow label="Mayorista" canal="mayorista" color="text-purple-400" monto={mayorista?.amount ?? 0} cant={mayorista?.orders ?? 0} />
           </div>
 
           <div className="mt-3 pt-3 border-t border-white/10 text-xs text-white/40">
@@ -139,13 +140,14 @@ function Card({ children, className = '' }: { children: React.ReactNode; classNa
   );
 }
 
-function ChanRow({ label, color, monto, cant, small, logo }: { label: string; color: string; monto: number; cant: number; small?: boolean; logo?: string }) {
+function ChanRow({ label, color, monto, cant, small, canal }: { label: string; color: string; monto: number; cant: number; small?: boolean; canal?: CanalId }) {
   return (
-    <div className={`flex items-baseline justify-between ${small ? 'text-xs' : 'text-sm'}`}>
-      <span className={`font-semibold ${color} flex items-center gap-2`}>
-        {logo && <img src={logo} alt="" className={`w-5 h-5 rounded object-contain p-0.5 ${logo === '/mate-logo.png' ? 'bg-emerald-700' : 'bg-white/90'}`} />}
-        {label}:
-      </span>
+    <div className={`flex ${canal ? 'items-center' : 'items-baseline'} justify-between ${small ? 'text-xs' : 'text-sm'}`}>
+      {canal ? (
+        <span title={label}><CanalMarca id={canal} chico /></span>
+      ) : (
+        <span className={`font-semibold ${color}`}>{label}:</span>
+      )}
       <span className={small ? 'text-white/70' : 'text-white'}>
         {fmtFull(monto)} <span className="text-white/40">({cant} ventas)</span>
       </span>
