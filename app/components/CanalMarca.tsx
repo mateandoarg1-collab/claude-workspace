@@ -8,9 +8,9 @@ const LOGOS: Partial<Record<CanalId, { src: string; alt: string }>> = {
   shopify: { src: '/canales/shopify-logo.png', alt: 'Shopify' },
 };
 
-const ETIQUETAS: Partial<Record<CanalId, string>> = {
-  local: '🛍️🛒 LOCAL',
-  mayorista: '📦 MAYORISTA',
+const ETIQUETAS: Partial<Record<CanalId, { emoji: string; texto: string }>> = {
+  local: { emoji: '🛍️ 🛒', texto: 'LOCAL' },
+  mayorista: { emoji: '📦', texto: 'MAYORISTA' },
 };
 
 export default function CanalMarca({ id, chico }: { id: CanalId; chico?: boolean }) {
@@ -21,8 +21,9 @@ export default function CanalMarca({ id, chico }: { id: CanalId; chico?: boolean
     return <img src={logo.src} alt={logo.alt} className={`${alto} w-auto rounded-md`} />;
   }
   return (
-    <span className={`${alto} inline-flex items-center rounded-md bg-white px-2 text-xs font-extrabold tracking-wide text-slate-950`}>
-      {ETIQUETAS[id]}
+    <span className={`${alto} inline-flex items-center gap-1.5 rounded-md bg-white px-2 text-xs font-extrabold tracking-wide text-slate-950`}>
+      <span className="text-sm leading-none">{ETIQUETAS[id]?.emoji}</span>
+      {ETIQUETAS[id]?.texto}
     </span>
   );
 }
