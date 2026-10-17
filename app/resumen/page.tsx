@@ -23,6 +23,7 @@ export default function Resumen() {
   const [comprobantes, setComprobantes] = useState({ orders: 0, amount: 0 });
   const [gocuotas, setGocuotas] = useState({ monto: 0, cant: 0 });
   const [local, setLocal] = useState<LocalData>({ orders: 0, amount: 0, mp: VACIO, efectivo: VACIO, transferencias: { ...VACIO, actualizadoHasta: null } });
+  const [emp, setEmp] = useState<{ totalMonto: number; totalCant: number; acordarMonto: number; acordarCant: number; updatedAt: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,6 +41,8 @@ export default function Resumen() {
       if (!compData.error) setComprobantes(compData);
       if (!localData.error) setLocal(localData);
       setGocuotas({ monto: manual.gocuotasMonto, cant: manual.gocuotasCant });
+      const mesAR = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).slice(0, 7);
+      if (manual.metricas && manual.metricas.mes === mesAR) setEmp(manual.metricas);
       setLoading(false);
     });
   }, []);
@@ -53,9 +56,13 @@ export default function Resumen() {
   }
 
   const diasTranscurridos = new Date().getDate();
-  const online = { monto: mp.amount + comprobantes.amount + gocuotas.monto, cant: mp.orders + comprobantes.orders + gocuotas.cant };
-  const totalMes = online.monto + ml.month_to_date.amount + local.amount + (mayorista?.amount ?? 0);
-  const ventasMes = online.cant + ml.month_to_date.orders + local.orders + (mayorista?.orders ?? 0);
+  // Con Métricas de Empretienda (las sube mateandobot): Acordar = Local, el resto = Online.
+  const online = emp
+    ? { monto: emp.totalMonto - emp.acordarMonto, cant: emp.totalCant - emp.acordarCant }
+    : { monto: mp.amount + comprobantes.amount + gocuotas.monto, cant: mp.orders + comprobantes.orders + gocuotas.cant };
+  const localMes = emp ? { monto: emp.acordarMonto, cant: emp.acordarCant } : { monto: local.amount, cant: local.orders };
+  const totalMes = online.monto + ml.month_to_date.amount + localMes.monto + (mayorista?.amount ?? 0);
+  const ventasMes = online.cant + ml.month_to_date.orders + localMes.cant + (mayorista?.orders ?? 0);
   const promedioDiario = totalMes / diasTranscurridos;
 
   return (
@@ -76,13 +83,21 @@ export default function Resumen() {
 
           <div className="space-y-2">
             <ChanRow label="Tienda Online" color="text-blue-400" monto={online.monto} cant={online.cant} />
-            <ChanRow label="  └ Mercado Pago" color="text-blue-400/60" monto={mp.amount} cant={mp.orders} small />
-            <ChanRow label="  └ Transferencias" color="text-blue-400/60" monto={comprobantes.amount} cant={comprobantes.orders} small />
-            <ChanRow label="  └ GOcuotas" color="text-blue-400/60" monto={gocuotas.monto} cant={gocuotas.cant} small />
-            <ChanRow label="Local Físico" color="text-emerald-400" monto={local.amount} cant={local.orders} />
-            <ChanRow label="  └ Point / QR" color="text-emerald-400/60" monto={local.mp.amount} cant={local.mp.orders} small />
-            <ChanRow label="  └ Efectivo" color="text-emerald-400/60" monto={local.efectivo.amount} cant={local.efectivo.orders} small />
-            <ChanRow label="  └ Transferencias" color="text-emerald-400/60" monto={local.transferencias.amount} cant={local.transferencias.orders} small />
+            {!emp && (
+              <>
+                <ChanRow label="  └ Mercado Pago" color="text-blue-400/60" monto={mp.amount} cant={mp.orders} small />
+                <ChanRow label="  └ Transferencias" color="text-blue-400/60" monto={comprobantes.amount} cant={comprobantes.orders} small />
+                <ChanRow label="  └ GOcuotas" color="text-blue-400/60" monto={gocuotas.monto} cant={gocuotas.cant} small />
+              </>
+            )}
+            <ChanRow label="Local Físico" color="text-emerald-400" monto={localMes.monto} cant={localMes.cant} />
+            {!emp && (
+              <>
+                <ChanRow label="  └ Point / QR" color="text-emerald-400/60" monto={local.mp.amount} cant={local.mp.orders} small />
+                <ChanRow label="  └ Efectivo" color="text-emerald-400/60" monto={local.efectivo.amount} cant={local.efectivo.orders} small />
+                <ChanRow label="  └ Transferencias" color="text-emerald-400/60" monto={local.transferencias.amount} cant={local.transferencias.orders} small />
+              </>
+            )}
             <ChanRow label="Mercado Libre" color="text-yellow-400" monto={ml.month_to_date.amount} cant={ml.month_to_date.orders} />
             <ChanRow label="Mayorista" color="text-purple-400" monto={mayorista?.amount ?? 0} cant={mayorista?.orders ?? 0} />
           </div>
@@ -92,10 +107,16 @@ export default function Resumen() {
           </div>
         </Card>
 
-        <p className="text-center text-white/30 text-xs mt-6">
-          GOcuotas se actualiza a mano en /canales · el resto, en vivo
-        </p>
-        {local.transferencias.actualizadoHasta && (
+        {emp ? (
+          <p className="text-center text-white/30 text-xs mt-6">
+            Online y Local desde Métricas de Empretienda (Local = Acordar) · actualizado {fmtFecha(emp.updatedAt)} por mateandobot
+          </p>
+        ) : (
+          <p className="text-center text-white/30 text-xs mt-6">
+            GOcuotas se actualiza a mano en /canales · el resto, en vivo
+          </p>
+        )}
+        {!emp && local.transferencias.actualizadoHasta && (
           <p className="text-center text-white/30 text-xs mt-1">
             Transferencias del local hasta {fmtFecha(local.transferencias.actualizadoHasta)} (se actualiza al tildar con mateandobot)
           </p>

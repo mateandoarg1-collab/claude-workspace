@@ -93,7 +93,17 @@ export default function Canales() {
   const onlineMonto = mpMonto + compMonto + gocuotasMonto;
   const onlineCant = mpCant + compCant + gocuotasCant;
 
-  const canales = [
+  // Si mateandobot ya subió Métricas de Empretienda de este mes: Acordar = Local, el resto = Online.
+  const hoyAR = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
+  const emp = manual?.metricas && manual.metricas.mes === hoyAR.slice(0, 7) ? manual.metricas : null;
+  const empFuente = emp ? `Empretienda Métricas · ${new Date(emp.updatedAt).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}` : '';
+
+  const canales = emp ? [
+    { nombre: 'Tienda Online (.com)', monto: emp.totalMonto - emp.acordarMonto, cantidad: emp.totalCant - emp.acordarCant, fuente: `${empFuente} (total − Acordar)` },
+    { nombre: 'Mercado Libre', monto: ml?.amount ?? 0, cantidad: ml?.orders ?? 0, fuente: mlErr ? `Error: ${mlErr}` : 'API en vivo' },
+    { nombre: 'Local Físico', monto: emp.acordarMonto, cantidad: emp.acordarCant, fuente: `${empFuente} (Acordar)` },
+    { nombre: 'Mayorista', monto: mayorista?.amount ?? 0, cantidad: mayorista?.orders ?? 0, fuente: mayoristaErr ? `Error: ${mayoristaErr}` : `Google Sheets (${mayorista?.tab ?? '—'})` },
+  ] : [
     {
       nombre: 'Tienda Online (.com)', monto: onlineMonto, cantidad: onlineCant, fuente: 'MP + Transferencias + GOcuotas',
       sub: [

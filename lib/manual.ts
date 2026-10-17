@@ -2,6 +2,14 @@ export type EmpretiendaManual = {
   gocuotasMonto: number;
   gocuotasCant: number;
   updatedAt: string;
+  metricas?: {
+    mes: string;
+    totalMonto: number;
+    totalCant: number;
+    acordarMonto: number;
+    acordarCant: number;
+    updatedAt: string;
+  } | null;
 };
 
 export async function fetchEmpretiendaManual(): Promise<EmpretiendaManual> {

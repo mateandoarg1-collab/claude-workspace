@@ -61,6 +61,34 @@ export async function getEmpretiendaManual(): Promise<EmpretiendaManualData> {
   };
 }
 
+export type EmpretiendaMetricas = {
+  mes: string;
+  totalMonto: number;
+  totalCant: number;
+  acordarMonto: number;
+  acordarCant: number;
+  updatedAt: string;
+};
+
+// Fila 5 de dashboard_manual: la escribe mateandobot (scripts/empretienda-sync.mjs) con Métricas de Empretienda.
+export async function getEmpretiendaMetricas(): Promise<EmpretiendaMetricas | null> {
+  const sheets = google.sheets({ version: 'v4', auth: getAuth() });
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `'${MANUAL_TAB}'!A5:F5`,
+  });
+  const r = res.data.values?.[0];
+  if (!r) return null;
+  return {
+    mes: r[0],
+    totalMonto: Number(r[1]) || 0,
+    totalCant: Number(r[2]) || 0,
+    acordarMonto: Number(r[3]) || 0,
+    acordarCant: Number(r[4]) || 0,
+    updatedAt: r[5] ?? '',
+  };
+}
+
 export async function setEmpretiendaManual(data: Omit<EmpretiendaManualData, 'updatedAt'>) {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
   const updatedAt = new Date().toISOString();

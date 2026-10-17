@@ -1,9 +1,9 @@
-import { getEmpretiendaManual, setEmpretiendaManual } from '@/lib/sheets';
+import { getEmpretiendaManual, getEmpretiendaMetricas, setEmpretiendaManual } from '@/lib/sheets';
 
 export async function GET() {
   try {
-    const data = await getEmpretiendaManual();
-    return Response.json(data);
+    const [data, metricas] = await Promise.all([getEmpretiendaManual(), getEmpretiendaMetricas()]);
+    return Response.json({ ...data, metricas });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     return Response.json({ error: msg }, { status: 500 });
