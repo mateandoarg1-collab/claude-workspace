@@ -142,7 +142,7 @@ function ChanRow({ label, color, monto, cant, small, logo }: { label: string; co
   return (
     <div className={`flex items-baseline justify-between ${small ? 'text-xs' : 'text-sm'}`}>
       <span className={`font-semibold ${color} flex items-center gap-2`}>
-        {logo && <img src={logo} alt="" className="w-5 h-5 rounded object-contain bg-white/90 p-0.5" />}
+        {logo && <img src={logo} alt="" className={`w-5 h-5 rounded object-contain p-0.5 ${logo === '/mate-logo.png' ? 'bg-emerald-700' : 'bg-white/90'}`} />}
         {label}:
       </span>
       <span className={small ? 'text-white/70' : 'text-white'}>

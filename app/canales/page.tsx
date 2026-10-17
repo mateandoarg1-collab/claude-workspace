@@ -150,7 +150,7 @@ export default function Canales() {
                   <tr className="border-t border-slate-900">
                     <td className="py-3 font-medium">
                       <span className="inline-flex items-center gap-2">
-                        <img src={logoCanal(c.nombre)} alt="" className="w-5 h-5 rounded object-contain bg-white/90 p-0.5" />
+                        <img src={logoCanal(c.nombre)} alt="" className={`w-5 h-5 rounded object-contain p-0.5 ${logoCanal(c.nombre) === '/mate-logo.png' ? 'bg-emerald-700' : 'bg-white/90'}`} />
                         {c.nombre}
                       </span>
                       {c.fuente.startsWith('Error') && <div className="sm:hidden text-xs font-normal text-red-400">{c.fuente}</div>}
