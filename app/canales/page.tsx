@@ -112,6 +112,7 @@ export default function Canales() {
                   <td className="py-3 font-medium">
                     <span className="inline-flex items-center gap-2 flex-wrap" title={c.nombre}>
                       <CanalMarca id={c.id} />
+                      <span className={`text-xs ${grafico === c.id ? 'opacity-100' : 'opacity-50'}`}>📊</span>
                       {'hace' in c && c.hace && <span className="text-[11px] font-normal text-slate-500">({c.hace === 'recién' ? 'actualizado recién' : `actualizado ${c.hace}`})</span>}
                     </span>
                     {c.fuente.startsWith('Error') && <div className="sm:hidden text-xs font-normal text-red-400">{c.fuente}</div>}

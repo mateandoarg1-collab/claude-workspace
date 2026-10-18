@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import CanalMarca, { type CanalId } from './CanalMarca';
 
 type Dia = { dia: string; ventas: number | null; monto: number | null };
@@ -13,6 +13,12 @@ export default function CanalDailyChart({ canal, onClose }: { canal: CanalId; on
   const [res, setRes] = useState<{ canal: string; dias?: Dia[]; err?: string } | null>(null);
   const [modo, setModo] = useState<'monto' | 'ventas'>('monto');
   const [activo, setActivo] = useState<number | null>(null);
+  const ref = useRef<HTMLElement>(null);
+
+  // al abrir o cambiar de canal, bajar hasta el gráfico (queda debajo de la tabla, fuera de pantalla)
+  useEffect(() => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [canal]);
 
   useEffect(() => {
     let vivo = true;
@@ -33,7 +39,7 @@ export default function CanalDailyChart({ canal, onClose }: { canal: CanalId; on
   const H = 160;
 
   return (
-    <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-6">
+    <section ref={ref} className="scroll-mt-4 bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-6">
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <div className="flex items-center gap-2">
           <CanalMarca id={canal} />
