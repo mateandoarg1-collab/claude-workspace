@@ -97,8 +97,8 @@ export default function Canales() {
             <thead className="text-left text-xs uppercase text-slate-400">
               <tr>
                 <th className="py-2">Canal</th>
-                <th className="text-right">Facturación</th>
-                <th className="text-right">Ventas</th>
+                <th className="text-right"><span className="sm:hidden">$</span><span className="hidden sm:inline">Facturación</span></th>
+                <th className="text-right pl-4">Ventas</th>
                 <th className="hidden sm:table-cell text-right pl-4">Fuente</th>
               </tr>
             </thead>
@@ -113,14 +113,14 @@ export default function Canales() {
                     {c.fuente.startsWith('Error') && <div className="sm:hidden text-xs font-normal text-red-400">{c.fuente}</div>}
                   </td>
                   <td className="text-right tabular-nums">{fmt(c.monto)}</td>
-                  <td className="text-right tabular-nums">{c.cantidad}</td>
+                  <td className="text-right tabular-nums pl-4">{c.cantidad}</td>
                   <td className="hidden sm:table-cell text-right text-xs text-slate-500 pl-4">{c.fuente}</td>
                 </tr>
               ))}
               <tr className="border-t-2 border-slate-700 font-bold">
                 <td className="py-3">Total</td>
                 <td className="text-right tabular-nums">{fmt(totalGeneral)}</td>
-                <td className="text-right tabular-nums">{totalVentas}</td>
+                <td className="text-right tabular-nums pl-4">{totalVentas}</td>
                 <td className="hidden sm:table-cell"></td>
               </tr>
             </tbody>
