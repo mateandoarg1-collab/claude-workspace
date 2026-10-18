@@ -10,6 +10,7 @@ const fmt = (n: number) => '$' + n.toLocaleString('es-AR', { maximumFractionDigi
 
 const PERIODOS: { id: Periodo; label: string; titulo: string }[] = [
   { id: 'hoy', label: 'Hoy', titulo: 'Hoy' },
+  { id: 'ayer', label: 'Ayer', titulo: 'Ayer' },
   { id: 'semana', label: 'Semana', titulo: 'Últimos 7 días' },
   { id: 'mes', label: 'Mes', titulo: 'Mes en curso' },
 ];

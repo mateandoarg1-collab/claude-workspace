@@ -3,7 +3,7 @@ export type EmpretiendaManual = {
   gocuotasCant: number;
   updatedAt: string;
   metricas?: {
-    periodo: 'hoy' | 'semana' | 'mes';
+    periodo: 'hoy' | 'ayer' | 'semana' | 'mes';
     desde: string;
     totalMonto: number;
     totalCant: number;

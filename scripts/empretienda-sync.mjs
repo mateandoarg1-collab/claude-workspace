@@ -1,4 +1,4 @@
-// Métricas de Empretienda → Google Sheet (pestaña dashboard_manual, filas 5-7: hoy, semana, mes).
+// Métricas de Empretienda → Google Sheet (pestaña dashboard_manual, filas 5-8: hoy, semana, mes, ayer).
 //
 // Lo llama mateandobot (`empretienda_metricas.py`, con la sesión de Empretienda del bot) con
 // los números que leyó en panel.empretienda.com/metricas: total y método "Acordar" por período.
@@ -13,8 +13,8 @@ import { homedir } from 'os';
 import { join } from 'path';
 
 const SPREADSHEET_ID = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
-const RANGE = "'dashboard_manual'!A5:G7";
-const ORDEN = ['hoy', 'semana', 'mes'];
+const RANGE = "'dashboard_manual'!A5:G8";
+const ORDEN = ['hoy', 'semana', 'mes', 'ayer'];
 
 const { periodos } = JSON.parse(process.argv[2]);
 const ahora = new Date().toISOString();

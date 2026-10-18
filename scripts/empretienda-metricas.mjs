@@ -1,7 +1,7 @@
-// Métricas de Empretienda (hoy / semana / mes) → planilla, sin la Mac: lo corre GitHub Actions
+// Métricas de Empretienda (hoy / ayer / semana / mes) → planilla, sin la Mac: lo corre GitHub Actions
 // (.github/workflows/empretienda.yml) cada 30 min. Hace lo mismo que empretienda_metricas.py de
 // mateandobot: entra a panel.empretienda.com/metricas, lee total y "Acordar" (= Local) y escribe
-// dashboard_manual!A5:G7, que es lo que muestra /canales.
+// dashboard_manual!A5:G8, que es lo que muestra /canales.
 //
 // Sesión: Empretienda pide un código por mail al entrar desde un navegador nuevo, así que se usa una
 // sesión ya iniciada. Hay dos fuentes y se usa la más nueva:
@@ -54,7 +54,7 @@ function sesionInicial() {
 const PANEL = 'https://panel.empretienda.com/metricas';
 const ACORDAR = 3;
 const SPREADSHEET_ID = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
-const RANGE = "'dashboard_manual'!A5:G7";
+const RANGE = "'dashboard_manual'!A5:G8";
 
 // Día AR (YYYY-MM-DD), corrido `dias` hacia atrás.
 const diaAR = (dias = 0) => {
@@ -62,7 +62,8 @@ const diaAR = (dias = 0) => {
   return d.toISOString().slice(0, 10);
 };
 const hoy = diaAR();
-const PERIODOS = { hoy, semana: diaAR(6), mes: hoy.slice(0, 8) + '01' };
+// período → [desde, hasta]
+const PERIODOS = { hoy: [hoy, hoy], semana: [diaAR(6), hoy], mes: [hoy.slice(0, 8) + '01', hoy], ayer: [diaAR(1), diaAR(1)] };
 
 function numero(texto, etiqueta) {
   const m = texto.match(new RegExp(etiqueta + '\\s*\\n+\\s*\\$?([\\d.]+)'));
@@ -111,8 +112,8 @@ const page = await context.newPage();
 
 const ahora = new Date().toISOString();
 const values = [];
-for (const [periodo, desde] of Object.entries(PERIODOS)) {
-  const rango = `from=${desde}&until=${hoy}`;
+for (const [periodo, [desde, hasta]] of Object.entries(PERIODOS)) {
+  const rango = `from=${desde}&until=${hasta}`;
   const total = await leer(page, `${PANEL}?${rango}`, periodo === 'mes');
   const acordar = await leer(page, `${PANEL}?${rango}&payment_method=${ACORDAR}`, periodo === 'mes');
   values.push([periodo, desde, total[0], total[1], acordar[0], acordar[1], ahora]);

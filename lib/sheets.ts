@@ -1,5 +1,5 @@
 import { google } from 'googleapis';
-import { desdeAR, type Periodo } from './periodo';
+import { desdeAR, hastaAR, type Periodo } from './periodo';
 
 const SPREADSHEET_ID = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
 
@@ -39,12 +39,12 @@ export async function getMayoristaSummary() {
   return { tab, orders, amount };
 }
 
-// Mayorista de hoy / semana: la fecha (dd/mm) va en la col A solo en la 1ª fila de cada pedido;
+// Mayorista de hoy / ayer / semana: la fecha (dd/mm) va en la col A solo en la 1ª fila de cada pedido;
 // las filas siguientes del pedido la heredan. Monto = col M de cada fila.
 export async function getMayoristaPeriodo(periodo: Periodo) {
   if (periodo === 'mes') return getMayoristaSummary();
   const desde = desdeAR(periodo);
-  const hasta = desdeAR('hoy');
+  const hasta = hastaAR(periodo);
   const tabs = [...new Set([desde, hasta].map((d) => currentTabName(new Date(`${d}T12:00:00-03:00`))))];
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
   let orders = 0;
@@ -97,12 +97,12 @@ export type EmpretiendaMetricas = {
   updatedAt: string;
 };
 
-// Filas 5-7 de dashboard_manual (hoy, semana, mes): las escribe mateandobot (scripts/empretienda-sync.mjs).
+// Filas 5-8 de dashboard_manual (hoy, semana, mes, ayer): las escribe mateandobot (scripts/empretienda-sync.mjs).
 export async function getEmpretiendaMetricas(): Promise<EmpretiendaMetricas[]> {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: `'${MANUAL_TAB}'!A5:G7`,
+    range: `'${MANUAL_TAB}'!A5:G8`,
   });
   return (res.data.values ?? []).map((r) => ({
     periodo: r[0],

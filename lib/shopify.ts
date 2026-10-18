@@ -1,4 +1,4 @@
-// Shopify (mateando.com): ventas pagadas del período (hoy / semana / mes).
+// Shopify (mateando.com): ventas pagadas del período (hoy / ayer / semana / mes).
 // Usa la app "mateando-whatsapp-button" (Dev Dashboard, scope read_orders) con client credentials:
 // env SHOPIFY_CLIENT_ID + SHOPIFY_CLIENT_SECRET → token de 24 h.
 // Mismos pedidos que el informe VENTAS REALES (PAGADAS) de Shopify (estado de pago "Pagado"), pero el monto
@@ -41,7 +41,8 @@ const QUERY = `query($q: String!, $after: String) {
 
 export async function getShopifyVentas(periodo: Periodo = 'mes') {
   const token = await getToken();
-  const q = `financial_status:paid created_at:>='${desdeAR(periodo)}T00:00:00-03:00' -test:true`;
+  const hasta = periodo === 'ayer' ? ` created_at:<'${desdeAR('hoy')}T00:00:00-03:00'` : '';
+  const q = `financial_status:paid created_at:>='${desdeAR(periodo)}T00:00:00-03:00'${hasta} -test:true`;
   let after: string | null = null;
   let orders = 0;
   let amount = 0;
