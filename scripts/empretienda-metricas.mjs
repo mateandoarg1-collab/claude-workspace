@@ -3,12 +3,50 @@
 // mateandobot: entra a panel.empretienda.com/metricas, lee total y "Acordar" (= Local) y escribe
 // dashboard_manual!A5:G7, que es lo que muestra /canales.
 //
-// Env: EMPRETIENDA_STATE (sesión ya iniciada, la sube mateandobot desde la Mac cada 6 h: así Empretienda
-// no pide el código por mail) y GOOGLE_SERVICE_ACCOUNT_KEY (JSON).
+// Sesión: Empretienda pide un código por mail al entrar desde un navegador nuevo, así que se usa una
+// sesión ya iniciada. Hay dos fuentes y se usa la más nueva:
+//   - secreto EMPRETIENDA_STATE: la sube mateandobot desde la Mac cada 6 h (respaldo);
+//   - .sesion.enc: la guarda este mismo script al terminar (cifrada con EMPRETIENDA_KEY) y el workflow
+//     la pasa de una corrida a la siguiente con actions/cache. Así la sesión se renueva sola sin la Mac.
+// Env: EMPRETIENDA_STATE, EMPRETIENDA_KEY, GOOGLE_SERVICE_ACCOUNT_KEY (JSON).
 // El repo es público: los logs no muestran montos.
 
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { chromium } from 'playwright';
 import { google } from 'googleapis';
+
+const SESION_ENC = '.sesion.enc';
+const clave = () => {
+  if (!process.env.EMPRETIENDA_KEY) throw new Error('Falta el secreto EMPRETIENDA_KEY');
+  return createHash('sha256').update(process.env.EMPRETIENDA_KEY).digest();
+};
+
+function cifrar(obj) {
+  const iv = randomBytes(12);
+  const c = createCipheriv('aes-256-gcm', clave(), iv);
+  const datos = Buffer.concat([c.update(JSON.stringify(obj)), c.final()]);
+  return Buffer.concat([iv, c.getAuthTag(), datos]).toString('base64');
+}
+
+function descifrar(b64) {
+  const buf = Buffer.from(b64, 'base64');
+  const d = createDecipheriv('aes-256-gcm', clave(), buf.subarray(0, 12));
+  d.setAuthTag(buf.subarray(12, 28));
+  return JSON.parse(Buffer.concat([d.update(buf.subarray(28)), d.final()]).toString());
+}
+
+// La sesión más nueva entre el secreto (Mac) y la guardada por la corrida anterior.
+function sesionInicial() {
+  const candidatas = [];
+  try { candidatas.push({ origen: 'Mac', ...JSON.parse(process.env.EMPRETIENDA_STATE) }); } catch {}
+  try { if (existsSync(SESION_ENC)) candidatas.push({ origen: 'corrida anterior', ...descifrar(readFileSync(SESION_ENC, 'utf8')) }); } catch {}
+  if (!candidatas.length) throw new Error('No hay sesión de Empretienda guardada');
+  candidatas.sort((a, b) => String(b._guardado ?? '').localeCompare(String(a._guardado ?? '')));
+  const { origen, _guardado, ...estado } = candidatas[0];
+  console.log(`Sesión de Empretienda: ${origen} (${_guardado ?? 'sin fecha'})`);
+  return estado;
+}
 
 const PANEL = 'https://panel.empretienda.com/metricas';
 const ACORDAR = 3;
@@ -32,9 +70,9 @@ function numero(texto, etiqueta) {
 async function leer(page, url, esMes) {
   for (let i = 0; ; i++) {
     await page.goto(url, { waitUntil: 'networkidle' });
+    if (/auth0|login/.test(page.url())) throw new Error('Sesión de Empretienda vencida: prendé la Mac para que mateandobot suba una nueva');
     // el mes en curso es el filtro por defecto: el panel saca las fechas de la URL
     if (page.url().includes('from=') || esMes) break;
-    if (/auth0|login/.test(page.url())) throw new Error('Sesión de Empretienda vencida: prendé la Mac para que mateandobot suba una nueva');
     if (i === 2) throw new Error(`Empretienda no aplicó el filtro: ${url}`);
   }
   await page.getByText('Volumen de ventas').first().waitFor({ timeout: 30000 });
@@ -46,7 +84,7 @@ async function leer(page, url, esMes) {
 const browser = await chromium.launch();
 const context = await browser.newContext({
   viewport: { width: 1280, height: 800 },
-  storageState: JSON.parse(process.env.EMPRETIENDA_STATE),
+  storageState: sesionInicial(),
 });
 const page = await context.newPage();
 
@@ -58,6 +96,9 @@ for (const [periodo, desde] of Object.entries(PERIODOS)) {
   const acordar = await leer(page, `${PANEL}?${rango}&payment_method=${ACORDAR}`, periodo === 'mes');
   values.push([periodo, desde, total[0], total[1], acordar[0], acordar[1], ahora]);
 }
+// Guardar la sesión renovada para la próxima corrida (cifrada: el cache de Actions no es secreto).
+const renovada = await context.storageState();
+writeFileSync(SESION_ENC, cifrar({ ...renovada, _guardado: new Date().toISOString() }));
 await browser.close();
 
 const auth = new google.auth.GoogleAuth({
