@@ -8,7 +8,10 @@
 //   - secreto EMPRETIENDA_STATE: la sube mateandobot desde la Mac cada 6 h (respaldo);
 //   - .sesion.enc: la guarda este mismo script al terminar (cifrada con EMPRETIENDA_KEY) y el workflow
 //     la pasa de una corrida a la siguiente con actions/cache. Así la sesión se renueva sola sin la Mac.
-// Env: EMPRETIENDA_STATE, EMPRETIENDA_KEY, GOOGLE_SERVICE_ACCOUNT_KEY (JSON).
+// La sesión vence a las ~10 h aunque se use. Entonces inicia sesión de nuevo con mail y clave: como la
+// sesión guardada trae la cookie `did` ("dispositivo recordado", dura 1 año), Empretienda no pide código.
+// Env: EMPRETIENDA_STATE, EMPRETIENDA_KEY, EMPRETIENDA_EMAIL, EMPRETIENDA_PASSWORD,
+// GOOGLE_SERVICE_ACCOUNT_KEY (JSON).
 // El repo es público: los logs no muestran montos.
 
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
@@ -67,10 +70,28 @@ function numero(texto, etiqueta) {
   return Number(m[1].replace(/\./g, ''));
 }
 
+async function iniciarSesion(page) {
+  if (!process.env.EMPRETIENDA_EMAIL || !process.env.EMPRETIENDA_PASSWORD) {
+    throw new Error('Sesión de Empretienda vencida y faltan EMPRETIENDA_EMAIL / EMPRETIENDA_PASSWORD');
+  }
+  console.log('Sesión vencida: iniciando sesión de nuevo');
+  await page.locator('input[name=username]').fill(process.env.EMPRETIENDA_EMAIL);
+  await page.locator('input[name=username]').press('Enter');
+  await page.locator('input[type=password]:visible').waitFor({ state: 'visible', timeout: 20000 });
+  await page.locator('input[type=password]:visible').fill(process.env.EMPRETIENDA_PASSWORD);
+  await page.locator('input[type=password]:visible').press('Enter');
+  await page.waitForURL((u) => u.hostname === 'panel.empretienda.com' || /mfa/.test(u.href), { timeout: 30000 });
+  if (/mfa/.test(page.url())) throw new Error('Empretienda pidió código por mail: prendé la Mac para que mateandobot suba una sesión nueva');
+}
+
 async function leer(page, url, esMes) {
   for (let i = 0; ; i++) {
     await page.goto(url, { waitUntil: 'networkidle' });
-    if (/auth0|login/.test(page.url())) throw new Error('Sesión de Empretienda vencida: prendé la Mac para que mateandobot suba una nueva');
+    if (/auth0|login/.test(page.url())) {
+      if (i === 2) throw new Error('No pude iniciar sesión en Empretienda');
+      await iniciarSesion(page);
+      continue;
+    }
     // el mes en curso es el filtro por defecto: el panel saca las fechas de la URL
     if (page.url().includes('from=') || esMes) break;
     if (i === 2) throw new Error(`Empretienda no aplicó el filtro: ${url}`);

@@ -55,6 +55,8 @@ jobs:
         env:
           EMPRETIENDA_STATE: ${{ secrets.EMPRETIENDA_STATE }}
           EMPRETIENDA_KEY: ${{ secrets.EMPRETIENDA_KEY }}
+          EMPRETIENDA_EMAIL: ${{ secrets.EMPRETIENDA_EMAIL }}
+          EMPRETIENDA_PASSWORD: ${{ secrets.EMPRETIENDA_PASSWORD }}
           GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
 
       - uses: actions/cache/save@v4
