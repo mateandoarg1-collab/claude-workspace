@@ -1,4 +1,4 @@
-import { fetchOrdersInRange, isValidOrder } from '@/lib/ml';
+import { fetchAdsCost, fetchOrdersInRange, isValidOrder } from '@/lib/ml';
 import { desdeAR, inicioAR, parsePeriodo } from '@/lib/periodo';
 
 export const maxDuration = 30;
@@ -7,10 +7,17 @@ export const maxDuration = 30;
 export async function GET(req: Request) {
   try {
     const periodo = parsePeriodo(new URL(req.url).searchParams.get('periodo'));
-    const orders = (await fetchOrdersInRange(inicioAR(desdeAR(periodo)), new Date())).filter(isValidOrder);
+    const desde = desdeAR(periodo);
+    const hoy = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+    const [all, ads] = await Promise.all([
+      fetchOrdersInRange(inicioAR(desde), new Date()),
+      fetchAdsCost(desde, hoy).catch(() => null), // si falla publicidad, no romper ventas
+    ]);
+    const orders = all.filter(isValidOrder);
     return Response.json({
       orders: new Set(orders.map((o) => o.pack_id ?? o.id)).size,
       amount: orders.reduce((s, o) => s + (o.total_amount || 0), 0),
+      ads,
     });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);

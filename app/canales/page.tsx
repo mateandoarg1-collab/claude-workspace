@@ -42,8 +42,9 @@ function useApi<T>(url: string): Estado<T> {
 
 export default function Canales() {
   const [periodo, setPeriodo] = useState<Periodo>('mes');
-  const ml = useApi<Venta>(`/api/ml/periodo?periodo=${periodo}`);
+  const ml = useApi<Venta & { ads: number | null }>(`/api/ml/periodo?periodo=${periodo}`);
   const shopify = useApi<Venta>(`/api/shopify?periodo=${periodo}`);
+  const meta = useApi<{ spend: number | null; motivo?: string }>(`/api/meta?periodo=${periodo}`);
   const mayorista = useApi<Venta & { tab: string }>(`/api/mayorista?periodo=${periodo}`);
   const [manual, setManual] = useState<EmpretiendaManual | null>(null);
 
@@ -68,6 +69,16 @@ export default function Canales() {
     { id: 'shopify' as CanalId, nombre: 'Shopify (mateando.com)', monto: shopify.data?.amount ?? 0, cantidad: shopify.data?.orders ?? 0, fuente: fuente(shopify, 'API en vivo · pedidos pagados (subtotal con IVA)') },
     { id: 'mayorista' as CanalId, nombre: 'Mayorista', monto: mayorista.data?.amount ?? 0, cantidad: mayorista.data?.orders ?? 0, fuente: fuente(mayorista, `Google Sheets (${mayorista.data?.tab ?? '—'})`) },
   ];
+
+  // ROAS: ML con su pauta propia (Product Ads); Meta empuja Online + Shopify + Mayorista juntos.
+  const monto = (id: CanalId) => canales.find((c) => c.id === id)?.monto ?? 0;
+  const ventasMeta = monto('online') + monto('shopify') + monto('mayorista');
+  const roas = [
+    { nombre: 'Mercado Libre', detalle: 'Product Ads (API ML)', ventas: monto('ml'), pauta: ml.data ? ml.data.ads : undefined, falta: 'No se pudo leer la publicidad de ML' },
+    { nombre: 'Meta Ads', detalle: 'Tienda Online + Shopify + Mayorista', ventas: ventasMeta, pauta: meta.data ? meta.data.spend : undefined, falta: meta.data?.motivo ?? '' },
+  ];
+  const pautaTotal = roas.reduce((s, r) => s + (r.pauta ?? 0), 0);
+  const ventasConPauta = roas.filter((r) => r.pauta != null).reduce((s, r) => s + r.ventas, 0);
 
   const totalGeneral = canales.reduce((s, c) => s + c.monto, 0);
   const totalVentas = canales.reduce((s, c) => s + c.cantidad, 0);
@@ -129,6 +140,40 @@ export default function Canales() {
             Tienda Online y Local Físico salen de Métricas de Empretienda (Local = Acordar); se actualizan solas cada 30 min (GitHub Actions, no hace falta la Mac).
             Semana = últimos 7 días contando hoy.
           </p>
+        </section>
+
+        <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-6">
+          <h2 className="text-lg font-semibold mb-4">Pauta y ROAS</h2>
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs uppercase text-slate-400">
+              <tr>
+                <th className="py-2">Pauta</th>
+                <th className="text-right">Ventas</th>
+                <th className="text-right pl-4">Gasto</th>
+                <th className="text-right pl-4">ROAS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {roas.map((r) => (
+                <tr key={r.nombre} className="border-t border-slate-900">
+                  <td className="py-3 font-medium">
+                    {r.nombre}
+                    <div className="text-xs font-normal text-slate-500">{r.pauta === null ? <span className="text-amber-400">{r.falta}</span> : r.detalle}</div>
+                  </td>
+                  <td className="text-right tabular-nums">{fmt(r.ventas)}</td>
+                  <td className="text-right tabular-nums pl-4">{r.pauta === undefined ? '…' : r.pauta === null ? '—' : fmt(r.pauta)}</td>
+                  <td className="text-right tabular-nums pl-4 font-bold text-emerald-300">{r.pauta ? `${(r.ventas / r.pauta).toFixed(1)}x` : '—'}</td>
+                </tr>
+              ))}
+              <tr className="border-t-2 border-slate-700 font-bold">
+                <td className="py-3">Total con pauta</td>
+                <td className="text-right tabular-nums">{fmt(ventasConPauta)}</td>
+                <td className="text-right tabular-nums pl-4">{fmt(pautaTotal)}</td>
+                <td className="text-right tabular-nums pl-4 text-emerald-300">{pautaTotal ? `${(ventasConPauta / pautaTotal).toFixed(1)}x` : '—'}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="text-xs text-slate-500 mt-3">ROAS = ventas ÷ gasto en pauta del mismo período. Local Físico no entra. El total solo suma los canales que tienen gasto cargado.</p>
         </section>
       </main>
     </div>
