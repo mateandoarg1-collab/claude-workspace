@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import AppHeader from '../components/AppHeader';
 import CanalMarca, { type CanalId } from '../components/CanalMarca';
+import CanalDailyChart from '../components/CanalDailyChart';
 import { EmpretiendaManual, fetchEmpretiendaManual } from '@/lib/manual';
 import { desdeAR, type Periodo } from '@/lib/periodo';
 
@@ -43,6 +44,7 @@ function useApi<T>(url: string): Estado<T> {
 
 export default function Canales() {
   const [periodo, setPeriodo] = useState<Periodo>('mes');
+  const [grafico, setGrafico] = useState<CanalId | null>(null);
   const ml = useApi<Venta>(`/api/ml/periodo?periodo=${periodo}`);
   const shopify = useApi<Venta>(`/api/shopify?periodo=${periodo}`);
   const mayorista = useApi<Venta & { tab: string }>(`/api/mayorista?periodo=${periodo}`);
@@ -105,7 +107,8 @@ export default function Canales() {
             </thead>
             <tbody>
               {canales.map((c) => (
-                <tr key={c.nombre} className="border-t border-slate-900">
+                <tr key={c.nombre} onClick={() => setGrafico((g) => (g === c.id ? null : c.id))}
+                  className={`border-t border-slate-900 cursor-pointer hover:bg-slate-800/40 ${grafico === c.id ? 'bg-slate-800/60' : ''}`}>
                   <td className="py-3 font-medium">
                     <span className="inline-flex items-center gap-2 flex-wrap" title={c.nombre}>
                       <CanalMarca id={c.id} />
@@ -130,7 +133,10 @@ export default function Canales() {
             Tienda Online y Local Físico salen de Métricas de Empretienda (Local = Acordar); se actualizan solas cada 30 min (GitHub Actions, no hace falta la Mac).
             Semana = últimos 7 días contando hoy.
           </p>
+          <p className="text-xs text-slate-500 mt-1">Tocá un canal para ver su gráfico por día.</p>
         </section>
+
+        {grafico && <CanalDailyChart canal={grafico} onClose={() => setGrafico(null)} />}
       </main>
     </div>
   );

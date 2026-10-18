@@ -126,3 +126,43 @@ export async function setEmpretiendaManual(data: Omit<EmpretiendaManualData, 'up
   });
   return { ...data, updatedAt };
 }
+
+// Mayorista por día del mes en curso: pedidos (fila con fecha dd/mm) y monto (col M) por día AR.
+export async function getMayoristaDiario(desde: string) {
+  const sheets = google.sheets({ version: 'v4', auth: getAuth() });
+  const tab = currentTabName(new Date(`${desde}T12:00:00-03:00`));
+  const anio = 2000 + Number(tab.slice(-2));
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A3:M` });
+  const dias = new Map<string, { ventas: number; monto: number }>();
+  let dia = '';
+  for (const r of res.data.values ?? []) {
+    const m = String(r[0] ?? '').trim().match(/^(\d{1,2})\/(\d{1,2})$/);
+    if (m) {
+      dia = `${anio}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+      const d = dias.get(dia) ?? { ventas: 0, monto: 0 };
+      d.ventas += 1;
+      dias.set(dia, d);
+    }
+    if (dia) {
+      const d = dias.get(dia) ?? { ventas: 0, monto: 0 };
+      d.monto += parseMonto(r[12]);
+      dias.set(dia, d);
+    }
+  }
+  return dias;
+}
+
+// Empretienda por día (pestaña empretienda_diario, la llena scripts/empretienda-metricas.mjs).
+export async function getEmpretiendaDiario() {
+  const sheets = google.sheets({ version: 'v4', auth: getAuth() });
+  const res = await sheets.spreadsheets.values
+    .get({ spreadsheetId: SPREADSHEET_ID, range: `'empretienda_diario'!A2:E` })
+    .catch(() => null);
+  return (res?.data.values ?? []).map((r) => ({
+    dia: String(r[0]),
+    totalMonto: Number(r[1]) || 0,
+    totalCant: Number(r[2]) || 0,
+    acordarMonto: Number(r[3]) || 0,
+    acordarCant: Number(r[4]) || 0,
+  }));
+}

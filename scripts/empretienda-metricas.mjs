@@ -118,16 +118,49 @@ for (const [periodo, [desde, hasta]] of Object.entries(PERIODOS)) {
   const acordar = await leer(page, `${PANEL}?${rango}&payment_method=${ACORDAR}`, periodo === 'mes');
   values.push([periodo, desde, total[0], total[1], acordar[0], acordar[1], ahora]);
 }
+// Histórico por día del mes (pestaña empretienda_diario) para el gráfico de /canales: siempre hoy y ayer,
+// y de a 4 días por corrida los días del mes que todavía falten (así el mes se completa solo en un par de horas).
+const DIARIO = 'empretienda_diario';
+const auth = new google.auth.GoogleAuth({
+  credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY),
+  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+});
+const sheets = google.sheets({ version: 'v4', auth });
+const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+if (!meta.data.sheets?.some((x) => x.properties?.title === DIARIO)) {
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId: SPREADSHEET_ID,
+    requestBody: { requests: [{ addSheet: { properties: { title: DIARIO } } }] },
+  });
+}
+const previas = (await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${DIARIO}'!A2:F` })).data.values ?? [];
+const porDia = new Map(previas.map((r) => [r[0], r]));
+const deHoy = values.find((v) => v[0] === 'hoy');
+const deAyer = values.find((v) => v[0] === 'ayer');
+porDia.set(deHoy[1], [deHoy[1], ...deHoy.slice(2)]);
+porDia.set(deAyer[1], [deAyer[1], ...deAyer.slice(2)]);
+const faltan = [];
+for (let d = 2; diaAR(d) >= hoy.slice(0, 8) + '01'; d++) if (!porDia.has(diaAR(d))) faltan.push(diaAR(d));
+for (const dia of faltan.slice(0, 4)) {
+  const rango = `from=${dia}&until=${dia}`;
+  const total = await leer(page, `${PANEL}?${rango}`, false);
+  const acordar = await leer(page, `${PANEL}?${rango}&payment_method=${ACORDAR}`, false);
+  porDia.set(dia, [dia, total[0], total[1], acordar[0], acordar[1], ahora]);
+}
+const filas = [...porDia.values()].sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+await sheets.spreadsheets.values.update({
+  spreadsheetId: SPREADSHEET_ID,
+  range: `'${DIARIO}'!A1:F${filas.length + 1}`,
+  valueInputOption: 'RAW',
+  requestBody: { values: [['dia', 'totalMonto', 'totalCant', 'acordarMonto', 'acordarCant', 'updatedAt'], ...filas] },
+});
+
 // Guardar la sesión renovada para la próxima corrida (cifrada: el cache de Actions no es secreto).
 const renovada = await context.storageState();
 writeFileSync(SESION_ENC, cifrar({ ...renovada, _guardado: new Date().toISOString() }));
 await browser.close();
 
-const auth = new google.auth.GoogleAuth({
-  credentials: JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY),
-  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-});
-await google.sheets({ version: 'v4', auth }).spreadsheets.values.update({
+await sheets.spreadsheets.values.update({
   spreadsheetId: SPREADSHEET_ID,
   range: RANGE,
   valueInputOption: 'RAW',

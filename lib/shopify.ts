@@ -64,3 +64,36 @@ export async function getShopifyVentas(periodo: Periodo = 'mes') {
   } while (after);
   return { orders, amount: Math.round(amount * 100) / 100 };
 }
+
+// Pedidos pagados de Shopify por día AR desde `desde` (YYYY-MM-DD), mismo criterio que getShopifyVentas.
+export async function getShopifyDiario(desde: string) {
+  const token = await getToken();
+  const q = `financial_status:paid created_at:>='${desde}T00:00:00-03:00' -test:true`;
+  const query = `query($q: String!, $after: String) {
+    orders(first: 250, after: $after, query: $q) {
+      pageInfo { hasNextPage endCursor }
+      nodes { createdAt subtotalPriceSet { shopMoney { amount } } }
+    }
+  }`;
+  const dias = new Map<string, { ventas: number; monto: number }>();
+  let after: string | null = null;
+  do {
+    const r: Response = await fetch(`https://${SHOP}/admin/api/${API_VERSION}/graphql.json`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': token },
+      body: JSON.stringify({ query, variables: { q, after } }),
+      cache: 'no-store',
+    });
+    const d: { errors?: unknown; data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string }; nodes: { createdAt: string; subtotalPriceSet: { shopMoney: { amount: string } } }[] } } } = await r.json();
+    if (d.errors) throw new Error(JSON.stringify(d.errors));
+    for (const o of d.data.orders.nodes) {
+      const dia = new Date(new Date(o.createdAt).getTime() - 3 * 3600e3).toISOString().slice(0, 10);
+      const x = dias.get(dia) ?? { ventas: 0, monto: 0 };
+      x.ventas += 1;
+      x.monto += Number(o.subtotalPriceSet.shopMoney.amount);
+      dias.set(dia, x);
+    }
+    after = d.data.orders.pageInfo.hasNextPage ? d.data.orders.pageInfo.endCursor : null;
+  } while (after);
+  return dias;
+}
