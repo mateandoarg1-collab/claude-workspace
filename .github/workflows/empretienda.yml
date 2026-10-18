@@ -2,11 +2,18 @@ name: Métricas Empretienda
 
 # Lee Métricas de Empretienda (hoy / semana / mes) y actualiza la planilla que muestra /canales,
 # sin depender de la Mac. Ver scripts/empretienda-metricas.mjs.
+#
+# Los crons de GitHub son "a mejor esfuerzo" (llegaron a no correr en horas), así que el job queda en
+# un ciclo: lee cada 30 min durante ~5 h 40 min y al terminar se relanza solo (workflow_dispatch con
+# GITHUB_TOKEN sí dispara corridas nuevas). El cron queda de red de seguridad por si se corta la cadena.
 on:
   schedule:
-    # minutos "raros": GitHub demora o saltea los crons en punto (:00 / :30) cuando hay mucha demanda
-    - cron: '7,37 * * * *'
+    - cron: '7 */3 * * *'
   workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
 
 concurrency:
   group: empretienda-metricas
@@ -15,7 +22,7 @@ concurrency:
 jobs:
   metricas:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 355
     steps:
       - uses: actions/checkout@v4
 
@@ -35,14 +42,29 @@ jobs:
           key: empretienda-sesion-${{ github.run_id }}
           restore-keys: empretienda-sesion-
 
-      - name: Leer Métricas y actualizar planilla
-        run: node scripts/empretienda-metricas.mjs
+      - name: Leer Métricas cada 30 min (~5 h 40 min)
+        run: |
+          fin=$(( $(date +%s) + 340 * 60 ))
+          while :; do
+            inicio=$(date +%s)
+            node scripts/empretienda-metricas.mjs || echo "::warning::Falló esta lectura, sigo con la próxima"
+            proxima=$(( inicio + 30 * 60 ))
+            [ $proxima -ge $fin ] && break
+            sleep $(( proxima - $(date +%s) ))
+          done
         env:
           EMPRETIENDA_STATE: ${{ secrets.EMPRETIENDA_STATE }}
           EMPRETIENDA_KEY: ${{ secrets.EMPRETIENDA_KEY }}
           GOOGLE_SERVICE_ACCOUNT_KEY: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_KEY }}
 
       - uses: actions/cache/save@v4
+        if: always()
         with:
           path: .sesion.enc
           key: empretienda-sesion-${{ github.run_id }}
+
+      - name: Relanzar el ciclo
+        if: always()
+        run: gh workflow run empretienda.yml -R ${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ github.token }}
