@@ -1,4 +1,4 @@
-import { mlFetch, ML_USER_ID } from '@/lib/ml';
+import { CHINA_FAMILY_IDS, mlFetch, ML_USER_ID } from '@/lib/ml';
 
 export const maxDuration = 60;
 
@@ -11,6 +11,7 @@ type Item = {
   title: string;
   status: string;
   inventory_id?: string;
+  family_id?: number | null;
   thumbnail_id?: string;
   permalink: string;
   shipping?: { logistic_type?: string };
@@ -56,25 +57,26 @@ export async function GET(req: Request) {
     const items = (
       await pool(chunks, 5, (c) =>
         mlFetch<Array<{ body: Item }>>(
-          `/items?ids=${c.join(',')}&attributes=id,title,status,inventory_id,shipping,variations,permalink,thumbnail_id`,
+          `/items?ids=${c.join(',')}&attributes=id,title,status,inventory_id,family_id,shipping,variations,permalink,thumbnail_id`,
         ),
       )
     ).flat();
 
-    const units: Array<{ item_id: string; variation_id: number | null; inventory_id: string; title: string; variant: string; status: string; permalink: string; thumbnail: string }> = [];
+    const units: Array<{ item_id: string; variation_id: number | null; inventory_id: string; title: string; variant: string; status: string; china: boolean; permalink: string; thumbnail: string }> = [];
     for (const { body: it } of items) {
       if (it?.shipping?.logistic_type !== 'fulfillment') continue;
+      const china = it.family_id != null && CHINA_FAMILY_IDS.has(it.family_id);
       if (it.variations?.length) {
         for (const v of it.variations) {
           if (!v.inventory_id) continue;
           units.push({
             item_id: it.id, variation_id: v.id, inventory_id: v.inventory_id, title: it.title,
             variant: (v.attribute_combinations ?? []).map((a) => a.value_name).join(' / '),
-            status: it.status, permalink: it.permalink, thumbnail: pic(v.picture_ids?.[0] ?? it.thumbnail_id),
+            status: it.status, china, permalink: it.permalink, thumbnail: pic(v.picture_ids?.[0] ?? it.thumbnail_id),
           });
         }
       } else if (it.inventory_id) {
-        units.push({ item_id: it.id, variation_id: null, inventory_id: it.inventory_id, title: it.title, variant: '', status: it.status, permalink: it.permalink, thumbnail: pic(it.thumbnail_id) });
+        units.push({ item_id: it.id, variation_id: null, inventory_id: it.inventory_id, title: it.title, variant: '', status: it.status, china, permalink: it.permalink, thumbnail: pic(it.thumbnail_id) });
       }
     }
 

@@ -16,6 +16,7 @@ type Row = {
   vendidas: number;
   por_dia: number;
   dias_stock: number | null;
+  china: boolean;
 };
 
 const COBERTURA = 45; // días objetivo para "Mandar", igual que el mail de las 9:00
@@ -26,6 +27,33 @@ function nivel(r: Row) {
   if (r.dias_stock <= 10) return { c: 'text-red-300 bg-red-950', t: `${Math.floor(r.dias_stock)} días`, o: 1 };
   if (r.dias_stock <= 20) return { c: 'text-amber-300 bg-amber-950', t: `${Math.floor(r.dias_stock)} días`, o: 2 };
   return { c: 'text-emerald-300 bg-emerald-950', t: `${Math.floor(r.dias_stock)} días`, o: 3 };
+}
+
+function Item(r: Row) {
+              const n = nivel(r);
+              const mandar = Math.max(0, Math.ceil(r.por_dia * COBERTURA - r.stock));
+              return (
+                <li key={`${r.item_id}-${r.variation_id}`} className="flex gap-3 items-center rounded-lg bg-slate-900 border border-slate-800 p-2">
+                  <a href={r.permalink} target="_blank" rel="noreferrer" className="shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={r.thumbnail} alt="" className="w-14 h-14 rounded bg-white object-contain" />
+                  </a>
+                  <div className="flex-1 min-w-0">
+                    <a href={r.permalink} target="_blank" rel="noreferrer" className="text-xs text-sky-400">{r.item_id}</a>
+                    {r.status === 'paused' && <span className="ml-2 text-xs text-amber-400">pausada</span>}
+                    <div className="text-sm truncate">{r.title}</div>
+                    {r.variant && <div className="text-xs text-slate-300 font-semibold truncate">{r.variant}</div>}
+                    <div className="text-xs text-slate-400">
+                      vende {r.por_dia.toFixed(1)}/día{r.no_disponible > 0 && ` · ${r.no_disponible} no disp.`}
+                      {mandar > 0 && <> · mandar <b className="text-slate-200">{mandar}</b></>}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-xl font-bold">{r.stock}</div>
+                    <div className={`text-xs rounded px-1.5 py-0.5 ${n.c}`}>{n.t}</div>
+                  </div>
+                </li>
+              );
 }
 
 export default function Full() {
@@ -61,6 +89,11 @@ export default function Full() {
       .filter((r) => !b || `${r.title} ${r.variant} ${r.item_id}`.toLowerCase().includes(b))
       .sort((a, z) => nivel(a).o - nivel(z).o || (a.dias_stock ?? 1e9) - (z.dias_stock ?? 1e9) || z.por_dia - a.por_dia);
   }, [rows, filtro, busca]);
+
+  const chinos = useMemo(
+    () => rows.filter((r) => r.china).sort((a, z) => nivel(a).o - nivel(z).o || (a.dias_stock ?? 1e9) - (z.dias_stock ?? 1e9)),
+    [rows],
+  );
 
   const cuenta = (o: number) => rows.filter((r) => nivel(r).o === o).length;
 
@@ -101,34 +134,16 @@ export default function Full() {
         {error && <div className="rounded bg-red-950 text-red-300 p-3 text-sm">{error}</div>}
         {loading && <div className="text-slate-400 text-sm">Cargando stock de Full… (tarda unos segundos)</div>}
 
+        {!loading && chinos.length > 0 && (
+          <section className="rounded-xl border border-emerald-800 bg-emerald-950/30 p-3 space-y-2">
+            <h2 className="text-sm font-semibold text-emerald-300">🇨🇳 Importados China en Full ({chinos.length})</h2>
+            <ul className="space-y-2">{chinos.map(Item)}</ul>
+          </section>
+        )}
+
         {!loading && (
           <ul className="space-y-2">
-            {lista.map((r) => {
-              const n = nivel(r);
-              const mandar = Math.max(0, Math.ceil(r.por_dia * COBERTURA - r.stock));
-              return (
-                <li key={`${r.item_id}-${r.variation_id}`} className="flex gap-3 items-center rounded-lg bg-slate-900 border border-slate-800 p-2">
-                  <a href={r.permalink} target="_blank" rel="noreferrer" className="shrink-0">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={r.thumbnail} alt="" className="w-14 h-14 rounded bg-white object-contain" />
-                  </a>
-                  <div className="flex-1 min-w-0">
-                    <a href={r.permalink} target="_blank" rel="noreferrer" className="text-xs text-sky-400">{r.item_id}</a>
-                    {r.status === 'paused' && <span className="ml-2 text-xs text-amber-400">pausada</span>}
-                    <div className="text-sm truncate">{r.title}</div>
-                    {r.variant && <div className="text-xs text-slate-300 font-semibold truncate">{r.variant}</div>}
-                    <div className="text-xs text-slate-400">
-                      vende {r.por_dia.toFixed(1)}/día{r.no_disponible > 0 && ` · ${r.no_disponible} no disp.`}
-                      {mandar > 0 && <> · mandar <b className="text-slate-200">{mandar}</b></>}
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-xl font-bold">{r.stock}</div>
-                    <div className={`text-xs rounded px-1.5 py-0.5 ${n.c}`}>{n.t}</div>
-                  </div>
-                </li>
-              );
-            })}
+            {lista.map(Item)}
             {!lista.length && <li className="text-slate-400 text-sm">Nada para reponer 🎉</li>}
           </ul>
         )}
