@@ -4,7 +4,8 @@ name: Métricas Empretienda
 # sin depender de la Mac. Ver scripts/empretienda-metricas.mjs.
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    # minutos "raros": GitHub demora o saltea los crons en punto (:00 / :30) cuando hay mucha demanda
+    - cron: '7,37 * * * *'
   workflow_dispatch:
 
 concurrency:
