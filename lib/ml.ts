@@ -174,22 +174,26 @@ export async function fetchItemMeta(ids: string[]): Promise<Map<string, ItemMeta
 }
 
 export async function fetchOrdersInRange(from: Date, to: Date): Promise<MLOrder[]> {
-  const out: MLOrder[] = [];
-  let offset = 0;
-  while (true) {
-    const q = new URLSearchParams({
-      seller: ML_USER_ID(),
-      'order.date_created.from': fmtTZ(from),
-      'order.date_created.to': fmtTZ(to),
-      sort: 'date_desc',
-      limit: '50',
-      offset: String(offset),
-    });
-    const data = await mlFetch<MLOrderSearch>(`/orders/search?${q}`);
-    out.push(...data.results);
-    if (data.results.length < 50) break;
-    offset += 50;
-    if (offset > 5000) break; // safety
+  const page = (offset: number) =>
+    mlFetch<MLOrderSearch>(
+      `/orders/search?${new URLSearchParams({
+        seller: ML_USER_ID(),
+        'order.date_created.from': fmtTZ(from),
+        'order.date_created.to': fmtTZ(to),
+        sort: 'date_desc',
+        limit: '50',
+        offset: String(offset),
+      })}`,
+    );
+  // Primera página para saber el total; el resto en paralelo de a 8 (un mes son ~50 páginas y
+  // de a una se pasaba del tiempo máximo de Vercel).
+  const first = await page(0);
+  const offsets: number[] = [];
+  for (let o = 50; o < Math.min(first.paging.total, 5050); o += 50) offsets.push(o);
+  const out: MLOrder[] = [...first.results];
+  for (let i = 0; i < offsets.length; i += 8) {
+    const pages = await Promise.all(offsets.slice(i, i + 8).map(page));
+    for (const p of pages) out.push(...p.results);
   }
   return out;
 }
