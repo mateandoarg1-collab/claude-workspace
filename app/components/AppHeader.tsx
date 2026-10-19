@@ -11,10 +11,7 @@ const NAV: Array<{ href: string; label: string; badge?: boolean }> = [
   { href: '/mercadolibre', label: 'Mercado Libre' },
   { href: '/full', label: 'Stock Full' },
   { href: '/productos', label: 'Productos' },
-  { href: '/competencia', label: 'Competencia' },
-  { href: '/comportamiento', label: 'Comportamiento' },
   { href: '/preguntas', label: 'Preguntas', badge: true },
-  { href: '/resumen', label: 'Resumen 📱' },
 ];
 
 const WIDTHS = { '4xl': 'max-w-4xl', '5xl': 'max-w-5xl', '7xl': 'max-w-7xl' } as const;

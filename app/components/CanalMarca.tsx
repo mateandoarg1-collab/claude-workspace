@@ -1,4 +1,4 @@
-// Logo de cada canal de venta (en /canales y /resumen). Plataformas: su logo (PNG en public/canales);
+// Logo de cada canal de venta (en /canales). Plataformas: su logo (PNG en public/canales);
 // Local y Mayorista: etiqueta con emoji.
 export type CanalId = 'online' | 'ml' | 'local' | 'shopify' | 'mayorista';
 
