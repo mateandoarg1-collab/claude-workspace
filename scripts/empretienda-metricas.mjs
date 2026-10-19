@@ -78,7 +78,18 @@ async function iniciarSesion(page) {
   console.log('Sesión vencida: iniciando sesión de nuevo');
   await page.locator('input[name=username]').fill(process.env.EMPRETIENDA_EMAIL);
   await page.locator('input[name=username]').press('Enter');
-  await page.locator('input[type=password]:visible').waitFor({ state: 'visible', timeout: 20000 });
+  try {
+    await page.locator('input[type=password]:visible').waitFor({ state: 'visible', timeout: 20000 });
+  } catch (e) {
+    // diagnóstico sin datos personales (el repo es público): ruta, títulos y botones de la pantalla
+    const u = new URL(page.url());
+    const vis = await page.evaluate(() =>
+      [...document.querySelectorAll('h1,h2,button,[role=alert],.ulp-input-error-message,iframe')]
+        .map((el) => (el.tagName === 'IFRAME' ? `iframe:${new URL(el.src || 'about:blank').hostname}` : el.innerText.trim()))
+        .filter(Boolean).slice(0, 15));
+    console.log(`No apareció la clave. Pantalla: ${u.hostname}${u.pathname} → ${JSON.stringify(vis).replace(/[\w.+-]+@[\w.-]+/g, '<mail>')}`);
+    throw e;
+  }
   await page.locator('input[type=password]:visible').fill(process.env.EMPRETIENDA_PASSWORD);
   await page.locator('input[type=password]:visible').press('Enter');
   await page.waitForURL((u) => u.hostname === 'panel.empretienda.com' || /mfa/.test(u.href), { timeout: 30000 });
