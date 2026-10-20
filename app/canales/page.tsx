@@ -77,7 +77,7 @@ export default function Canales() {
   const monto = (id: CanalId) => canales.find((c) => c.id === id)?.monto ?? 0;
   const roas = [
     { nombre: 'Mercado Libre', detalle: 'Product Ads (API ML)', ventas: monto('ml'), pauta: ml.data ? ml.data.ads : undefined, falta: 'No se pudo leer la publicidad de ML' },
-    { nombre: 'Meta Ads', detalle: 'Tienda Online (Empretienda) · 2 cuentas', ventas: monto('online'), pauta: meta.data ? meta.data.spend : undefined, falta: meta.data?.motivo ?? '' },
+    { nombre: 'Meta Ads', detalle: 'Tienda Online (Empretienda) · 2 cuentas (MATEANDO2 +8% comisión)', ventas: monto('online'), pauta: meta.data ? meta.data.spend : undefined, falta: meta.data?.motivo ?? '' },
   ];
   const pautaTotal = roas.reduce((s, r) => s + (r.pauta ?? 0), 0);
   const ventasConPauta = roas.filter((r) => r.pauta != null).reduce((s, r) => s + r.ventas, 0);
