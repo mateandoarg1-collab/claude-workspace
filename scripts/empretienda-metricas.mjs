@@ -109,14 +109,22 @@ async function leer(page, url, esMes) {
     if (i === 2) throw new Error(`Empretienda no aplicó el filtro: ${url}`);
   }
   await page.getByText('Volumen de ventas').first().waitFor({ timeout: 30000 });
-  await page.waitForTimeout(2000);
-  const texto = await page.innerText('body');
-  return [numero(texto, 'Volumen de ventas'), numero(texto, 'Cantidad de ventas')];
+  // Empretienda va completando los números mientras carga: leer hasta que dos lecturas seguidas coincidan.
+  let previo = '';
+  for (let i = 0; i < 15; i++) {
+    await page.waitForTimeout(2000);
+    const texto = await page.innerText('body');
+    const actual = [numero(texto, 'Volumen de ventas'), numero(texto, 'Cantidad de ventas')];
+    if (actual.join() === previo) return actual;
+    previo = actual.join();
+  }
+  throw new Error(`Los números de Métricas no se estabilizaron: ${url}`);
 }
 
 const browser = await chromium.launch();
 const context = await browser.newContext({
   viewport: { width: 1280, height: 800 },
+  timezoneId: 'America/Argentina/Buenos_Aires',
   storageState: sesionInicial(),
 });
 const page = await context.newPage();
