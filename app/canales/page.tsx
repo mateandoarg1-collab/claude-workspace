@@ -84,6 +84,8 @@ export default function Canales() {
   const pautaTotal = roas.reduce((s, r) => s + (r.pauta ?? 0), 0);
   // ventas de cada canal una sola vez (Meta y Google empujan las mismas ventas de la Tienda Online)
   const ventasConPauta = [...new Set(roas.filter((r) => r.pauta != null).map((r) => r.canal))].reduce((s, c) => s + monto(c), 0);
+  // Tienda Online junta: Meta + Google contra las mismas ventas
+  const pautaOnline = roas.filter((r) => r.canal === 'online' && r.pauta != null).reduce((s, r) => s + (r.pauta ?? 0), 0);
   const fmtRoas = (v: number, p: number | null | undefined) => (p ? `${(v / p).toFixed(1)}x` : '—');
 
   const totalGeneral = canales.reduce((s, c) => s + c.monto, 0);
@@ -176,6 +178,15 @@ export default function Canales() {
                   <td className="text-right tabular-nums pl-4 font-bold text-emerald-300">{fmtRoas(r.ventas, r.pauta)}</td>
                 </tr>
               ))}
+              <tr className="border-t border-slate-800 bg-slate-950/40 font-semibold">
+                <td className="py-3 pl-2">
+                  Tienda Online
+                  <div className="text-xs font-normal text-slate-500">Meta + Google juntos</div>
+                </td>
+                <td className="text-right tabular-nums">{fmt(monto('online'))}</td>
+                <td className="text-right tabular-nums pl-4">{fmt(pautaOnline)}</td>
+                <td className="text-right tabular-nums pl-4 text-emerald-300">{fmtRoas(monto('online'), pautaOnline)}</td>
+              </tr>
               <tr className="border-t-2 border-slate-700 font-bold">
                 <td className="py-3">Total con pauta</td>
                 <td className="text-right tabular-nums">{fmt(ventasConPauta)}</td>
