@@ -104,11 +104,16 @@ async function leer(page, url, esMes) {
       await iniciarSesion(page);
       continue;
     }
-    // el mes en curso es el filtro por defecto: el panel saca las fechas de la URL
-    if (page.url().includes('from=') || esMes) break;
+    if (esMes || page.url().includes('from=')) break;
     if (i === 2) throw new Error(`Empretienda no aplicó el filtro: ${url}`);
   }
   await page.getByText('Volumen de ventas').first().waitFor({ timeout: 30000 });
+  if (esMes) {
+    // Mes en curso: vista por defecto ("Ventas de Octubre"). Con fechas explícitas, Empretienda corta en 1.500 ventas.
+    const mes = new Date().toLocaleDateString('es-AR', { month: 'long', timeZone: 'America/Argentina/Buenos_Aires' });
+    const t = await page.innerText('body');
+    if (!t.toLowerCase().includes(`ventas de ${mes}`)) throw new Error(`Métricas no muestra "Ventas de ${mes}": ${url}`);
+  }
   // Empretienda va completando los números mientras carga: leer hasta que dos lecturas seguidas coincidan.
   let previo = '';
   for (let i = 0; i < 15; i++) {
@@ -133,8 +138,11 @@ const ahora = new Date().toISOString();
 const values = [];
 for (const [periodo, [desde, hasta]] of Object.entries(PERIODOS)) {
   const rango = `from=${desde}&until=${hasta}`;
-  const total = await leer(page, `${PANEL}?${rango}`, periodo === 'mes');
-  const acordar = await leer(page, `${PANEL}?${rango}&payment_method=${ACORDAR}`, periodo === 'mes');
+  const esMes = periodo === 'mes';
+  // el mes va sin fechas (vista por defecto): con fechas explícitas Empretienda corta en 1.500 ventas
+  const total = await leer(page, esMes ? PANEL : `${PANEL}?${rango}`, esMes);
+  const acordar = await leer(page, esMes ? `${PANEL}?payment_method=${ACORDAR}` : `${PANEL}?${rango}&payment_method=${ACORDAR}`, esMes);
+  if (total[1] === 1500 || acordar[1] === 1500) throw new Error(`Empretienda devolvió exactamente 1.500 ventas (${periodo}): probable corte`);
   values.push([periodo, desde, total[0], total[1], acordar[0], acordar[1], ahora]);
 }
 // Histórico por día del mes (pestaña empretienda_diario) para el gráfico de /canales: siempre hoy y ayer,
