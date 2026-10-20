@@ -19,9 +19,11 @@ const url = auth.generateAuthUrl({
   scope: ['https://www.googleapis.com/auth/adwords'],
 });
 
-console.log('\n👉 Abriendo el navegador para autorizar Google Ads...');
-console.log('   Entrá con la cuenta de Google que tiene acceso a la cuenta de Google Ads de Mateando.\n');
-exec(`open "${url}"`);
+console.log('\n👉 Copiá este link y abrilo en una ventana de INCÓGNITO de Chrome (Cmd + Shift + N):\n');
+console.log(url + '\n');
+console.log('   Entrá con la cuenta de Google que tiene acceso a Google Ads de Mateando.');
+console.log('   (Con varias cuentas abiertas en Chrome, Google suele dar "Error 500".)\n');
+if (!process.argv.includes('--sin-abrir')) exec(`open "${url}"`);
 
 const server = http.createServer(async (req, res) => {
   const code = new URL(req.url, 'http://localhost:9998').searchParams.get('code');
