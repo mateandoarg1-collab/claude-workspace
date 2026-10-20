@@ -73,7 +73,7 @@ export default function Canales() {
     { id: 'online' as CanalId, nombre: 'Tienda Online (.com)', monto: emp ? emp.totalMonto - emp.acordarMonto : 0, cantidad: emp ? emp.totalCant - emp.acordarCant : 0, fuente: emp ? `${empFuente} (total − Acordar)` : empFuente, hace: emp ? hace(emp.updatedAt, ahora) : '' },
     { id: 'ml' as CanalId, nombre: 'Mercado Libre', monto: ml.data?.amount ?? 0, cantidad: ml.data?.orders ?? 0, fuente: fuente(ml, 'API en vivo') },
     { id: 'local' as CanalId, nombre: 'Local Físico', monto: emp?.acordarMonto ?? 0, cantidad: emp?.acordarCant ?? 0, fuente: emp ? `${empFuente} (Acordar)` : empFuente, hace: emp ? hace(emp.updatedAt, ahora) : '' },
-    { id: 'shopify' as CanalId, nombre: 'Shopify (mateando.com)', monto: shopify.data?.amount ?? 0, cantidad: shopify.data?.orders ?? 0, fuente: fuente(shopify, 'API en vivo · pedidos pagados (subtotal con IVA)') },
+    { id: 'shopify' as CanalId, nombre: 'Shopify (mateando.com)', monto: shopify.data?.amount ?? 0, cantidad: shopify.data?.orders ?? 0, fuente: fuente(shopify, 'API en vivo · ventas brutas pagadas (sin IVA, como el informe de Shopify)') },
     { id: 'mayorista' as CanalId, nombre: 'Mayorista', monto: mayorista.data?.amount ?? 0, cantidad: mayorista.data?.orders ?? 0, fuente: fuente(mayorista, `Google Sheets (${mayorista.data?.tab ?? '—'})`) },
   ];
 
