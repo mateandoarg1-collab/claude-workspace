@@ -1,11 +1,11 @@
 // Shopify (mateando.com): ventas pagadas del período (hoy / ayer / semana / mes).
 // Usa la app "mateando-whatsapp-button" (Dev Dashboard, scope read_orders) con client credentials:
 // env SHOPIFY_CLIENT_ID + SHOPIFY_CLIENT_SECRET → token de 24 h.
-// Mismo número que el informe VENTAS REALES (PAGADAS) de Shopify: pedidos con estado de pago "Pagado" y
-// monto = "Ventas brutas" = productos antes de descuentos, sin IVA ni envío = (subtotal + descuentos) / 1,21.
-// (Juampi lo pidió igual al informe, 20-oct-2026.)
-const brutas = (o: { subtotalPriceSet: { shopMoney: { amount: string } }; totalDiscountsSet: { shopMoney: { amount: string } } }) =>
-  (Number(o.subtotalPriceSet.shopMoney.amount) + Number(o.totalDiscountsSet.shopMoney.amount)) / 1.21;
+// Mismos pedidos que el informe VENTAS REALES (PAGADAS) de Shopify (estado de pago "Pagado"), pero el monto es
+// lo que pagó el cliente por los productos (subtotal: con IVA y con descuentos, sin envío) = la plata que entra,
+// mismo criterio que Empretienda y ML. El informe muestra "Ventas brutas" = (subtotal + descuentos) / 1,21, que
+// no es lo cobrado (decidido con Juampi, 20-oct-2026).
+const brutas = (o: { subtotalPriceSet: { shopMoney: { amount: string } } }) => Number(o.subtotalPriceSet.shopMoney.amount);
 
 import { desdeAR, type Periodo } from './periodo';
 
@@ -37,7 +37,7 @@ async function getToken() {
 const QUERY = `query($q: String!, $after: String) {
   orders(first: 250, after: $after, query: $q) {
     pageInfo { hasNextPage endCursor }
-    nodes { subtotalPriceSet { shopMoney { amount } } totalDiscountsSet { shopMoney { amount } } }
+    nodes { subtotalPriceSet { shopMoney { amount } } }
   }
 }`;
 
@@ -55,7 +55,7 @@ export async function getShopifyVentas(periodo: Periodo = 'mes') {
       body: JSON.stringify({ query: QUERY, variables: { q, after } }),
       cache: 'no-store',
     });
-    const d: { errors?: unknown; data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string }; nodes: { subtotalPriceSet: { shopMoney: { amount: string } }; totalDiscountsSet: { shopMoney: { amount: string } } }[] } } } = await r.json();
+    const d: { errors?: unknown; data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string }; nodes: { subtotalPriceSet: { shopMoney: { amount: string } } }[] } } } = await r.json();
     if (d.errors) throw new Error(JSON.stringify(d.errors));
     const page = d.data.orders;
     for (const o of page.nodes) {
@@ -74,7 +74,7 @@ export async function getShopifyDiario(desde: string) {
   const query = `query($q: String!, $after: String) {
     orders(first: 250, after: $after, query: $q) {
       pageInfo { hasNextPage endCursor }
-      nodes { createdAt subtotalPriceSet { shopMoney { amount } } totalDiscountsSet { shopMoney { amount } } }
+      nodes { createdAt subtotalPriceSet { shopMoney { amount } } }
     }
   }`;
   const dias = new Map<string, { ventas: number; monto: number }>();
@@ -86,7 +86,7 @@ export async function getShopifyDiario(desde: string) {
       body: JSON.stringify({ query, variables: { q, after } }),
       cache: 'no-store',
     });
-    const d: { errors?: unknown; data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string }; nodes: { createdAt: string; subtotalPriceSet: { shopMoney: { amount: string } }; totalDiscountsSet: { shopMoney: { amount: string } } }[] } } } = await r.json();
+    const d: { errors?: unknown; data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string }; nodes: { createdAt: string; subtotalPriceSet: { shopMoney: { amount: string } } }[] } } } = await r.json();
     if (d.errors) throw new Error(JSON.stringify(d.errors));
     for (const o of d.data.orders.nodes) {
       const dia = new Date(new Date(o.createdAt).getTime() - 3 * 3600e3).toISOString().slice(0, 10);
