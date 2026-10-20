@@ -3,9 +3,12 @@ import { desdeAR, hastaAR, parsePeriodo } from '@/lib/periodo';
 // Gasto de Meta Ads del período (?periodo=hoy|ayer|semana|mes): la pauta de la Tienda Online (Empretienda).
 // Suma todas las cuentas de META_AD_ACCOUNTS (con RECARGO por comisiones) (act_…, separadas por coma). Token: META_ACCESS_TOKEN
 // (usuario de sistema "cuenta mp3", no vence). Sin eso devuelve spend null.
-// Recargo por comisiones sobre lo que informa Meta: la cuenta MATEANDO2 se paga con un medio que cobra
-// 8% (pedido de Agus Machado, ads manager). MATEANDO 3 MP va tal cual.
-const RECARGO: Record<string, number> = { act_1439554678210755: 1.08 };
+// Recargo por comisiones sobre lo que informa Meta: estas cuentas se pagan con un medio que cobra 8%
+// (pedido de Agus Machado, ads manager). MATEANDO 3 MP va tal cual.
+const RECARGO: Record<string, number> = {
+  act_1439554678210755: 1.08, // MATEANDO2
+  act_750953847402633: 1.08, // MATEANDO-MANYCHAT (Mayorista)
+};
 
 // ?cuenta=mayorista usa la pauta del canal Mayorista: META_MAYORISTA_TOKEN + META_MAYORISTA_ACCOUNTS
 // (app "mateando mayorista app", cuenta act_750953847402633 MATEANDO-MANYCHAT, campañas de mensajes).
