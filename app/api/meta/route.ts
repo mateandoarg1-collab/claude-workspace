@@ -8,6 +8,7 @@ import { desdeAR, hastaAR, parsePeriodo } from '@/lib/periodo';
 const RECARGO: Record<string, number> = {
   act_1439554678210755: 1.08, // MATEANDO2
   act_750953847402633: 1.08, // MATEANDO-MANYCHAT (Mayorista)
+  act_1423285683055984: 1.08, // MATEANDO - SHOPIFY
 };
 
 // ?cuenta= elige qué pauta leer:
