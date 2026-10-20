@@ -49,6 +49,7 @@ export default function Canales() {
   const shopify = useApi<Venta>(`/api/shopify?periodo=${periodo}`);
   const meta = useApi<{ spend: number | null; motivo?: string }>(`/api/meta?periodo=${periodo}`);
   const gads = useApi<{ spend: number | null; motivo?: string }>(`/api/google-ads?periodo=${periodo}`);
+  const tiktok = useApi<{ spend: number | null; motivo?: string }>(`/api/tiktok?periodo=${periodo}`);
   const mayorista = useApi<Venta & { tab: string }>(`/api/mayorista?periodo=${periodo}`);
   const [manual, setManual] = useState<EmpretiendaManual | null>(null);
 
@@ -74,17 +75,18 @@ export default function Canales() {
     { id: 'mayorista' as CanalId, nombre: 'Mayorista', monto: mayorista.data?.amount ?? 0, cantidad: mayorista.data?.orders ?? 0, fuente: fuente(mayorista, `Google Sheets (${mayorista.data?.tab ?? '—'})`) },
   ];
 
-  // ROAS: ML con su pauta propia (Product Ads); Meta (2 cuentas) y Google Ads son la pauta de la Tienda Online.
+  // ROAS: ML con su pauta propia (Product Ads); Meta (2 cuentas), Google Ads y TikTok son la pauta de la Tienda Online.
   const monto = (id: CanalId) => canales.find((c) => c.id === id)?.monto ?? 0;
   const roas = [
     { nombre: 'Mercado Libre', canal: 'ml' as CanalId, detalle: 'Product Ads (API ML)', ventas: monto('ml'), pauta: ml.data ? ml.data.ads : undefined, falta: 'No se pudo leer la publicidad de ML' },
     { nombre: 'Meta Ads', canal: 'online' as CanalId, detalle: 'Tienda Online (Empretienda) · 2 cuentas (MATEANDO2 +8% comisión)', ventas: monto('online'), pauta: meta.data ? meta.data.spend : undefined, falta: meta.data?.motivo ?? '' },
     { nombre: 'Google Ads', canal: 'online' as CanalId, detalle: 'Tienda Online (Empretienda) · cuenta 534-660-6046', ventas: monto('online'), pauta: gads.data ? gads.data.spend : undefined, falta: gads.data?.motivo ?? '' },
+    { nombre: 'TikTok Ads', canal: 'online' as CanalId, detalle: 'Tienda Online (Empretienda) · ANDOMAT 611 SRL', ventas: monto('online'), pauta: tiktok.data ? tiktok.data.spend : undefined, falta: tiktok.data?.motivo ?? '' },
   ];
   const pautaTotal = roas.reduce((s, r) => s + (r.pauta ?? 0), 0);
   // ventas de cada canal una sola vez (Meta y Google empujan las mismas ventas de la Tienda Online)
   const ventasConPauta = [...new Set(roas.filter((r) => r.pauta != null).map((r) => r.canal))].reduce((s, c) => s + monto(c), 0);
-  // Tienda Online junta: Meta + Google contra las mismas ventas
+  // Tienda Online junta: Meta + Google + TikTok contra las mismas ventas
   const pautaOnline = roas.filter((r) => r.canal === 'online' && r.pauta != null).reduce((s, r) => s + (r.pauta ?? 0), 0);
   const fmtRoas = (v: number, p: number | null | undefined) => (p ? `${(v / p).toFixed(1)}x` : '—');
 
@@ -181,7 +183,7 @@ export default function Canales() {
               <tr className="border-t border-slate-800 bg-slate-950/40 font-semibold">
                 <td className="py-3 pl-2">
                   Tienda Online
-                  <div className="text-xs font-normal text-slate-500">Meta + Google juntos</div>
+                  <div className="text-xs font-normal text-slate-500">Meta + Google + TikTok juntos</div>
                 </td>
                 <td className="text-right tabular-nums">{fmt(monto('online'))}</td>
                 <td className="text-right tabular-nums pl-4">{fmt(pautaOnline)}</td>
@@ -196,7 +198,7 @@ export default function Canales() {
             </tbody>
           </table>
           <p className="text-xs text-slate-500 mt-3">
-            ROAS = ventas ÷ gasto en pauta del mismo período. Meta y Google se miden contra las mismas ventas de la Tienda Online (en el total cuentan una vez). Local, Shopify y Mayorista no entran.
+            ROAS = ventas ÷ gasto en pauta del mismo período. Meta, Google y TikTok se miden contra las mismas ventas de la Tienda Online (en el total cuentan una vez). Local, Shopify y Mayorista no entran.
           </p>
         </section>
       </main>
