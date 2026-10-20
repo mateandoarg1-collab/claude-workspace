@@ -7,9 +7,13 @@ import { desdeAR, hastaAR, parsePeriodo } from '@/lib/periodo';
 // 8% (pedido de Agus Machado, ads manager). MATEANDO 3 MP va tal cual.
 const RECARGO: Record<string, number> = { act_1439554678210755: 1.08 };
 
+// ?cuenta=mayorista usa la pauta del canal Mayorista: META_MAYORISTA_TOKEN + META_MAYORISTA_ACCOUNTS
+// (app "mateando mayorista app", cuenta act_750953847402633 MATEANDO-MANYCHAT, campañas de mensajes).
 export async function GET(req: Request) {
-  const token = process.env.META_ACCESS_TOKEN;
-  const cuentas = (process.env.META_AD_ACCOUNTS ?? process.env.META_AD_ACCOUNT ?? '').split(',').map((c) => c.trim()).filter(Boolean);
+  const mayorista = new URL(req.url).searchParams.get('cuenta') === 'mayorista';
+  const token = mayorista ? process.env.META_MAYORISTA_TOKEN : process.env.META_ACCESS_TOKEN;
+  const listaCuentas = mayorista ? process.env.META_MAYORISTA_ACCOUNTS : (process.env.META_AD_ACCOUNTS ?? process.env.META_AD_ACCOUNT);
+  const cuentas = (listaCuentas ?? '').split(',').map((c) => c.trim()).filter(Boolean);
   if (!token || !cuentas.length) return Response.json({ spend: null, motivo: 'Falta acceso a la cuenta de Meta Ads' });
   try {
     const periodo = parsePeriodo(new URL(req.url).searchParams.get('periodo'));

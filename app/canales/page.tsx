@@ -48,6 +48,7 @@ export default function Canales() {
   const ml = useApi<Venta & { ads: number | null }>(`/api/ml/periodo?periodo=${periodo}`);
   const shopify = useApi<Venta>(`/api/shopify?periodo=${periodo}`);
   const meta = useApi<{ spend: number | null; motivo?: string }>(`/api/meta?periodo=${periodo}`);
+  const metaMay = useApi<{ spend: number | null; motivo?: string }>(`/api/meta?cuenta=mayorista&periodo=${periodo}`);
   const gads = useApi<{ spend: number | null; motivo?: string }>(`/api/google-ads?periodo=${periodo}`);
   const tiktok = useApi<{ spend: number | null; motivo?: string }>(`/api/tiktok?periodo=${periodo}`);
   const mayorista = useApi<Venta & { tab: string }>(`/api/mayorista?periodo=${periodo}`);
@@ -79,6 +80,7 @@ export default function Canales() {
   const monto = (id: CanalId) => canales.find((c) => c.id === id)?.monto ?? 0;
   const roas = [
     { nombre: 'Mercado Libre', canal: 'ml' as CanalId, detalle: 'Product Ads (API ML)', ventas: monto('ml'), pauta: ml.data ? ml.data.ads : undefined, falta: 'No se pudo leer la publicidad de ML' },
+    { nombre: 'Meta Mayorista', canal: 'mayorista' as CanalId, detalle: 'Mayorista · cuenta MATEANDO-MANYCHAT (mensajes)', ventas: monto('mayorista'), pauta: metaMay.data ? metaMay.data.spend : undefined, falta: metaMay.data?.motivo ?? '' },
     { nombre: 'Meta Ads', canal: 'online' as CanalId, detalle: 'Tienda Online (Empretienda) · 2 cuentas (MATEANDO2 +8% comisión)', ventas: monto('online'), pauta: meta.data ? meta.data.spend : undefined, falta: meta.data?.motivo ?? '' },
     { nombre: 'Google Ads', canal: 'online' as CanalId, detalle: 'Tienda Online (Empretienda) · cuenta 534-660-6046', ventas: monto('online'), pauta: gads.data ? gads.data.spend : undefined, falta: gads.data?.motivo ?? '' },
     { nombre: 'TikTok Ads', canal: 'online' as CanalId, detalle: 'Tienda Online (Empretienda) · ANDOMAT 611 SRL', ventas: monto('online'), pauta: tiktok.data ? tiktok.data.spend : undefined, falta: tiktok.data?.motivo ?? '' },
@@ -198,7 +200,7 @@ export default function Canales() {
             </tbody>
           </table>
           <p className="text-xs text-slate-500 mt-3">
-            ROAS = ventas ÷ gasto en pauta del mismo período. Meta, Google y TikTok se miden contra las mismas ventas de la Tienda Online (en el total cuentan una vez). Local, Shopify y Mayorista no entran.
+            ROAS = ventas ÷ gasto en pauta del mismo período. Meta, Google y TikTok se miden contra las mismas ventas de la Tienda Online (en el total cuentan una vez). Meta Mayorista se mide contra las ventas Mayorista. Local y Shopify no entran.
           </p>
         </section>
       </main>
