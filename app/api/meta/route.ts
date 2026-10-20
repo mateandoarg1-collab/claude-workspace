@@ -10,12 +10,17 @@ const RECARGO: Record<string, number> = {
   act_750953847402633: 1.08, // MATEANDO-MANYCHAT (Mayorista)
 };
 
-// ?cuenta=mayorista usa la pauta del canal Mayorista: META_MAYORISTA_TOKEN + META_MAYORISTA_ACCOUNTS
-// (app "mateando mayorista app", cuenta act_750953847402633 MATEANDO-MANYCHAT, campañas de mensajes).
+// ?cuenta= elige qué pauta leer:
+//   (nada)    → Tienda Online: META_ACCESS_TOKEN + META_AD_ACCOUNTS (MATEANDO2 + MATEANDO 3 MP)
+//   shopify   → Shopify: META_ACCESS_TOKEN + META_SHOPIFY_ACCOUNTS (act_1423285683055984 MATEANDO - SHOPIFY)
+//   mayorista → Mayorista: META_MAYORISTA_TOKEN + META_MAYORISTA_ACCOUNTS (act_750953847402633 MATEANDO-MANYCHAT)
 export async function GET(req: Request) {
-  const mayorista = new URL(req.url).searchParams.get('cuenta') === 'mayorista';
-  const token = mayorista ? process.env.META_MAYORISTA_TOKEN : process.env.META_ACCESS_TOKEN;
-  const listaCuentas = mayorista ? process.env.META_MAYORISTA_ACCOUNTS : (process.env.META_AD_ACCOUNTS ?? process.env.META_AD_ACCOUNT);
+  const cuenta = new URL(req.url).searchParams.get('cuenta');
+  const token = cuenta === 'mayorista' ? process.env.META_MAYORISTA_TOKEN : process.env.META_ACCESS_TOKEN;
+  const listaCuentas =
+    cuenta === 'mayorista' ? process.env.META_MAYORISTA_ACCOUNTS
+    : cuenta === 'shopify' ? process.env.META_SHOPIFY_ACCOUNTS
+    : (process.env.META_AD_ACCOUNTS ?? process.env.META_AD_ACCOUNT);
   const cuentas = (listaCuentas ?? '').split(',').map((c) => c.trim()).filter(Boolean);
   if (!token || !cuentas.length) return Response.json({ spend: null, motivo: 'Falta acceso a la cuenta de Meta Ads' });
   try {
