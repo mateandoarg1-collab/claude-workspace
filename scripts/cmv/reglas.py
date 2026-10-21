@@ -30,6 +30,7 @@ REGLAS = [
     (r'^NUEVO! MATE RANCHERO ROS', lambda t: R('MATE-MAD-2020'), 'ok'),
     (r'^BOX MAM. [1-4] - MATE RANCHERO BLANCO|^BOX MAM. 2', lambda t: R('MATE-MAD-2003', BOMB), 'ok'),
     (r'^BOX MAM. 3', lambda t: R('MATE-MAD-2020', BOMB), 'ok'),
+    (r'SET IMPERIAL ROSE QUARTZ \+ TERMO MATEANDO 1 L', lambda t: R('MATE-ACE-RQ', 'TER-MAT-5002', BOMB), 'ok'),
     (r'^BOX MAM. 4|IMPERIAL ACERO ROSE QUARTZ', lambda t: R('MATE-ACE-RQ', BOMB), 'ok'),
     (r'^BOX MAM. 1|IMPERIAL RUSTICO - MAM', lambda t: R('MATE-MAD-2008', BOMB), 'ok'),
     (r'KIT MATERO MATEANDO - TERMO 1 L MATE (ROSA|BEIGE|NEGRO|BLANCO)', lambda t: R('MATE-KIT-1L'), 'ok'),

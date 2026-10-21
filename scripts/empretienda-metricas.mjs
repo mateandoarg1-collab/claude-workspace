@@ -99,7 +99,7 @@ async function iniciarSesion(page) {
 
 async function leer(page, url, esMes) {
   for (let i = 0; ; i++) {
-    await page.goto(url, { waitUntil: 'networkidle' });
+    await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
     if (/auth0|login/.test(page.url())) {
       if (i === 2) throw new Error('No pude iniciar sesión en Empretienda');
       await iniciarSesion(page);
@@ -149,6 +149,9 @@ const context = await browser.newContext({
   timezoneId: 'America/Argentina/Buenos_Aires',
   storageState: sesionInicial(),
 });
+// Empretienda sumó grabación de sesión (Amplitude) y otros rastreadores que mandan pedidos sin parar: con ellos la
+// página nunca llega a "networkidle" y la lectura se corta por timeout (desde el 20-oct-2026). Se bloquean.
+await context.route(/amplitude\.com|braze\.com|d22fxaf9t8d39k\.cloudfront\.net|googletagmanager|google-analytics|analytics\.google|doubleclick|ccm\/collect/, (r) => r.abort());
 const page = await context.newPage();
 
 const ahora = new Date().toISOString();
