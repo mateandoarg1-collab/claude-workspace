@@ -64,7 +64,8 @@ export default function Posventa() {
   const d = res?.mes === mes ? res.data : undefined;
   const err = res?.mes === mes ? res.err : '';
   const maxMes = Math.max(1, ...(d?.meses ?? []).map((m) => m.reclamos));
-  const conFalla = (d?.productos ?? []).filter((p) => p.falla != null && p.reclamosEmp > 0).sort((a, b) => (b.falla ?? 0) - (a.falla ?? 0));
+  // de más reclamos a menos; a igual cantidad, el de mayor % de falla primero
+  const conFalla = (d?.productos ?? []).filter((p) => p.falla != null && p.reclamosEmp > 0).sort((a, b) => b.reclamosEmp - a.reclamosEmp || (b.falla ?? 0) - (a.falla ?? 0));
   const opciones = [...new Set([...(d?.meses ?? []).map((m) => m.mes), mesActual()])].sort().reverse();
 
   return (
