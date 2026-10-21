@@ -117,10 +117,11 @@ export async function getShopifyCmv(periodo: Periodo = 'mes') {
   const query = `query($q: String!, $after: String) {
     orders(first: 100, after: $after, query: $q) {
       pageInfo { hasNextPage endCursor }
-      nodes { lineItems(first: 50) { nodes { quantity sku name } } }
+      nodes { paymentGatewayNames subtotalPriceSet { shopMoney { amount } } lineItems(first: 50) { nodes { quantity sku name } } }
     }
   }`;
   let cmv = 0;
+  let montoTransf = 0;
   const sinCosto: Record<string, number> = {};
   let after: string | null = null;
   do {
@@ -130,9 +131,11 @@ export async function getShopifyCmv(periodo: Periodo = 'mes') {
       body: JSON.stringify({ query, variables: { q, after } }),
       cache: 'no-store',
     });
-    const d: { errors?: unknown; data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string }; nodes: { lineItems: { nodes: { quantity: number; sku: string | null; name: string }[] } }[] } } } = await r.json();
+    const d: { errors?: unknown; data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string }; nodes: { paymentGatewayNames: string[]; subtotalPriceSet: { shopMoney: { amount: string } }; lineItems: { nodes: { quantity: number; sku: string | null; name: string }[] } }[] } } } = await r.json();
     if (d.errors) throw new Error(JSON.stringify(d.errors));
     for (const o of d.data.orders.nodes) {
+      // Transferencia bancaria (pago manual) no lleva IVA; Mercado Pago sí.
+      if (!o.paymentGatewayNames.some((g) => /mercado ?pago/i.test(g))) montoTransf += Number(o.subtotalPriceSet.shopMoney.amount);
       for (const li of o.lineItems.nodes) {
         const sku = (li.sku ?? '').trim() || SKU_POR_NOMBRE.find(([rx]) => rx.test(li.name))?.[1] || '';
         if (costos[sku]) cmv += costos[sku] * li.quantity;
@@ -141,5 +144,5 @@ export async function getShopifyCmv(periodo: Periodo = 'mes') {
     }
     after = d.data.orders.pageInfo.hasNextPage ? d.data.orders.pageInfo.endCursor : null;
   } while (after);
-  return { cmv: Math.round(cmv), sinCosto: Object.values(sinCosto).reduce((a, b) => a + b, 0), skusSinCosto: sinCosto };
+  return { cmv: Math.round(cmv), sinCosto: Object.values(sinCosto).reduce((a, b) => a + b, 0), skusSinCosto: sinCosto, montoTransf: Math.round(montoTransf) };
 }

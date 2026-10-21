@@ -187,7 +187,7 @@ export async function getCostosMeli() {
 export async function getEmpretiendaCmv() {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
   const res = await sheets.spreadsheets.values
-    .get({ spreadsheetId: SPREADSHEET_ID, range: `'cmv_empretienda'!A2:H` })
+    .get({ spreadsheetId: SPREADSHEET_ID, range: `'cmv_empretienda'!A2:I` })
     .catch(() => null);
   return (res?.data.values ?? []).map((r) => ({
     periodo: String(r[0]),
@@ -198,6 +198,7 @@ export async function getEmpretiendaCmv() {
     localCmv: Number(r[5]) || 0,
     localPack: Number(r[6]) || 0,
     updatedAt: String(r[7] ?? ''),
+    onlineTransf: r[8] === undefined || r[8] === '' ? null : Number(r[8]) || 0, // ventas por transferencia (sin IVA)
   }));
 }
 

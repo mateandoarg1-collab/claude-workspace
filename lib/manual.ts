@@ -20,6 +20,7 @@ export type EmpretiendaManual = {
     localCmv: number;
     localPack: number;
     updatedAt: string;
+    onlineTransf: number | null;
   }[];
 };
 

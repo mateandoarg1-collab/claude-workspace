@@ -54,6 +54,7 @@ function sesionInicial() {
 
 const PANEL = 'https://panel.empretienda.com/metricas';
 const ACORDAR = 3;
+const TRANSFERENCIA = 5; // Métricas: payment_method (Mercado Pago 1, Efectivo 2, Acordar 3, Transferencia 5, Mobbex 6, Ualá Bis 7)
 const SPREADSHEET_ID = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
 const RANGE = "'dashboard_manual'!A5:G8";
 
@@ -165,7 +166,9 @@ for (const [periodo, [desde, hasta]] of Object.entries(PERIODOS)) {
   const lTotal = await bajarListado(page, `/tmp/listado-${periodo}-total.xlsx`);
   const acordar = await leer(page, esMes ? `${PANEL}?payment_method=${ACORDAR}` : `${PANEL}?${rango}&payment_method=${ACORDAR}`, esMes);
   const lAcordar = await bajarListado(page, `/tmp/listado-${periodo}-acordar.xlsx`);
-  listados[periodo] = { total: lTotal, acordar: lAcordar, cantTotal: total[1], cantAcordar: acordar[1] };
+  // Ventas por transferencia (no llevan IVA): para la vista "Sin IVA" del CMV. Si falla, sigue sin ese dato.
+  const transf = await leer(page, esMes ? `${PANEL}?payment_method=${TRANSFERENCIA}` : `${PANEL}?${rango}&payment_method=${TRANSFERENCIA}`, esMes).catch(() => null);
+  listados[periodo] = { total: lTotal, acordar: lAcordar, cantTotal: total[1], cantAcordar: acordar[1], montoTransf: transf ? transf[0] : '' };
   if (total[1] === 1500 || acordar[1] === 1500) throw new Error(`Empretienda devolvió exactamente 1.500 ventas (${periodo}): probable corte`);
   values.push([periodo, desde, total[0], total[1], acordar[0], acordar[1], ahora]);
 }
@@ -229,7 +232,7 @@ try {
   const res = archivos.length
     ? JSON.parse(execFileSync('python3', ['scripts/cmv/cmv.py', '/tmp/costos.json', ...archivos], { encoding: 'utf8' }))
     : {};
-  const filasCmv = [['periodo', 'onlineFact', 'onlineCmv', 'onlinePack', 'localFact', 'localCmv', 'localPack', 'updatedAt']];
+  const filasCmv = [['periodo', 'onlineFact', 'onlineCmv', 'onlinePack', 'localFact', 'localCmv', 'localPack', 'updatedAt', 'onlineTransfMonto']];
   const revisar = new Map();
   for (const [periodo, l] of Object.entries(listados)) {
     const t = res[l.total], a = res[l.acordar];
@@ -240,7 +243,7 @@ try {
     const cajasU = t.despacho_u - a.despacho_u;
     const cajaProm = cajasU > 0 ? (t.despacho - a.despacho) / cajasU : 0;
     const onlinePack = Math.round(t.empaque - a.empaque + cajaProm * (l.cantTotal - l.cantAcordar));
-    filasCmv.push([periodo, t.facturacion - a.facturacion, t.cmv - a.cmv, onlinePack, a.facturacion, a.cmv, localPack, ahora]);
+    filasCmv.push([periodo, t.facturacion - a.facturacion, t.cmv - a.cmv, onlinePack, a.facturacion, a.cmv, localPack, ahora, l.montoTransf]);
     for (const [n, q] of Object.entries(t.sin_regla)) revisar.set(n, Math.max(revisar.get(n) ?? 0, q));
   }
   for (const [tab, values] of [
@@ -250,7 +253,7 @@ try {
     if (!hojasMayorista.includes(tab)) {
       await sheets.spreadsheets.batchUpdate({ spreadsheetId: SPREADSHEET_ID, requestBody: { requests: [{ addSheet: { properties: { title: tab } } }] } });
     }
-    await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A:H` });
+    await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A:I` });
     await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A1`, valueInputOption: 'RAW', requestBody: { values } });
   }
   console.log(`CMV Empretienda actualizado (${filasCmv.length - 1} períodos, ${revisar.size} publicaciones sin regla)`);
