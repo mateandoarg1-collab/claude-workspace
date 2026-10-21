@@ -101,6 +101,12 @@ export async function getShopifyDiario(desde: string) {
   return dias;
 }
 
+// Productos de Shopify cargados sin SKU: se reconocen por el nombre.
+const SKU_POR_NOMBRE: [RegExp, string][] = [
+  [/^Grabado láser/i, 'PERS-LAS-11017'],
+  [/^Bombilla De Alpaca Cincelada Pico De Loro/i, 'BOMB-ALP-12016'],
+];
+
 // CMV de Shopify del período: SKU × cantidad de cada producto vendido, con el costo de la planilla Costos JP (getCostosSku).
 // La app del panel solo tiene read_orders: el costo por unidad de Shopify (variant.inventoryItem) no se puede leer.
 // Consulta aparte de getShopifyVentas para que, si falla, no rompa las ventas. Sin packaging de despacho.
@@ -111,7 +117,7 @@ export async function getShopifyCmv(periodo: Periodo = 'mes') {
   const query = `query($q: String!, $after: String) {
     orders(first: 100, after: $after, query: $q) {
       pageInfo { hasNextPage endCursor }
-      nodes { lineItems(first: 50) { nodes { quantity sku } } }
+      nodes { lineItems(first: 50) { nodes { quantity sku name } } }
     }
   }`;
   let cmv = 0;
@@ -124,11 +130,11 @@ export async function getShopifyCmv(periodo: Periodo = 'mes') {
       body: JSON.stringify({ query, variables: { q, after } }),
       cache: 'no-store',
     });
-    const d: { errors?: unknown; data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string }; nodes: { lineItems: { nodes: { quantity: number; sku: string | null }[] } }[] } } } = await r.json();
+    const d: { errors?: unknown; data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string }; nodes: { lineItems: { nodes: { quantity: number; sku: string | null; name: string }[] } }[] } } } = await r.json();
     if (d.errors) throw new Error(JSON.stringify(d.errors));
     for (const o of d.data.orders.nodes) {
       for (const li of o.lineItems.nodes) {
-        const sku = (li.sku ?? '').trim();
+        const sku = (li.sku ?? '').trim() || SKU_POR_NOMBRE.find(([rx]) => rx.test(li.name))?.[1] || '';
         if (costos[sku]) cmv += costos[sku] * li.quantity;
         else sinCosto[sku || '(sin SKU)'] = (sinCosto[sku || '(sin SKU)'] ?? 0) + li.quantity;
       }
