@@ -116,14 +116,18 @@ async function leer(page, url, esMes) {
     const t = await page.innerText('body');
     if (!t.toLowerCase().includes(`ventas de ${mes}`)) throw new Error(`Métricas no muestra "Ventas de ${mes}": ${url}`);
   }
-  // Empretienda va completando los números mientras carga: leer hasta que dos lecturas seguidas coincidan.
+  // Empretienda va completando los números mientras carga (trae las ventas de a 750): leer hasta que el número se
+  // quede quieto. Si la cantidad es múltiplo de 750 puede estar esperando la próxima tanda: ahí se espera más.
   let previo = '';
-  for (let i = 0; i < 15; i++) {
+  let quietas = 0;
+  for (let i = 0; i < 25; i++) {
     await page.waitForTimeout(2000);
     const texto = await page.innerText('body');
     const actual = [numero(texto, 'Volumen de ventas'), numero(texto, 'Cantidad de ventas')];
-    if (actual.join() === previo) return actual;
+    quietas = actual.join() === previo ? quietas + 1 : 0;
     previo = actual.join();
+    const falta = actual[1] > 0 && actual[1] % 750 === 0 ? 5 : 1;
+    if (quietas >= falta) return actual;
   }
   throw new Error(`Los números de Métricas no se estabilizaron: ${url}`);
 }
@@ -132,7 +136,7 @@ async function leer(page, url, esMes) {
 // "Productos vendidos" con el que se armaron las reglas de scripts/cmv. Si falla, sigue sin CMV.
 async function bajarListado(page, archivo) {
   try {
-    const boton = page.getByRole('button', { name: /descargar listado/i }).nth(1);
+    const boton = page.getByRole('button', { name: /descargar listado/i }).last(); // el de "Listado de productos" va último
     await boton.scrollIntoViewIfNeeded();
     const [descarga] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }), boton.click()]);
     await descarga.saveAs(archivo);
