@@ -165,7 +165,7 @@ for (const [periodo, [desde, hasta]] of Object.entries(PERIODOS)) {
   const lTotal = await bajarListado(page, `/tmp/listado-${periodo}-total.xlsx`);
   const acordar = await leer(page, esMes ? `${PANEL}?payment_method=${ACORDAR}` : `${PANEL}?${rango}&payment_method=${ACORDAR}`, esMes);
   const lAcordar = await bajarListado(page, `/tmp/listado-${periodo}-acordar.xlsx`);
-  listados[periodo] = { total: lTotal, acordar: lAcordar, cantAcordar: acordar[1] };
+  listados[periodo] = { total: lTotal, acordar: lAcordar, cantTotal: total[1], cantAcordar: acordar[1] };
   if (total[1] === 1500 || acordar[1] === 1500) throw new Error(`Empretienda devolvió exactamente 1.500 ventas (${periodo}): probable corte`);
   values.push([periodo, desde, total[0], total[1], acordar[0], acordar[1], ahora]);
 }
@@ -234,8 +234,13 @@ try {
   for (const [periodo, l] of Object.entries(listados)) {
     const t = res[l.total], a = res[l.acordar];
     if (!t || !a) continue;
+    // Local (Acordar = retiro): 1 bolsa por pedido. Online: empaque por mate + 1 caja de despacho por pedido, con el
+    // costo promedio de caja de lo que se vendió (el listado trae una caja por unidad).
     const localPack = Math.round(l.cantAcordar * costos['PACK-BOL-11001']);
-    filasCmv.push([periodo, t.facturacion - a.facturacion, t.cmv - a.cmv, t.packaging - a.packaging, a.facturacion, a.cmv, localPack, ahora]);
+    const cajasU = t.despacho_u - a.despacho_u;
+    const cajaProm = cajasU > 0 ? (t.despacho - a.despacho) / cajasU : 0;
+    const onlinePack = Math.round(t.empaque - a.empaque + cajaProm * (l.cantTotal - l.cantAcordar));
+    filasCmv.push([periodo, t.facturacion - a.facturacion, t.cmv - a.cmv, onlinePack, a.facturacion, a.cmv, localPack, ahora]);
     for (const [n, q] of Object.entries(t.sin_regla)) revisar.set(n, Math.max(revisar.get(n) ?? 0, q));
   }
   for (const [tab, values] of [

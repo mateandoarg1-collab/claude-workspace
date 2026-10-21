@@ -13,7 +13,8 @@ Costos, de menor a mayor prioridad:
 
 Packaging (definido por JP, oct-2026):
 - Tienda Online: cada mate sin "Caja de regalo: SI" lleva `PACK-CUR-11018` (packaging general); con caja de regalo
-  va `PACK-CAJ-11003`. Cada unidad una caja de despacho según el producto (simple, 2x1, set, termo).
+  va `PACK-CAJ-11003`. Una caja de despacho por pedido (cantidad de ventas de Métricas), con el costo promedio de caja
+  (simple, 2x1, set, termo) de lo que se vendió.
 - Local (Acordar, retiro en Palermo): sin despacho, 1 bolsa `PACK-BOL-11001` por pedido.
 - Meli no usa esto: sus costos vienen de Escalafy por MLA (pestaña `costos_meli`, `scripts/costos-meli-a-planilla.mjs`).
 - Shopify (`lib/shopify.ts` getShopifyCmv): SKU de cada producto vendido × mismos costos (`getCostosSku` en `lib/sheets.ts`); la app solo tiene read_orders.

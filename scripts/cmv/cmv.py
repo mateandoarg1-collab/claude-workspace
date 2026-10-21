@@ -14,8 +14,8 @@ ES_MATE = ('MATE', 'DISC-MUU', 'DISC-COQ', 'DISC-IMP', 'DISC-GAL')
 
 
 def despacho(nombre, comps):
-    """Packaging de un envío: cada mate sin caja de regalo lleva el packaging general, y cada unidad una caja con cinta.
-    El export viene por producto, no por pedido: se cuenta una caja por unidad (da un poco más alto que el real)."""
+    """Packaging de un envío: cada mate sin caja de regalo lleva el packaging general, y cada unidad una caja con cinta
+    (el tamaño según el producto). El lector lo pasa a una caja por pedido."""
     mates = sum(c for s, c in comps if s.startswith(ES_MATE))
     caja_regalo = any(s == reglas.CAJA for s, _ in comps)
     ex = [('PACK-CUR-11018', mates)] if mates and not caja_regalo else []
@@ -29,7 +29,10 @@ def despacho(nombre, comps):
 
 def calcular(costos, archivo):
     filas = list(openpyxl.load_workbook(archivo, read_only=True, data_only=True).active.iter_rows(values_only=True))[1:]
-    out = {'facturacion': 0, 'cmv': 0, 'packaging': 0, 'unidades': 0, 'sin_regla': {}, 'sin_costo': {}}
+    # packaging = empaque (por mate) + despacho (cajas). El listado viene por producto: las cajas se cuentan por unidad
+    # (despacho, despacho_u) y el lector las pasa a una por pedido con la cantidad de ventas de Métricas.
+    out = {'facturacion': 0, 'cmv': 0, 'packaging': 0, 'empaque': 0, 'despacho': 0, 'despacho_u': 0, 'unidades': 0,
+           'sin_regla': {}, 'sin_costo': {}}
     for fila in filas:
         p, _sku, var, q, vol = (list(fila) + [None] * 5)[:5]
         if not p or not q: continue
@@ -41,12 +44,14 @@ def calcular(costos, archivo):
         out['unidades'] += q
         if estado == 'nuevo':
             out['sin_regla'][nombre] = out['sin_regla'].get(nombre, 0) + q
-        for lista, campo in ((comps, 'cmv'), (despacho(nombre, comps), 'packaging')):
-            for s, c in lista:
-                s = reglas.ALIAS.get(s, s)
-                if s in costos: out[campo] += costos[s] * c * q
-                else: out['sin_costo'][s] = out['sin_costo'].get(s, 0) + c * q
-    for k in ('facturacion', 'cmv', 'packaging'): out[k] = round(out[k])
+        for s, c in comps + despacho(nombre, comps):
+            s = reglas.ALIAS.get(s, s)
+            campo = 'despacho' if s.startswith('DESP-') else 'empaque' if s == 'PACK-CUR-11018' else 'cmv'
+            if campo == 'despacho': out['despacho_u'] += c * q
+            if s in costos: out[campo] += costos[s] * c * q
+            else: out['sin_costo'][s] = out['sin_costo'].get(s, 0) + c * q
+    out['packaging'] = out['empaque'] + out['despacho']
+    for k in ('facturacion', 'cmv', 'packaging', 'empaque', 'despacho'): out[k] = round(out[k])
     return out
 
 
