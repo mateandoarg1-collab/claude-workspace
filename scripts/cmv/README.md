@@ -16,3 +16,4 @@ Packaging (definido por JP, oct-2026):
   va `PACK-CAJ-11003`. Cada unidad una caja de despacho según el producto (simple, 2x1, set, termo).
 - Local (Acordar, retiro en Palermo): sin despacho, 1 bolsa `PACK-BOL-11001` por pedido.
 - Meli no usa esto: sus costos vienen de Escalafy por MLA (pestaña `costos_meli`, `scripts/costos-meli-a-planilla.mjs`).
+- Shopify (`lib/shopify.ts` getShopifyCmv): SKU de cada producto vendido × mismos costos (`getCostosSku` en `lib/sheets.ts`); la app solo tiene read_orders.

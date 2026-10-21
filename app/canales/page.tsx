@@ -95,7 +95,7 @@ export default function Canales() {
   const fmtRoas = (v: number, p: number | null | undefined) => (p ? `${(v / p).toFixed(1)}x` : '—');
 
   // CMV: Empretienda calcula el % de costo sobre el "Listado de productos" (scripts/cmv) y se aplica a la facturación
-  // de la tabla; Meli usa los costos de Escalafy por MLA; Shopify el costo por unidad de cada producto.
+  // de la tabla; Meli usa los costos de Escalafy por MLA; Shopify el SKU de cada producto con la planilla Costos JP.
   const cmvEmp = manual?.cmv?.find((c) => c.periodo === periodo) ?? null;
   const pct = (cmv: number, fact: number) => (fact > 0 ? cmv / fact : null);
   const shopCmv = shopify.data?.cmv && 'cmv' in shopify.data.cmv ? shopify.data.cmv : null;
@@ -103,7 +103,7 @@ export default function Canales() {
     { id: 'online' as CanalId, fact: monto('online'), pct: cmvEmp ? pct(cmvEmp.onlineCmv + cmvEmp.onlinePack, cmvEmp.onlineFact) : null, nota: 'productos + packaging y caja de despacho' },
     { id: 'ml' as CanalId, fact: monto('ml'), pct: ml.data?.cmv != null ? pct(ml.data.cmv, monto('ml')) : null, nota: ml.data?.sinCosto ? `costos Escalafy · ${ml.data.sinCosto} u. sin costo` : 'costos Escalafy (con bombilla y packaging)' },
     { id: 'local' as CanalId, fact: monto('local'), pct: cmvEmp ? pct(cmvEmp.localCmv + cmvEmp.localPack, cmvEmp.localFact) : null, nota: 'productos + 1 bolsa por pedido' },
-    { id: 'shopify' as CanalId, fact: monto('shopify'), pct: shopCmv ? pct(shopCmv.cmv, monto('shopify')) : null, nota: shopCmv?.sinCosto ? `costo por unidad de Shopify · ${shopCmv.sinCosto} u. sin costo` : 'costo por unidad de Shopify' },
+    { id: 'shopify' as CanalId, fact: monto('shopify'), pct: shopCmv ? pct(shopCmv.cmv, monto('shopify')) : null, nota: shopCmv?.sinCosto ? `planilla de costos por SKU · ${shopCmv.sinCosto} u. sin costo` : 'planilla de costos por SKU' },
   ].map((f) => ({ ...f, cmv: f.pct != null ? Math.round(f.pct * f.fact) : null }));
   const conCmv = filasCmv.filter((f) => f.cmv != null);
   const cmvTotal = conCmv.reduce((s, f) => s + (f.cmv ?? 0), 0);
