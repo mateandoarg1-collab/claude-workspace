@@ -250,14 +250,27 @@ try {
     filasCmv.push([periodo, t.facturacion - a.facturacion, t.cmv - a.cmv, onlinePack, a.facturacion, a.cmv, localPack, ahora, l.montoTransf]);
     for (const [n, q] of Object.entries(t.sin_regla)) revisar.set(n, Math.max(revisar.get(n) ?? 0, q));
   }
-  for (const [tab, values] of [
+  const tabs = [];
+  // Unidades vendidas por SKU del mes en curso (Tienda Online y Local) → pestaña unidades_sku, para el % de falla de
+  // /posventa. Se reemplazan solo las filas del mes en curso; los meses anteriores quedan como historial.
+  const lm = listados.mes;
+  if (lm && res[lm.total] && res[lm.acordar]) {
+    const mesAct = hoy.slice(0, 7);
+    const previas = hojasMayorista.includes('unidades_sku')
+      ? ((await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'unidades_sku'!A2:D" })).data.values ?? []).filter((r) => r[0] !== mesAct)
+      : [];
+    const t = res[lm.total].skus, a = res[lm.acordar].skus;
+    const nuevas = Object.keys(t).sort().map((sku) => [mesAct, sku, (t[sku] ?? 0) - (a[sku] ?? 0), a[sku] ?? 0]);
+    tabs.push(['unidades_sku', [['mes', 'sku', 'online', 'local'], ...previas, ...nuevas]]);
+  }
+  for (const [tab, values] of [...tabs,
     ['cmv_empretienda', filasCmv],
     ['cmv_revisar', [['Publicación sin regla (unidades del mes)', 'unidades'], ...[...revisar].sort((x, y) => y[1] - x[1])]],
   ]) {
     if (!hojasMayorista.includes(tab)) {
       await sheets.spreadsheets.batchUpdate({ spreadsheetId: SPREADSHEET_ID, requestBody: { requests: [{ addSheet: { properties: { title: tab } } }] } });
     }
-    await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A:I` });
+    await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A:Z` });
     await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A1`, valueInputOption: 'RAW', requestBody: { values } });
   }
   console.log(`CMV Empretienda actualizado (${filasCmv.length - 1} períodos, ${revisar.size} publicaciones sin regla)`);

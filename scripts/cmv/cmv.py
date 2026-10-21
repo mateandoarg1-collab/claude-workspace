@@ -32,7 +32,7 @@ def calcular(costos, archivo):
     # packaging = empaque (por mate) + despacho (cajas). El listado viene por producto: las cajas se cuentan por unidad
     # (despacho, despacho_u) y el lector las pasa a una por pedido con la cantidad de ventas de Métricas.
     out = {'facturacion': 0, 'cmv': 0, 'packaging': 0, 'empaque': 0, 'despacho': 0, 'despacho_u': 0, 'unidades': 0,
-           'sin_regla': {}, 'sin_costo': {}}
+           'sin_regla': {}, 'sin_costo': {}, 'skus': {}}  # skus: unidades por SKU (kits desarmados) para el % de falla
     for fila in filas:
         p, _sku, var, q, vol = (list(fila) + [None] * 5)[:5]
         if not p or not q: continue
@@ -44,6 +44,9 @@ def calcular(costos, archivo):
         out['unidades'] += q
         if estado == 'nuevo':
             out['sin_regla'][nombre] = out['sin_regla'].get(nombre, 0) + q
+        for s, c in comps:
+            s = reglas.ALIAS.get(s, s)
+            if not s.startswith(('PACK-', 'PERS-', 'DESP-')): out['skus'][s] = out['skus'].get(s, 0) + c * q
         for s, c in comps + despacho(nombre, comps):
             s = reglas.ALIAS.get(s, s)
             campo = 'despacho' if s.startswith('DESP-') else 'empaque' if s == 'PACK-CUR-11018' else 'cmv'

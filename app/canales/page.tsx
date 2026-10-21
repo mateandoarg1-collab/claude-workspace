@@ -56,6 +56,7 @@ export default function Canales() {
   const mayorista = useApi<Venta & { tab: string }>(`/api/mayorista?periodo=${periodo}`);
   // Ventas del local del mes por medio de pago (MP Point/QR, efectivo, transferencias): para el IVA del Local.
   const localMes = useApi<{ amount: number; mp: { amount: number } }>('/api/local');
+  const posventa = useApi<Record<CanalId, number>>(`/api/posventa/costo?periodo=${periodo}`);
   const [manual, setManual] = useState<EmpretiendaManual | null>(null);
 
   const [ahora, setAhora] = useState(() => Date.now());
@@ -118,7 +119,9 @@ export default function Canales() {
     { id: 'local' as CanalId, fact: monto('local'), pct: cmvEmp ? pct(cmvEmp.localCmv + cmvEmp.localPack, cmvEmp.localFact) : null, nota: 'productos + 1 bolsa por pedido' },
     { id: 'shopify' as CanalId, fact: monto('shopify'), pct: shopCmv ? pct(shopCmv.cmv, monto('shopify')) : null, nota: shopCmv?.sinCosto ? `planilla de costos por SKU · ${shopCmv.sinCosto} u. sin costo` : 'planilla de costos por SKU' },
   ].map((f) => ({ ...f, cmv: f.pct != null ? Math.round(f.pct * f.fact) : null, iva: partConIva(f.id, f.fact) }));
+  const pv = (id: CanalId) => posventa.data?.[id] ?? 0; // costo de posventa (planilla POSTVENTA - MAU)
   const conCmv = filasCmv.filter((f) => f.cmv != null);
+  const pvTotal = conCmv.reduce((s, f) => s + pv(f.id), 0);
   const cmvTotal = conCmv.reduce((s, f) => s + (f.cmv ?? 0), 0);
   const fmtPct = (p: number | null) => (p == null ? '—' : `${Math.round(p * 100)}%`);
   // Ventas sin IVA: a la parte que lleva IVA se le saca el 21% (los costos ya son netos de IVA). El CMV en $ no cambia.
@@ -238,7 +241,7 @@ export default function Canales() {
         </section>
         <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-6">
           <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-            <h2 className="text-lg font-semibold">CMV y margen bruto</h2>
+            <h2 className="text-lg font-semibold">CMV, posventa y margen</h2>
             <div className="inline-flex rounded-lg border border-slate-800 p-0.5 bg-slate-950">
               {[true, false].map((v) => (
                 <button
@@ -258,6 +261,7 @@ export default function Canales() {
                 <th className="hidden sm:table-cell text-right">Ventas {sinIva ? 'sin' : 'con'} IVA</th>
                 <th className="text-right sm:pl-4">CMV</th>
                 <th className="text-right pl-4">% costo</th>
+                <th className="text-right pl-4">Posventa</th>
                 <th className="text-right pl-4">Margen</th>
               </tr>
             </thead>
@@ -271,7 +275,8 @@ export default function Canales() {
                   <td className="hidden sm:table-cell text-right tabular-nums">{fmt(neto(f))}</td>
                   <td className="text-right tabular-nums sm:pl-4">{f.cmv == null ? '—' : fmt(f.cmv)}</td>
                   <td className="text-right tabular-nums pl-4">{f.cmv == null ? '—' : fmtPct(pct(f.cmv, neto(f)))}</td>
-                  <td className="text-right tabular-nums pl-4 font-bold text-emerald-300">{f.cmv == null ? '—' : fmt(neto(f) - f.cmv)}</td>
+                  <td className="text-right tabular-nums pl-4 text-slate-400">{posventa.data ? fmt(pv(f.id)) : '…'}</td>
+                  <td className="text-right tabular-nums pl-4 font-bold text-emerald-300">{f.cmv == null ? '—' : fmt(neto(f) - f.cmv - pv(f.id))}</td>
                 </tr>
               ))}
               <tr className="border-t-2 border-slate-700 font-bold">
@@ -279,12 +284,13 @@ export default function Canales() {
                 <td className="hidden sm:table-cell text-right tabular-nums">{fmt(netoTotal(conCmv))}</td>
                 <td className="text-right tabular-nums sm:pl-4">{fmt(cmvTotal)}</td>
                 <td className="text-right tabular-nums pl-4">{fmtPct(pct(cmvTotal, netoTotal(conCmv)))}</td>
-                <td className="text-right tabular-nums pl-4 text-emerald-300">{fmt(netoTotal(conCmv) - cmvTotal)}</td>
+                <td className="text-right tabular-nums pl-4 text-slate-400">{fmt(pvTotal)}</td>
+                <td className="text-right tabular-nums pl-4 text-emerald-300">{fmt(netoTotal(conCmv) - cmvTotal - pvTotal)}</td>
               </tr>
             </tbody>
           </table>
           <p className="text-xs text-slate-500 mt-3">
-            Margen = ventas − CMV, antes de comisiones, envíos y pauta. Costos netos de IVA. «Sin IVA» saca el 21% solo de lo que lleva IVA
+            Margen = ventas − CMV − posventa (costo de los reclamos del período, planilla POSTVENTA - MAU), antes de comisiones, envíos y pauta. Costos netos de IVA. «Sin IVA» saca el 21% solo de lo que lleva IVA
             (como en un estado de resultados): Meli todo; Tienda Online y Shopify todo menos transferencia; Local solo Mercado Pago (reparto del mes).
             Tienda Online y Local: % de costo del listado de productos de Empretienda (se actualiza cada 30 min) aplicado a su facturación. Mayorista todavía no tiene CMV.
           </p>
