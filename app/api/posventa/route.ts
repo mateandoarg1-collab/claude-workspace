@@ -1,4 +1,4 @@
-import { getReclamos, getUnidadesSku, type Reclamo } from '@/lib/posventa';
+import { getFotosSku, getReclamos, getUnidadesSku, type Reclamo } from '@/lib/posventa';
 
 export const maxDuration = 30;
 
@@ -7,7 +7,7 @@ export const maxDuration = 30;
 export async function GET(req: Request) {
   try {
     const mes = new URL(req.url).searchParams.get('mes') ?? 'todo';
-    const [{ reclamos, nombres }, unidades] = await Promise.all([getReclamos(), getUnidadesSku()]);
+    const [{ reclamos, nombres }, unidades, fotos] = await Promise.all([getReclamos(), getUnidadesSku(), getFotosSku().catch(() => ({}) as Record<string, string>)]);
     const delMes = (r: Reclamo) => mes === 'todo' || r.fecha?.slice(0, 7) === mes;
     const sel = reclamos.filter(delMes);
 
@@ -51,7 +51,9 @@ export async function GET(req: Request) {
         nombre: sku ? nombres[sku] ?? sku : p.nombre.slice(1),
         reclamos: p.reclamos,
         costo: Math.round(p.costo),
+        foto: sku ? fotos[sku] ?? null : null,
         vendidas: u,
+        reclamosEmp: rc, // los que entran en el % (Tienda Online + Local, meses con unidades)
         falla: u >= 10 ? rc / u : null, // con menos de 10 vendidas el % no dice nada
       };
     });

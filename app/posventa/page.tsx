@@ -5,7 +5,7 @@ import AppHeader from '../components/AppHeader';
 import CanalMarca, { type CanalId } from '../components/CanalMarca';
 
 type Fila = { nombre: string; reclamos: number; costo: number };
-type Producto = { sku: string | null; nombre: string; reclamos: number; costo: number; vendidas: number; falla: number | null };
+type Producto = { sku: string | null; nombre: string; reclamos: number; costo: number; foto: string | null; vendidas: number; reclamosEmp: number; falla: number | null };
 type Pendiente = { fecha: string | null; canal: string; orden: string; producto: string; motivo: string; responsable: string; abierto: number | null };
 type Data = {
   mes: string;
@@ -64,7 +64,7 @@ export default function Posventa() {
   const d = res?.mes === mes ? res.data : undefined;
   const err = res?.mes === mes ? res.err : '';
   const maxMes = Math.max(1, ...(d?.meses ?? []).map((m) => m.reclamos));
-  const conFalla = (d?.productos ?? []).filter((p) => p.falla != null).sort((a, b) => (b.falla ?? 0) - (a.falla ?? 0));
+  const conFalla = (d?.productos ?? []).filter((p) => p.falla != null && p.reclamosEmp > 0).sort((a, b) => (b.falla ?? 0) - (a.falla ?? 0));
   const opciones = [...new Set([...(d?.meses ?? []).map((m) => m.mes), mesActual()])].sort().reverse();
 
   return (
@@ -113,7 +113,17 @@ export default function Posventa() {
             </section>
 
             <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-5">
-              <h2 className="text-sm font-semibold text-slate-200">% de falla por producto</h2>
+              <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                <h2 className="text-sm font-semibold text-slate-200">% de falla por producto · {mes === 'todo' ? 'todos los meses' : nomMes(mes)}</h2>
+                <div className="flex gap-1">
+                  {d.mesesConFalla.map((m) => (
+                    <button key={m} onClick={() => setMes(m)}
+                      className={`px-2.5 py-1 text-xs rounded-md ${m === mes ? 'bg-emerald-600 text-white' : 'bg-slate-950 border border-slate-800 text-slate-400'}`}>
+                      {nomMes(m)}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <p className="text-xs text-slate-500 mb-3">
                 Reclamos de Tienda Online y Local ÷ unidades vendidas en Empretienda el mismo mes (los kits cuentan cada producto). Solo productos con 10 o más vendidas.
                 {d.mesesConFalla.length ? ` Hay unidades desde ${nomMes(d.mesesConFalla[0])}.` : ''}
@@ -126,8 +136,18 @@ export default function Posventa() {
                   <tbody>
                     {conFalla.slice(0, verTodos ? undefined : 10).map((p) => (
                       <tr key={p.nombre} className="border-t border-slate-800">
-                        <td className="py-2 pr-2">{p.nombre}</td>
-                        <td className="text-right tabular-nums">{p.reclamos}</td>
+                        <td className="py-2 pr-2">
+                          <div className="flex items-center gap-3">
+                            {p.foto ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={p.foto} alt="" loading="lazy" className="w-12 h-12 rounded-md bg-white object-contain shrink-0" />
+                            ) : (
+                              <div className="w-12 h-12 rounded-md bg-slate-800 shrink-0" />
+                            )}
+                            <span>{p.nombre}</span>
+                          </div>
+                        </td>
+                        <td className="text-right tabular-nums">{p.reclamosEmp}</td>
                         <td className="text-right tabular-nums pl-3">{p.vendidas}</td>
                         <td className={`text-right tabular-nums pl-3 font-bold ${(p.falla ?? 0) >= 0.05 ? 'text-red-400' : (p.falla ?? 0) >= 0.02 ? 'text-amber-300' : 'text-emerald-300'}`}>
                           {((p.falla ?? 0) * 100).toFixed(1)}%

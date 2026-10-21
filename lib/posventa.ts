@@ -117,3 +117,29 @@ export async function getCostoPosventa(desde: string, hasta: string) {
   for (const r of reclamos) if (r.fecha && r.fecha >= desde && r.fecha <= hasta) out[r.canal] += r.costo;
   return out;
 }
+
+// Foto por SKU: listado público de productos de la tienda Shopify (mateando.com/products.json, sin credenciales;
+// solo productos activos) y, para los que están en borrador o discontinuados, fotos de sus publicaciones de Meli.
+const FOTOS_EXTRA: Record<string, string> = {
+  'MATE-MAD-2020': 'https://http2.mlstatic.com/D_838450-MLA116308662747_082026-O.webp',
+  'MATE-ACE-3008': 'https://http2.mlstatic.com/D_850717-MLA116619775246_092026-O.webp',
+  'DISC-COQUITO': 'https://http2.mlstatic.com/D_924717-MLA115636436236_092026-O.webp',
+  'MATE-ACE-RQ': 'https://cdn.shopify.com/s/files/1/0667/1443/5655/files/materosa-mateimperialrosa-mate.jpg?v=1789586676',
+};
+type ProdShopify = { images?: { src: string }[]; variants: { sku: string | null; featured_image?: { src: string } | null }[] };
+export async function getFotosSku(): Promise<Record<string, string>> {
+  const fotos: Record<string, string> = {};
+  for (let page = 1; page <= 5; page++) {
+    const r = await fetch(`https://mateando.com/products.json?limit=250&page=${page}`, { next: { revalidate: 86400 } }).catch(() => null);
+    const prods: ProdShopify[] = r?.ok ? ((await r.json()).products ?? []) : [];
+    for (const p of prods) {
+      for (const v of p.variants) {
+        const sku = (v.sku ?? '').trim();
+        const src = v.featured_image?.src ?? p.images?.[0]?.src;
+        if (sku && src && !fotos[sku]) fotos[sku] = src;
+      }
+    }
+    if (prods.length < 250) break;
+  }
+  return { ...fotos, ...FOTOS_EXTRA, 'BOMB-ACE-12002': fotos['BOMB-ACE-12001'] ?? fotos['BOMB-ACE-12002'] };
+}
