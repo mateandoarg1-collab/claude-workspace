@@ -166,3 +166,35 @@ export async function getEmpretiendaDiario() {
     acordarCant: Number(r[4]) || 0,
   }));
 }
+
+// Costos de Meli por publicación/variante (pestaña costos_meli, la llena scripts/costos-meli-a-planilla.mjs desde
+// Escalafy). Clave "MLA…|variation_id" y "MLA…" (la variante sin costo propio usa el de la publicación, como Escalafy).
+export async function getCostosMeli() {
+  const sheets = google.sheets({ version: 'v4', auth: getAuth() });
+  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'costos_meli'!A2:D` });
+  const map = new Map<string, { tipo: string; costo: number }>();
+  for (const [item, variante, tipo, costo] of res.data.values ?? []) {
+    const v = { tipo: String(tipo), costo: Number(costo) || 0 };
+    if (variante && variante !== item) map.set(`${item}|${variante}`, v);
+    else map.set(String(item), v);
+  }
+  return map;
+}
+
+// CMV de Tienda Online y Local por período (pestaña cmv_empretienda, la llena scripts/empretienda-metricas.mjs).
+export async function getEmpretiendaCmv() {
+  const sheets = google.sheets({ version: 'v4', auth: getAuth() });
+  const res = await sheets.spreadsheets.values
+    .get({ spreadsheetId: SPREADSHEET_ID, range: `'cmv_empretienda'!A2:H` })
+    .catch(() => null);
+  return (res?.data.values ?? []).map((r) => ({
+    periodo: String(r[0]),
+    onlineFact: Number(r[1]) || 0,
+    onlineCmv: Number(r[2]) || 0,
+    onlinePack: Number(r[3]) || 0,
+    localFact: Number(r[4]) || 0,
+    localCmv: Number(r[5]) || 0,
+    localPack: Number(r[6]) || 0,
+    updatedAt: String(r[7] ?? ''),
+  }));
+}

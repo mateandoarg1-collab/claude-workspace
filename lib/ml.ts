@@ -84,6 +84,7 @@ export type MLOrder = {
     item: {
       id: string;
       title: string;
+      variation_id?: number | null;
       variation_attributes?: Array<{ id: string; name: string; value_name: string | null }>;
     };
     quantity: number;

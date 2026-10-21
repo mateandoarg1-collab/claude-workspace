@@ -11,6 +11,16 @@ export type EmpretiendaManual = {
     acordarCant: number;
     updatedAt: string;
   }[];
+  cmv?: {
+    periodo: string;
+    onlineFact: number;
+    onlineCmv: number;
+    onlinePack: number;
+    localFact: number;
+    localCmv: number;
+    localPack: number;
+    updatedAt: string;
+  }[];
 };
 
 export async function fetchEmpretiendaManual(): Promise<EmpretiendaManual> {

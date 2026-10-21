@@ -45,8 +45,8 @@ function useApi<T>(url: string): Estado<T> {
 export default function Canales() {
   const [periodo, setPeriodo] = useState<Periodo>('mes');
   const [grafico, setGrafico] = useState<CanalId | null>(null);
-  const ml = useApi<Venta & { ads: number | null }>(`/api/ml/periodo?periodo=${periodo}`);
-  const shopify = useApi<Venta>(`/api/shopify?periodo=${periodo}`);
+  const ml = useApi<Venta & { ads: number | null; cmv?: number | null; sinCosto?: number }>(`/api/ml/periodo?periodo=${periodo}`);
+  const shopify = useApi<Venta & { cmv?: { cmv: number; sinCosto: number } | { error: string } }>(`/api/shopify?periodo=${periodo}`);
   const meta = useApi<{ spend: number | null; motivo?: string }>(`/api/meta?periodo=${periodo}`);
   const metaShop = useApi<{ spend: number | null; motivo?: string }>(`/api/meta?cuenta=shopify&periodo=${periodo}`);
   const metaMay = useApi<{ spend: number | null; motivo?: string }>(`/api/meta?cuenta=mayorista&periodo=${periodo}`);
@@ -93,6 +93,22 @@ export default function Canales() {
   // Tienda Online junta: Meta + Google + TikTok contra las mismas ventas
   const pautaOnline = roas.filter((r) => r.canal === 'online' && r.pauta != null).reduce((s, r) => s + (r.pauta ?? 0), 0);
   const fmtRoas = (v: number, p: number | null | undefined) => (p ? `${(v / p).toFixed(1)}x` : '—');
+
+  // CMV: Empretienda calcula el % de costo sobre el "Listado de productos" (scripts/cmv) y se aplica a la facturación
+  // de la tabla; Meli usa los costos de Escalafy por MLA; Shopify el costo por unidad de cada producto.
+  const cmvEmp = manual?.cmv?.find((c) => c.periodo === periodo) ?? null;
+  const pct = (cmv: number, fact: number) => (fact > 0 ? cmv / fact : null);
+  const shopCmv = shopify.data?.cmv && 'cmv' in shopify.data.cmv ? shopify.data.cmv : null;
+  const filasCmv = [
+    { id: 'online' as CanalId, fact: monto('online'), pct: cmvEmp ? pct(cmvEmp.onlineCmv + cmvEmp.onlinePack, cmvEmp.onlineFact) : null, nota: 'productos + packaging y caja de despacho' },
+    { id: 'ml' as CanalId, fact: monto('ml'), pct: ml.data?.cmv != null ? pct(ml.data.cmv, monto('ml')) : null, nota: ml.data?.sinCosto ? `costos Escalafy · ${ml.data.sinCosto} u. sin costo` : 'costos Escalafy (con bombilla y packaging)' },
+    { id: 'local' as CanalId, fact: monto('local'), pct: cmvEmp ? pct(cmvEmp.localCmv + cmvEmp.localPack, cmvEmp.localFact) : null, nota: 'productos + 1 bolsa por pedido' },
+    { id: 'shopify' as CanalId, fact: monto('shopify'), pct: shopCmv ? pct(shopCmv.cmv, monto('shopify')) : null, nota: shopCmv?.sinCosto ? `costo por unidad de Shopify · ${shopCmv.sinCosto} u. sin costo` : 'costo por unidad de Shopify' },
+  ].map((f) => ({ ...f, cmv: f.pct != null ? Math.round(f.pct * f.fact) : null }));
+  const conCmv = filasCmv.filter((f) => f.cmv != null);
+  const cmvTotal = conCmv.reduce((s, f) => s + (f.cmv ?? 0), 0);
+  const factConCmv = conCmv.reduce((s, f) => s + f.fact, 0);
+  const fmtPct = (p: number | null) => (p == null ? '—' : `${Math.round(p * 100)}%`);
 
   const totalGeneral = canales.reduce((s, c) => s + c.monto, 0);
   const totalVentas = canales.reduce((s, c) => s + c.cantidad, 0);
@@ -203,6 +219,42 @@ export default function Canales() {
           </table>
           <p className="text-xs text-slate-500 mt-3">
             ROAS = ventas ÷ gasto en pauta del mismo período. Meta, Google y TikTok se miden contra las mismas ventas de la Tienda Online (en el total cuentan una vez). Meta Shopify se mide contra las ventas de Shopify y Meta Mayorista contra las Mayorista. Local no entra.
+          </p>
+        </section>
+        <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-6">
+          <h2 className="text-lg font-semibold mb-4">CMV y margen bruto</h2>
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs uppercase text-slate-400">
+              <tr>
+                <th className="py-2">Canal</th>
+                <th className="text-right">CMV</th>
+                <th className="text-right pl-4">% costo</th>
+                <th className="text-right pl-4">Margen</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filasCmv.map((f) => (
+                <tr key={f.id} className="border-t border-slate-900">
+                  <td className="py-3 font-medium">
+                    <CanalMarca id={f.id} />
+                    <div className="text-xs font-normal text-slate-500 mt-1">{f.nota}</div>
+                  </td>
+                  <td className="text-right tabular-nums">{f.cmv == null ? '—' : fmt(f.cmv)}</td>
+                  <td className="text-right tabular-nums pl-4">{fmtPct(f.pct)}</td>
+                  <td className="text-right tabular-nums pl-4 font-bold text-emerald-300">{f.cmv == null ? '—' : fmt(f.fact - f.cmv)}</td>
+                </tr>
+              ))}
+              <tr className="border-t-2 border-slate-700 font-bold">
+                <td className="py-3">Total con CMV</td>
+                <td className="text-right tabular-nums">{fmt(cmvTotal)}</td>
+                <td className="text-right tabular-nums pl-4">{fmtPct(pct(cmvTotal, factConCmv))}</td>
+                <td className="text-right tabular-nums pl-4 text-emerald-300">{fmt(factConCmv - cmvTotal)}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="text-xs text-slate-500 mt-3">
+            Margen = facturación de la tabla de arriba − CMV, antes de comisiones, envíos y pauta. Costos netos de IVA; la facturación incluye IVA.
+            Tienda Online y Local: % de costo del listado de productos de Empretienda (se actualiza cada 30 min) aplicado a su facturación. Mayorista todavía no tiene CMV.
           </p>
         </section>
       </main>

@@ -99,3 +99,41 @@ export async function getShopifyDiario(desde: string) {
   } while (after);
   return dias;
 }
+
+// CMV de Shopify del período: costo por unidad (inventoryItem.unitCost) × cantidad de cada producto vendido.
+// Consulta aparte de getShopifyVentas para que, si falla (p. ej. falta el permiso read_inventory), no rompa las ventas.
+// Los bundles llegan desarmados en sus componentes, cada uno con su costo. Sin packaging de despacho.
+export async function getShopifyCmv(periodo: Periodo = 'mes') {
+  const token = await getToken();
+  const hasta = periodo === 'ayer' ? ` created_at:<'${desdeAR('hoy')}T00:00:00-03:00'` : '';
+  const q = `financial_status:paid created_at:>='${desdeAR(periodo)}T00:00:00-03:00'${hasta} -test:true`;
+  const query = `query($q: String!, $after: String) {
+    orders(first: 100, after: $after, query: $q) {
+      pageInfo { hasNextPage endCursor }
+      nodes { lineItems(first: 50) { nodes { quantity variant { inventoryItem { unitCost { amount } } } } } }
+    }
+  }`;
+  let cmv = 0;
+  let sinCosto = 0;
+  let after: string | null = null;
+  do {
+    const r: Response = await fetch(`https://${SHOP}/admin/api/${API_VERSION}/graphql.json`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': token },
+      body: JSON.stringify({ query, variables: { q, after } }),
+      cache: 'no-store',
+    });
+    type Li = { quantity: number; variant: { inventoryItem: { unitCost: { amount: string } | null } } | null };
+    const d: { errors?: unknown; data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string }; nodes: { lineItems: { nodes: Li[] } }[] } } } = await r.json();
+    if (d.errors) throw new Error(JSON.stringify(d.errors));
+    for (const o of d.data.orders.nodes) {
+      for (const li of o.lineItems.nodes) {
+        const c = Number(li.variant?.inventoryItem?.unitCost?.amount ?? 0);
+        if (c > 0) cmv += c * li.quantity;
+        else sinCosto += li.quantity;
+      }
+    }
+    after = d.data.orders.pageInfo.hasNextPage ? d.data.orders.pageInfo.endCursor : null;
+  } while (after);
+  return { cmv: Math.round(cmv), sinCosto };
+}

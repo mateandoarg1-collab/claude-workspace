@@ -34,6 +34,7 @@ jobs:
         run: |
           npm install --no-save --no-audit --no-fund googleapis playwright
           npx playwright install --with-deps chromium
+          pip install --quiet openpyxl   # scripts/cmv/cmv.py
 
       # sesión renovada (cifrada) que dejó la corrida anterior
       - uses: actions/cache/restore@v4

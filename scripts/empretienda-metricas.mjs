@@ -15,6 +15,7 @@
 // El repo es público: los logs no muestran montos.
 
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
+import { execFileSync } from 'child_process';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { chromium } from 'playwright';
 import { google } from 'googleapis';
@@ -126,8 +127,24 @@ async function leer(page, url, esMes) {
   throw new Error(`Los números de Métricas no se estabilizaron: ${url}`);
 }
 
+// "Listado de productos" → "Descargar listado" (el segundo botón; el primero es el de clientes). Es el mismo Excel
+// "Productos vendidos" con el que se armaron las reglas de scripts/cmv. Si falla, sigue sin CMV.
+async function bajarListado(page, archivo) {
+  try {
+    const boton = page.getByRole('button', { name: /descargar listado/i }).nth(1);
+    await boton.scrollIntoViewIfNeeded();
+    const [descarga] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }), boton.click()]);
+    await descarga.saveAs(archivo);
+    return archivo;
+  } catch (e) {
+    console.log(`No pude bajar el listado de productos (${archivo}): ${e.message.split('\n')[0]}`);
+    return null;
+  }
+}
+
 const browser = await chromium.launch();
 const context = await browser.newContext({
+  acceptDownloads: true,
   viewport: { width: 1280, height: 800 },
   timezoneId: 'America/Argentina/Buenos_Aires',
   storageState: sesionInicial(),
@@ -136,12 +153,16 @@ const page = await context.newPage();
 
 const ahora = new Date().toISOString();
 const values = [];
+const listados = {}; // periodo → { total, acordar } (rutas de los Excel de productos)
 for (const [periodo, [desde, hasta]] of Object.entries(PERIODOS)) {
   const rango = `from=${desde}&until=${hasta}`;
   const esMes = periodo === 'mes';
   // el mes va sin fechas (vista por defecto): con fechas explícitas Empretienda corta en 1.500 ventas
   const total = await leer(page, esMes ? PANEL : `${PANEL}?${rango}`, esMes);
+  const lTotal = await bajarListado(page, `/tmp/listado-${periodo}-total.xlsx`);
   const acordar = await leer(page, esMes ? `${PANEL}?payment_method=${ACORDAR}` : `${PANEL}?${rango}&payment_method=${ACORDAR}`, esMes);
+  const lAcordar = await bajarListado(page, `/tmp/listado-${periodo}-acordar.xlsx`);
+  listados[periodo] = { total: lTotal, acordar: lAcordar, cantAcordar: acordar[1] };
   if (total[1] === 1500 || acordar[1] === 1500) throw new Error(`Empretienda devolvió exactamente 1.500 ventas (${periodo}): probable corte`);
   values.push([periodo, desde, total[0], total[1], acordar[0], acordar[1], ahora]);
 }
@@ -154,6 +175,7 @@ const auth = new google.auth.GoogleAuth({
 });
 const sheets = google.sheets({ version: 'v4', auth });
 const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
+const hojasMayorista = meta.data.sheets.map((x) => x.properties?.title);
 if (!meta.data.sheets?.some((x) => x.properties?.title === DIARIO)) {
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId: SPREADSHEET_ID,
@@ -181,6 +203,52 @@ await sheets.spreadsheets.values.update({
   valueInputOption: 'RAW',
   requestBody: { values: [['dia', 'totalMonto', 'totalCant', 'acordarMonto', 'acordarCant', 'updatedAt'], ...filas] },
 });
+
+// CMV de Tienda Online y Local (pestaña cmv_empretienda, la lee /canales). Costos: scripts/cmv/costos_base.json, encima
+// la planilla "Costos JP - meli" (col F SKU, col G costo neto) y encima costos_override.json. Local = Acordar:
+// sin despacho, 1 bolsa por pedido. Online = total − Acordar.
+try {
+  const COSTOS_JP = '1VP12eqQsJpZdOA6crIUMZccqpPobVZzxc8jev2iUkF8';
+  const costos = JSON.parse(readFileSync('scripts/cmv/costos_base.json', 'utf8'));
+  const hojas = (await sheets.spreadsheets.get({ spreadsheetId: COSTOS_JP })).data.sheets.map((h) => h.properties.title);
+  for (const h of hojas.filter((h) => !['BASE scalify', 'Hoja 22'].includes(h))) {
+    const filas = (await sheets.spreadsheets.values.get({ spreadsheetId: COSTOS_JP, range: `'${h}'!F2:G400` })).data.values ?? [];
+    for (const [sku, c] of filas) {
+      const n = Number(String(c ?? '').replace(/[$\s.]/g, '').replace(',', '.'));
+      if (sku?.trim() && c && n > 0) costos[sku.trim()] = n;
+    }
+  }
+  const override = JSON.parse(readFileSync('scripts/cmv/costos_override.json', 'utf8'));
+  for (const [k, v] of Object.entries(override)) if (!k.startsWith('_')) costos[k] = v;
+  writeFileSync('/tmp/costos.json', JSON.stringify(costos));
+
+  const archivos = Object.values(listados).flatMap((l) => [l.total, l.acordar]).filter(Boolean);
+  const res = archivos.length
+    ? JSON.parse(execFileSync('python3', ['scripts/cmv/cmv.py', '/tmp/costos.json', ...archivos], { encoding: 'utf8' }))
+    : {};
+  const filasCmv = [['periodo', 'onlineFact', 'onlineCmv', 'onlinePack', 'localFact', 'localCmv', 'localPack', 'updatedAt']];
+  const revisar = new Map();
+  for (const [periodo, l] of Object.entries(listados)) {
+    const t = res[l.total], a = res[l.acordar];
+    if (!t || !a) continue;
+    const localPack = Math.round(l.cantAcordar * costos['PACK-BOL-11001']);
+    filasCmv.push([periodo, t.facturacion - a.facturacion, t.cmv - a.cmv, t.packaging - a.packaging, a.facturacion, a.cmv, localPack, ahora]);
+    for (const [n, q] of Object.entries(t.sin_regla)) revisar.set(n, Math.max(revisar.get(n) ?? 0, q));
+  }
+  for (const [tab, values] of [
+    ['cmv_empretienda', filasCmv],
+    ['cmv_revisar', [['Publicación sin regla (unidades del mes)', 'unidades'], ...[...revisar].sort((x, y) => y[1] - x[1])]],
+  ]) {
+    if (!hojasMayorista.includes(tab)) {
+      await sheets.spreadsheets.batchUpdate({ spreadsheetId: SPREADSHEET_ID, requestBody: { requests: [{ addSheet: { properties: { title: tab } } }] } });
+    }
+    await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A:H` });
+    await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A1`, valueInputOption: 'RAW', requestBody: { values } });
+  }
+  console.log(`CMV Empretienda actualizado (${filasCmv.length - 1} períodos, ${revisar.size} publicaciones sin regla)`);
+} catch (e) {
+  console.log(`::warning::No pude calcular el CMV: ${e.message.split('\n')[0]}`);
+}
 
 // Guardar la sesión renovada para la próxima corrida (cifrada: el cache de Actions no es secreto).
 const renovada = await context.storageState();
