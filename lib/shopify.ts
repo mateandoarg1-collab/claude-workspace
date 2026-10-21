@@ -8,6 +8,7 @@
 const brutas = (o: { subtotalPriceSet: { shopMoney: { amount: string } } }) => Number(o.subtotalPriceSet.shopMoney.amount);
 
 import { desdeAR, type Periodo } from './periodo';
+import { getCostosSku } from './sheets';
 
 const SHOP = 'mateando-argentina.myshopify.com';
 const API_VERSION = '2026-10';
@@ -100,21 +101,21 @@ export async function getShopifyDiario(desde: string) {
   return dias;
 }
 
-// CMV de Shopify del período: costo por unidad (inventoryItem.unitCost) × cantidad de cada producto vendido.
-// Consulta aparte de getShopifyVentas para que, si falla (p. ej. falta el permiso read_inventory), no rompa las ventas.
-// Los bundles llegan desarmados en sus componentes, cada uno con su costo. Sin packaging de despacho.
+// CMV de Shopify del período: SKU × cantidad de cada producto vendido, con el costo de la planilla Costos JP (getCostosSku).
+// La app del panel solo tiene read_orders: el costo por unidad de Shopify (variant.inventoryItem) no se puede leer.
+// Consulta aparte de getShopifyVentas para que, si falla, no rompa las ventas. Sin packaging de despacho.
 export async function getShopifyCmv(periodo: Periodo = 'mes') {
-  const token = await getToken();
+  const [token, costos] = await Promise.all([getToken(), getCostosSku()]);
   const hasta = periodo === 'ayer' ? ` created_at:<'${desdeAR('hoy')}T00:00:00-03:00'` : '';
   const q = `financial_status:paid created_at:>='${desdeAR(periodo)}T00:00:00-03:00'${hasta} -test:true`;
   const query = `query($q: String!, $after: String) {
     orders(first: 100, after: $after, query: $q) {
       pageInfo { hasNextPage endCursor }
-      nodes { lineItems(first: 50) { nodes { quantity variant { inventoryItem { unitCost { amount } } } } } }
+      nodes { lineItems(first: 50) { nodes { quantity sku } } }
     }
   }`;
   let cmv = 0;
-  let sinCosto = 0;
+  const sinCosto: Record<string, number> = {};
   let after: string | null = null;
   do {
     const r: Response = await fetch(`https://${SHOP}/admin/api/${API_VERSION}/graphql.json`, {
@@ -123,17 +124,16 @@ export async function getShopifyCmv(periodo: Periodo = 'mes') {
       body: JSON.stringify({ query, variables: { q, after } }),
       cache: 'no-store',
     });
-    type Li = { quantity: number; variant: { inventoryItem: { unitCost: { amount: string } | null } } | null };
-    const d: { errors?: unknown; data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string }; nodes: { lineItems: { nodes: Li[] } }[] } } } = await r.json();
+    const d: { errors?: unknown; data: { orders: { pageInfo: { hasNextPage: boolean; endCursor: string }; nodes: { lineItems: { nodes: { quantity: number; sku: string | null }[] } }[] } } } = await r.json();
     if (d.errors) throw new Error(JSON.stringify(d.errors));
     for (const o of d.data.orders.nodes) {
       for (const li of o.lineItems.nodes) {
-        const c = Number(li.variant?.inventoryItem?.unitCost?.amount ?? 0);
-        if (c > 0) cmv += c * li.quantity;
-        else sinCosto += li.quantity;
+        const sku = (li.sku ?? '').trim();
+        if (costos[sku]) cmv += costos[sku] * li.quantity;
+        else sinCosto[sku || '(sin SKU)'] = (sinCosto[sku || '(sin SKU)'] ?? 0) + li.quantity;
       }
     }
     after = d.data.orders.pageInfo.hasNextPage ? d.data.orders.pageInfo.endCursor : null;
   } while (after);
-  return { cmv: Math.round(cmv), sinCosto };
+  return { cmv: Math.round(cmv), sinCosto: Object.values(sinCosto).reduce((a, b) => a + b, 0), skusSinCosto: sinCosto };
 }

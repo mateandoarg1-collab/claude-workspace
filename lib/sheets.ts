@@ -1,5 +1,7 @@
 import { google } from 'googleapis';
 import { desdeAR, hastaAR, type Periodo } from './periodo';
+import costosBase from '../scripts/cmv/costos_base.json';
+import costosOverride from '../scripts/cmv/costos_override.json';
 
 const SPREADSHEET_ID = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
 
@@ -197,4 +199,23 @@ export async function getEmpretiendaCmv() {
     localPack: Number(r[6]) || 0,
     updatedAt: String(r[7] ?? ''),
   }));
+}
+
+// Costo por SKU: scripts/cmv/costos_base.json, encima la planilla "Costos JP - meli" (col F SKU, col G costo neto)
+// y encima scripts/cmv/costos_override.json. Mismo criterio que el CMV de Empretienda (scripts/empretienda-metricas.mjs).
+const COSTOS_JP = '1VP12eqQsJpZdOA6crIUMZccqpPobVZzxc8jev2iUkF8';
+export async function getCostosSku(): Promise<Record<string, number>> {
+  const costos: Record<string, number> = { ...(costosBase as Record<string, number>) };
+  const sheets = google.sheets({ version: 'v4', auth: getAuth() });
+  const meta = await sheets.spreadsheets.get({ spreadsheetId: COSTOS_JP, fields: 'sheets.properties.title' });
+  const hojas = (meta.data.sheets ?? []).map((h) => h.properties?.title ?? '').filter((h) => h && !['BASE scalify', 'Hoja 22'].includes(h));
+  const res = await sheets.spreadsheets.values.batchGet({ spreadsheetId: COSTOS_JP, ranges: hojas.map((h) => `'${h}'!F2:G400`) });
+  for (const vr of res.data.valueRanges ?? []) {
+    for (const [sku, c] of vr.values ?? []) {
+      const n = Number(String(c ?? '').replace(/[$\s.]/g, '').replace(',', '.'));
+      if (String(sku ?? '').trim() && n > 0) costos[String(sku).trim()] = n;
+    }
+  }
+  for (const [k, v] of Object.entries(costosOverride)) if (!k.startsWith('_') && typeof v === 'number') costos[k] = v;
+  return costos;
 }
