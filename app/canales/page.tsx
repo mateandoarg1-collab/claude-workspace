@@ -45,6 +45,7 @@ function useApi<T>(url: string): Estado<T> {
 export default function Canales() {
   const [periodo, setPeriodo] = useState<Periodo>('mes');
   const [grafico, setGrafico] = useState<CanalId | null>(null);
+  const [sinIva, setSinIva] = useState(true); // CMV y margen sobre ventas netas de IVA, como el estado de resultados
   const ml = useApi<Venta & { ads: number | null; cmv?: number | null; sinCosto?: number }>(`/api/ml/periodo?periodo=${periodo}`);
   const shopify = useApi<Venta & { cmv?: { cmv: number; sinCosto: number } | { error: string } }>(`/api/shopify?periodo=${periodo}`);
   const meta = useApi<{ spend: number | null; motivo?: string }>(`/api/meta?periodo=${periodo}`);
@@ -109,6 +110,8 @@ export default function Canales() {
   const cmvTotal = conCmv.reduce((s, f) => s + (f.cmv ?? 0), 0);
   const factConCmv = conCmv.reduce((s, f) => s + f.fact, 0);
   const fmtPct = (p: number | null) => (p == null ? '—' : `${Math.round(p * 100)}%`);
+  // Ventas sin IVA = facturación / 1,21 (los costos ya son netos de IVA). El CMV en $ no cambia; sí el % y el margen.
+  const neto = (v: number) => (sinIva ? v / 1.21 : v);
 
   const totalGeneral = canales.reduce((s, c) => s + c.monto, 0);
   const totalVentas = canales.reduce((s, c) => s + c.cantidad, 0);
@@ -222,12 +225,26 @@ export default function Canales() {
           </p>
         </section>
         <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-6">
-          <h2 className="text-lg font-semibold mb-4">CMV y margen bruto</h2>
+          <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+            <h2 className="text-lg font-semibold">CMV y margen bruto</h2>
+            <div className="inline-flex rounded-lg border border-slate-800 p-0.5 bg-slate-950">
+              {[true, false].map((v) => (
+                <button
+                  key={String(v)}
+                  onClick={() => setSinIva(v)}
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${sinIva === v ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-100'}`}
+                >
+                  {v ? 'Sin IVA' : 'Con IVA'}
+                </button>
+              ))}
+            </div>
+          </div>
           <table className="w-full text-sm">
             <thead className="text-left text-xs uppercase text-slate-400">
               <tr>
                 <th className="py-2">Canal</th>
-                <th className="text-right">CMV</th>
+                <th className="hidden sm:table-cell text-right">Ventas {sinIva ? 'sin' : 'con'} IVA</th>
+                <th className="text-right sm:pl-4">CMV</th>
                 <th className="text-right pl-4">% costo</th>
                 <th className="text-right pl-4">Margen</th>
               </tr>
@@ -239,21 +256,24 @@ export default function Canales() {
                     <CanalMarca id={f.id} />
                     <div className="text-xs font-normal text-slate-500 mt-1">{f.nota}</div>
                   </td>
-                  <td className="text-right tabular-nums">{f.cmv == null ? '—' : fmt(f.cmv)}</td>
-                  <td className="text-right tabular-nums pl-4">{fmtPct(f.pct)}</td>
-                  <td className="text-right tabular-nums pl-4 font-bold text-emerald-300">{f.cmv == null ? '—' : fmt(f.fact - f.cmv)}</td>
+                  <td className="hidden sm:table-cell text-right tabular-nums">{fmt(neto(f.fact))}</td>
+                  <td className="text-right tabular-nums sm:pl-4">{f.cmv == null ? '—' : fmt(f.cmv)}</td>
+                  <td className="text-right tabular-nums pl-4">{f.cmv == null ? '—' : fmtPct(pct(f.cmv, neto(f.fact)))}</td>
+                  <td className="text-right tabular-nums pl-4 font-bold text-emerald-300">{f.cmv == null ? '—' : fmt(neto(f.fact) - f.cmv)}</td>
                 </tr>
               ))}
               <tr className="border-t-2 border-slate-700 font-bold">
                 <td className="py-3">Total con CMV</td>
-                <td className="text-right tabular-nums">{fmt(cmvTotal)}</td>
-                <td className="text-right tabular-nums pl-4">{fmtPct(pct(cmvTotal, factConCmv))}</td>
-                <td className="text-right tabular-nums pl-4 text-emerald-300">{fmt(factConCmv - cmvTotal)}</td>
+                <td className="hidden sm:table-cell text-right tabular-nums">{fmt(neto(factConCmv))}</td>
+                <td className="text-right tabular-nums sm:pl-4">{fmt(cmvTotal)}</td>
+                <td className="text-right tabular-nums pl-4">{fmtPct(pct(cmvTotal, neto(factConCmv)))}</td>
+                <td className="text-right tabular-nums pl-4 text-emerald-300">{fmt(neto(factConCmv) - cmvTotal)}</td>
               </tr>
             </tbody>
           </table>
           <p className="text-xs text-slate-500 mt-3">
-            Margen = facturación de la tabla de arriba − CMV, antes de comisiones, envíos y pauta. Costos netos de IVA; la facturación incluye IVA.
+            Margen = ventas − CMV, antes de comisiones, envíos y pauta. Costos netos de IVA. «Sin IVA» = facturación de la tabla de arriba ÷ 1,21
+            (como en un estado de resultados); «Con IVA» = la facturación tal cual.
             Tienda Online y Local: % de costo del listado de productos de Empretienda (se actualiza cada 30 min) aplicado a su facturación. Mayorista todavía no tiene CMV.
           </p>
         </section>
