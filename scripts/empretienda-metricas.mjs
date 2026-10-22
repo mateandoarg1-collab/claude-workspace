@@ -100,7 +100,13 @@ async function iniciarSesion(page) {
 
 async function leer(page, url, esMes) {
   for (let i = 0; ; i++) {
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
+    // No se espera "networkidle": los rastreadores de Empretienda mandan pedidos sin parar y la página nunca queda
+    // quieta. Se espera a que aparezcan los números (o la pantalla de login).
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await Promise.race([
+      page.getByText('Volumen de ventas').first().waitFor({ timeout: 45000 }),
+      page.waitForURL(/auth0|login/, { timeout: 45000 }),
+    ]).catch(() => {});
     if (/auth0|login/.test(page.url())) {
       if (i === 2) throw new Error('No pude iniciar sesión en Empretienda');
       await iniciarSesion(page);
