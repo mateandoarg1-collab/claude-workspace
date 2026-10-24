@@ -19,6 +19,7 @@ import { execFileSync } from 'child_process';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { chromium } from 'playwright';
 import { google } from 'googleapis';
+import { volcarOrdenes } from './empretienda-ordenes.mjs';
 
 const SESION_ENC = '.sesion.enc';
 const clave = () => {
@@ -282,6 +283,13 @@ try {
   console.log(`CMV Empretienda actualizado (${filasCmv.length - 1} períodos, ${revisar.size} publicaciones sin regla)`);
 } catch (e) {
   console.log(`::warning::No pude calcular el CMV: ${e.message.split('\n')[0]}`);
+}
+
+// Órdenes y catálogo (pestañas emp_ordenes y emp_productos) para /estadisticas. Si falla, las métricas siguen.
+try {
+  await volcarOrdenes(page, sheets, SPREADSHEET_ID);
+} catch (e) {
+  console.log(`::warning::No pude bajar las órdenes: ${String(e?.message ?? e).split('\n')[0]}`);
 }
 
 // Guardar la sesión renovada para la próxima corrida (cifrada: el cache de Actions no es secreto).
