@@ -213,3 +213,14 @@ export async function fetchAdsCost(dateFrom: string, dateTo: string): Promise<nu
     if (offset + 50 >= j.paging.total) return total;
   }
 }
+
+// Visitas a todas las publicaciones entre dos días AR inclusive (YYYY-MM-DD). La API toma date_to como el inicio
+// de ese día, así que se le pasa el día siguiente.
+export async function fetchVisitas(desde: string, hasta: string): Promise<number> {
+  const fin = new Date(`${hasta}T12:00:00Z`);
+  fin.setUTCDate(fin.getUTCDate() + 1);
+  const r = await mlFetch<{ total_visits: number }>(
+    `/users/${ML_USER_ID()}/items_visits?date_from=${desde}&date_to=${fin.toISOString().slice(0, 10)}`,
+  );
+  return r.total_visits ?? 0;
+}

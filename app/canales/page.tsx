@@ -57,6 +57,7 @@ export default function Canales() {
   // Ventas del local del mes por medio de pago (MP Point/QR, efectivo, transferencias): para el IVA del Local.
   const localMes = useApi<{ amount: number; mp: { amount: number } }>('/api/local');
   const posventa = useApi<Record<CanalId, number>>(`/api/posventa/costo?periodo=${periodo}`);
+  const visitas = useApi<{ online: number | null; ml: number | null }>(`/api/canales/visitas?periodo=${periodo}`);
   const [manual, setManual] = useState<EmpretiendaManual | null>(null);
 
   const [ahora, setAhora] = useState(() => Date.now());
@@ -97,6 +98,15 @@ export default function Canales() {
   // Tienda Online junta: Meta + Google + TikTok contra las mismas ventas
   const pautaOnline = roas.filter((r) => r.canal === 'online' && r.pauta != null).reduce((s, r) => s + (r.pauta ?? 0), 0);
   const fmtRoas = (v: number, p: number | null | undefined) => (p ? `${(v / p).toFixed(1)}x` : '—');
+  // Visitas y conversión: Tienda Online = sesiones de GA4; Meli = visitas a las publicaciones. Conversión = ventas ÷ visitas.
+  const cantidad = (id: CanalId) => canales.find((c) => c.id === id)?.cantidad ?? 0;
+  const filasVisitas = [
+    { id: 'online' as CanalId, fuente: 'Google Analytics', visitas: visitas.data ? visitas.data.online : undefined, pauta: pautaOnline },
+    { id: 'ml' as CanalId, fuente: 'visitas a las publicaciones', visitas: visitas.data ? visitas.data.ml : undefined, pauta: ml.data?.ads ?? 0 },
+  ];
+  const fmtNum = (n: number) => Math.round(n).toLocaleString('es-AR');
+  const fmtConv = (v: number | null | undefined, c: number) =>
+    v ? (c / v * 100).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%' : '—';
 
   // CMV: Empretienda calcula el % de costo sobre el "Listado de productos" (scripts/cmv) y se aplica a la facturación
   // de la tabla; Meli usa los costos de Escalafy por MLA; Shopify el SKU de cada producto con la planilla Costos JP.
@@ -237,6 +247,37 @@ export default function Canales() {
           </table>
           <p className="text-xs text-slate-500 mt-3">
             ROAS = ventas ÷ gasto en pauta del mismo período. Meta, Google y TikTok se miden contra las mismas ventas de la Tienda Online (en el total cuentan una vez). Meta Shopify se mide contra las ventas de Shopify y Meta Mayorista contra las Mayorista. Local no entra.
+          </p>
+
+          <h3 className="text-sm font-semibold text-slate-200 mt-6 mb-2">Visitas y conversión</h3>
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs uppercase text-slate-400">
+              <tr>
+                <th className="py-2">Canal</th>
+                <th className="text-right">Visitas</th>
+                <th className="text-right pl-4">Ventas</th>
+                <th className="text-right pl-4">Conversión</th>
+                <th className="hidden sm:table-cell text-right pl-4">Pauta por visita</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filasVisitas.map((f) => (
+                <tr key={f.id} className="border-t border-slate-900">
+                  <td className="py-3 font-medium">
+                    <CanalMarca id={f.id} />
+                    <div className="text-xs font-normal text-slate-500 mt-1">{f.visitas === null ? <span className="text-amber-400">No se pudieron leer las visitas</span> : f.fuente}</div>
+                  </td>
+                  <td className="text-right tabular-nums">{f.visitas === undefined ? '…' : f.visitas === null ? '—' : fmtNum(f.visitas)}</td>
+                  <td className="text-right tabular-nums pl-4">{fmtNum(cantidad(f.id))}</td>
+                  <td className="text-right tabular-nums pl-4 font-bold text-emerald-300">{fmtConv(f.visitas, cantidad(f.id))}</td>
+                  <td className="hidden sm:table-cell text-right tabular-nums pl-4 text-slate-400">{f.visitas && f.pauta ? fmt(f.pauta / f.visitas) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="text-xs text-slate-500 mt-3">
+            Conversión = ventas ÷ visitas del mismo período. Tienda Online: sesiones de Google Analytics en mateandoarg.com contra las ventas online (sin Local).
+            Mercado Libre: visitas a todas las publicaciones contra los pedidos. Pauta por visita = gasto en pauta del canal ÷ visitas. Shopify todavía no tiene fuente de visitas.
           </p>
         </section>
         <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-6">
