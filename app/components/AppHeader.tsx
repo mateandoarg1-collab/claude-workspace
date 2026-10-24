@@ -8,6 +8,7 @@ import Wordmark from './Wordmark';
 
 const NAV: Array<{ href: string; label: string; badge?: boolean }> = [
   { href: '/canales', label: 'Canales' },
+  { href: '/estadisticas', label: 'Estadísticas' },
   { href: '/mercadolibre', label: 'Mercado Libre' },
   { href: '/full', label: 'Stock Full' },
   { href: '/posventa', label: 'Posventa' },
