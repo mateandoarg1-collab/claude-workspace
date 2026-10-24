@@ -13,6 +13,7 @@ type Fila = {
   porCanal: Record<Canal, number>;
   stock: number | null;
   full: number;
+  foto: string | null;
   porDia: number;
   porDiaCanal: Record<Canal, number>;
   base: number;
@@ -88,12 +89,20 @@ function Tarjeta({ f, hoy }: { f: Fila; hoy: string }) {
   return (
     <article className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden flex flex-col">
       <div className="p-4 pb-2 flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="text-[11px] uppercase tracking-wider text-slate-500 font-mono">🇨🇳 {f.producto}</div>
-          <h3 className="text-base font-semibold text-slate-50 flex items-center gap-2">
-            <span className={`inline-block w-3 h-3 rounded-full ring-1 ${SWATCH[f.color] ?? 'bg-slate-500'}`} />
-            {f.producto} {f.color}
-          </h3>
+        <div className="min-w-0 flex items-center gap-3">
+          {f.foto ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={f.foto} alt="" className="w-12 h-12 shrink-0 rounded-lg bg-white object-contain ring-1 ring-slate-700" />
+          ) : (
+            <div className="w-12 h-12 shrink-0 rounded-lg bg-slate-800 flex items-center justify-center">🇨🇳</div>
+          )}
+          <div className="min-w-0">
+            <div className="text-[11px] uppercase tracking-wider text-slate-500 font-mono">🇨🇳 {f.producto}</div>
+            <h3 className="text-base font-semibold text-slate-50 flex items-center gap-2">
+              <span className={`inline-block w-3 h-3 shrink-0 rounded-full ring-1 ${SWATCH[f.color] ?? 'bg-slate-500'}`} />
+              <span className="truncate">{f.producto} {f.color}</span>
+            </h3>
+          </div>
         </div>
         <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ring-1 ${e.c}`}>● {e.t}</span>
       </div>

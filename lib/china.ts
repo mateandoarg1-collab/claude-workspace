@@ -226,13 +226,24 @@ async function ventasMeli(): Promise<Venta[]> {
   return out;
 }
 
-// --- Stock en Full ahora, en piezas.
-async function stockFull(): Promise<Record<string, number>> {
+// --- Stock en Full ahora, en piezas, y la foto de portada de la publicación de cada pieza.
+async function stockFull(): Promise<{ stock: Record<string, number>; fotos: Record<string, string> }> {
   const ids = Object.values(FULL).flatMap((d) => Object.values(d));
   const inv = new Map<string, string>();
+  const portada = new Map<string, string>();
   for (let i = 0; i < ids.length; i += 20) {
-    const r = await ml<Array<{ body: { id: string; inventory_id?: string } }>>(`/items?ids=${ids.slice(i, i + 20).join(',')}&attributes=id,inventory_id`);
-    for (const x of r) if (x.body?.inventory_id) inv.set(x.body.id, x.body.inventory_id);
+    const r = await ml<Array<{ body: { id: string; inventory_id?: string; thumbnail_id?: string } }>>(
+      `/items?ids=${ids.slice(i, i + 20).join(',')}&attributes=id,inventory_id,thumbnail_id`,
+    );
+    for (const x of r) {
+      if (x.body?.inventory_id) inv.set(x.body.id, x.body.inventory_id);
+      if (x.body?.thumbnail_id) portada.set(x.body.id, `https://http2.mlstatic.com/D_${x.body.thumbnail_id}-O.jpg`);
+    }
+  }
+  const fotos: Record<string, string> = {};
+  for (const [prod, colores] of Object.entries(FULL)) {
+    if (prod.startsWith('Set')) continue; // la foto es la de la pieza suelta, no la del kit
+    for (const [c, id] of Object.entries(colores)) if (portada.has(id)) fotos[`${prod}|${c}`] = portada.get(id)!;
   }
   const out: Record<string, number> = {};
   const sumar = (k: string, q: number) => (out[k] = (out[k] ?? 0) + q);
@@ -247,7 +258,7 @@ async function stockFull(): Promise<Record<string, number>> {
       }),
     ),
   );
-  return out;
+  return { stock: out, fotos };
 }
 
 // --- Último conteo físico (pestaña china_conteo: fecha | producto | color | full | local | deposito).
@@ -275,6 +286,7 @@ export type Fila = {
   porCanal: Record<Canal, number>;
   stock: number | null; // conteo físico − ventas desde el conteo
   full: number;
+  foto: string | null; // portada de la publicación de MeLi
   porDia: number; // promedio de los últimos 14 días
   porDiaCanal: Record<Canal, number>;
   base: number; // ritmo de un día "normal" (sin fechas fuertes) para proyectar
@@ -294,7 +306,7 @@ export async function getChina() {
     seguro('Shopify', ventasShopify(), []),
     seguro('Mayorista', ventasMayorista(), []),
     seguro('Mercado Libre', ventasMeli(), []),
-    seguro('Stock Full', stockFull(), {} as Record<string, number>),
+    seguro('Stock Full', stockFull(), { stock: {} as Record<string, number>, fotos: {} as Record<string, string> }),
     seguro('Conteo', ultimoConteo(), null),
   ]);
   const ventas = [...emp, ...shop, ...may, ...meli];
@@ -339,7 +351,8 @@ export async function getChina() {
       vendidos: mias.reduce((s, v) => s + v.q, 0),
       porCanal,
       stock,
-      full: full[k] ?? 0,
+      full: full.stock[k] ?? 0,
+      foto: full.fotos[k] ?? null,
       porDia: ultimos / VENTANA,
       porDiaCanal,
       base: ultimos / sumaFactores,
