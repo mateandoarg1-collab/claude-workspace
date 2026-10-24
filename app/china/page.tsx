@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import AppHeader from '../components/AppHeader';
-import { COBERTURA, estado, HORIZONTE, LEAD_TIME, proyectar, SAFETY, UNIDADES_CAJA } from '@/lib/chinaProyeccion';
+import { estado, HORIZONTE, LEAD_TIME, proyectar, SAFETY, UNIDADES_CAJA } from '@/lib/chinaProyeccion';
 
 type Canal = 'MeLi' | 'Empre' | 'Local' | 'Shopify' | 'Mayorista';
 type Fila = {
@@ -41,6 +41,11 @@ const CANALES: { k: Canal; label: string; corto: string; color: string }[] = [
 ];
 const SWATCH: Record<string, string> = { Negro: 'bg-neutral-900 ring-slate-500', Rosa: 'bg-pink-300 ring-pink-200', Beige: 'bg-amber-100 ring-amber-50', Blanco: 'bg-white ring-slate-300' };
 const BOOSTS = [0.25, 0.5, 1, 2];
+const COBERTURAS = [{ meses: 6, dias: 182 }, { meses: 9, dias: 273 }, { meses: 12, dias: 365 }];
+const CRECIMIENTOS = [0, 0.03];
+const CONTAINER_ANTERIOR = { unidades: 19800, cajas: 780 };
+type Opc = { cobertura: number; crecimiento: number };
+const cajas = (producto: string, u: number) => Math.ceil(u / (UNIDADES_CAJA[producto] ?? 25));
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
 const n0 = (n: number) => Math.round(n).toLocaleString('es-AR');
@@ -78,12 +83,11 @@ function Curva({ curva }: { curva: number[] }) {
   );
 }
 
-function Tarjeta({ f, hoy }: { f: Fila; hoy: string }) {
+function Tarjeta({ f, hoy, opc }: { f: Fila; hoy: string; opc: Opc }) {
   const [boost, setBoost] = useState(0);
-  const p = useMemo(() => proyectar(f.stock ?? 0, f.base, hoy, boost), [f, hoy, boost]);
+  const p = useMemo(() => proyectar(f.stock ?? 0, f.base, hoy, { ...opc, boost }), [f, hoy, opc, boost]);
   const e = ESTADO[estado(p.dias)];
   const caja = UNIDADES_CAJA[f.producto] ?? 25;
-  const cajas = Math.ceil(p.sugerido / caja);
   const totalCanal = CANALES.reduce((s, c) => s + f.porDiaCanal[c.k], 0);
   const vendidoPct = Math.round((f.vendidos / f.llegaron) * 100);
   return (
@@ -171,7 +175,7 @@ function Tarjeta({ f, hoy }: { f: Fila; hoy: string }) {
         <span className="text-slate-400">
           Sugerido: <b className="text-slate-100 tabular-nums">{n0(p.sugerido)} ud</b>
         </span>
-        <span className="text-slate-300 tabular-nums">{n0(cajas)} cajas × {caja}</span>
+        <span className="text-slate-300 tabular-nums">{n0(cajas(f.producto, p.sugerido))} cajas × {caja}</span>
       </div>
     </article>
   );
@@ -181,6 +185,7 @@ export default function China() {
   const [data, setData] = useState<Data | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [opc, setOpc] = useState<Opc>({ cobertura: 273, crecimiento: 0 });
 
   async function load() {
     setLoading(true);
@@ -200,14 +205,18 @@ export default function China() {
     Promise.resolve().then(load);
   }, []);
 
-  // Más urgente primero (sin boost).
-  const filas = useMemo(
-    () => (data?.filas ?? [])
-      .map((f) => ({ f, dias: proyectar(f.stock ?? 0, f.base, data!.hoy).dias ?? 1e9 }))
-      .sort((a, b) => a.dias - b.dias || b.f.porDia - a.f.porDia)
-      .map((x) => x.f),
-    [data],
-  );
+  // Más urgente primero (sin boost), y el pedido sugerido total con la cobertura y el crecimiento elegidos.
+  const { filas, pedido } = useMemo(() => {
+    const p = (data?.filas ?? []).map((f) => ({ f, p: proyectar(f.stock ?? 0, f.base, data!.hoy, opc) }));
+    return {
+      filas: [...p].sort((a, b) => (a.p.dias ?? 1e9) - (b.p.dias ?? 1e9) || b.f.porDia - a.f.porDia).map((x) => x.f),
+      pedido: {
+        unidades: p.reduce((s, x) => s + x.p.sugerido, 0),
+        cajas: p.reduce((s, x) => s + cajas(x.f.producto, x.p.sugerido), 0),
+        items: p.filter((x) => x.p.sugerido > 0).sort((a, b) => b.p.sugerido - a.p.sugerido),
+      },
+    };
+  }, [data, opc]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -227,7 +236,7 @@ export default function China() {
           <div className="rounded-xl bg-emerald-950/40 border border-emerald-800 p-3">
             <div className="text-xs text-emerald-300">Total vendido</div>
             <div className="text-xl font-semibold tabular-nums">{data ? n0(data.total) : '…'}</div>
-            <div className="text-[11px] text-slate-400 tabular-nums">{data ? `${n1(data.porDia)}/día (14 días)` : ''}</div>
+            <div className="text-[11px] text-slate-400 tabular-nums">{data ? `${n1(data.porDia)}/día` : ''}</div>
           </div>
         </section>
 
@@ -235,8 +244,47 @@ export default function China() {
           <button onClick={load} disabled={loading} className="rounded-full px-3 py-1.5 bg-slate-900 border border-slate-800 text-slate-300 disabled:opacity-50">
             {loading ? 'Cargando…' : '↻ Actualizar'}
           </button>
-          <span className="text-xs text-slate-500">Lead time {LEAD_TIME} días · safety {SAFETY} · sugerido = cubrir {COBERTURA} días desde que llega</span>
+          <span className="text-xs text-slate-500">Lead time {LEAD_TIME} días · safety {SAFETY}</span>
         </div>
+
+        <section className="rounded-2xl bg-slate-900 border border-slate-800 p-4 space-y-3">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400">El pedido cubre</span>
+              {COBERTURAS.map((c) => (
+                <button key={c.meses} onClick={() => setOpc({ ...opc, cobertura: c.dias })}
+                  className={`rounded-lg px-2.5 py-1 text-xs ring-1 ${opc.cobertura === c.dias ? 'bg-emerald-500/20 text-emerald-200 ring-emerald-500/40' : 'bg-slate-950 text-slate-300 ring-slate-800'}`}>
+                  {c.meses} meses
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-slate-400">Crecimiento</span>
+              {CRECIMIENTOS.map((c) => (
+                <button key={c} onClick={() => setOpc({ ...opc, crecimiento: c })}
+                  className={`rounded-lg px-2.5 py-1 text-xs ring-1 ${opc.crecimiento === c ? 'bg-emerald-500/20 text-emerald-200 ring-emerald-500/40' : 'bg-slate-950 text-slate-300 ring-slate-800'}`}>
+                  {c === 0 ? 'Sin crecimiento' : `+${c * 100}%/mes`}
+                </button>
+              ))}
+            </div>
+          </div>
+          {data && (
+            <div>
+              <div className="flex flex-wrap items-baseline gap-x-3">
+                <span className="text-sm text-slate-400">Pedido sugerido</span>
+                <span className="text-2xl font-semibold tabular-nums">{n0(pedido.unidades)} ud</span>
+                <span className="text-slate-300 tabular-nums">· {n0(pedido.cajas)} cajas</span>
+                <span className="text-xs text-slate-500 tabular-nums">(el container anterior: {n0(CONTAINER_ANTERIOR.unidades)} ud · {CONTAINER_ANTERIOR.cajas} cajas)</span>
+              </div>
+              <div className="mt-1 text-xs text-slate-500 tabular-nums">
+                {pedido.items.map((x) => `${x.f.producto} ${x.f.color} ${n0(x.p.sugerido)}`).join(' · ')}
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                = lo que se vende en los {LEAD_TIME} días que tarda en llegar + {opc.cobertura === 365 ? 'un año' : `${COBERTURAS.find((c) => c.dias === opc.cobertura)?.meses} meses`} después, menos el stock actual.
+              </p>
+            </div>
+          )}
+        </section>
 
         {error && <div className="rounded bg-red-950 text-red-300 p-3 text-sm">{error}</div>}
         {data?.errores.map((x) => (
@@ -246,7 +294,7 @@ export default function China() {
 
         {data && (
           <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filas.map((f) => <Tarjeta key={`${f.producto}|${f.color}`} f={f} hoy={data.hoy} />)}
+            {filas.map((f) => <Tarjeta key={`${f.producto}|${f.color}`} f={f} hoy={data.hoy} opc={opc} />)}
           </section>
         )}
 
@@ -254,8 +302,8 @@ export default function China() {
           <p className="text-xs text-slate-500 leading-relaxed">
             Stock = conteo físico del {dia(data.conteo)} (Full + Local + depósito Paraguay) menos todo lo vendido desde el día siguiente. Para cargar un
             conteo nuevo: pestaña <b>china_conteo</b> de la planilla MATEANDO MAYORISTA 2026, filas con la fecha nueva. Los kits se cuentan por pieza
-            (termo + mate). Ritmo = promedio de los últimos 14 días; la proyección suma Cyber, Navidad, regalos empresariales, Hot Sale, Día del Padre y
-            +3%/mes. {data.sinColor > 0 && `${n0(data.sinColor)} unidades vendidas sin color identificado (mayorista o kits) no se descuentan de ningún color.`}
+            (termo + mate). Ritmo: MeLi, web, local y Shopify = promedio de los últimos 30 días; mayorista = promedio desde el 1/9 (llega en pedidos grandes y
+            sueltos). La proyección suma Cyber, Navidad, regalos empresariales, Hot Sale y Día del Padre, y el crecimiento elegido arriba. {data.sinColor > 0 && `${n0(data.sinColor)} unidades vendidas sin color identificado (mayorista o kits) no se descuentan de ningún color.`}
           </p>
         )}
       </main>

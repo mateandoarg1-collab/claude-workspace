@@ -276,7 +276,7 @@ async function ultimoConteo(): Promise<Conteo | null> {
   return { fecha, stock };
 }
 
-const VENTANA = 14; // días completos para medir el ritmo
+const VENTANA = 30; // días completos para medir el ritmo de los canales minoristas
 
 export type Fila = {
   producto: string;
@@ -287,10 +287,10 @@ export type Fila = {
   stock: number | null; // conteo físico − ventas desde el conteo
   full: number;
   foto: string | null; // portada de la publicación de MeLi
-  porDia: number; // promedio de los últimos 14 días
+  porDia: number; // minoristas: promedio de los últimos 30 días · mayorista: promedio desde el 1/9
   porDiaCanal: Record<Canal, number>;
   base: number; // ritmo de un día "normal" (sin fechas fuertes) para proyectar
-  tendencia: number | null; // últimos 7 días vs los 7 anteriores
+  tendencia: number | null; // minoristas, últimos 7 días vs los 7 anteriores
 };
 
 export async function getChina() {
@@ -312,11 +312,14 @@ export async function getChina() {
   const ventas = [...emp, ...shop, ...may, ...meli];
   const hoy = iso(new Date(Date.now() - 3 * 3600e3));
   const ayer = sumarDias(hoy, -1);
-  const desde14 = sumarDias(hoy, -VENTANA);
+  const desdeVentana = sumarDias(hoy, -VENTANA);
   const desde7 = sumarDias(hoy, -7);
-  // Ritmo normalizado: ventas de los últimos 14 días completos ÷ suma de factores de esos días.
+  const desde14 = sumarDias(hoy, -14);
+  // Minoristas: ventas de los últimos 30 días completos ÷ suma de factores de esos días (saca el efecto de las
+  // fechas fuertes). Mayorista: llega en pedidos grandes y sueltos, así que se promedia desde el 1/9.
   let sumaFactores = 0;
   for (let i = VENTANA; i >= 1; i--) sumaFactores += factor(sumarDias(hoy, -i));
+  const diasMayorista = Math.max(1, Math.round((Date.parse(ayer) - Date.parse(DESDE)) / 864e5) + 1);
 
   const cero = () => Object.fromEntries(CANALES.map((c) => [c, 0])) as Record<Canal, number>;
   const canales = cero();
@@ -327,17 +330,23 @@ export async function getChina() {
     const mias = ventas.filter((v) => v.k === k);
     const porCanal = cero();
     const porDiaCanal = cero();
+    let minorista = 0;
     let sem = 0;
     let semAnt = 0;
     for (const v of mias) {
       porCanal[v.canal] += v.q;
-      if (v.dia >= desde14 && v.dia <= ayer) {
-        porDiaCanal[v.canal] += v.q / VENTANA;
-        if (v.dia >= desde7) sem += v.q;
-        else semAnt += v.q;
+      if (v.dia > ayer) continue;
+      if (v.canal === 'Mayorista') {
+        porDiaCanal.Mayorista += v.q / diasMayorista;
+        continue;
       }
+      if (v.dia >= desdeVentana) {
+        porDiaCanal[v.canal] += v.q / VENTANA;
+        minorista += v.q;
+      }
+      if (v.dia >= desde7) sem += v.q;
+      else if (v.dia >= desde14) semAnt += v.q;
     }
-    const ultimos = sem + semAnt;
     let stock: number | null = null;
     const enConteo = conteo?.stock[k];
     if (conteo && enConteo) {
@@ -353,15 +362,14 @@ export async function getChina() {
       stock,
       full: full.stock[k] ?? 0,
       foto: full.fotos[k] ?? null,
-      porDia: ultimos / VENTANA,
+      porDia: CANALES.reduce((s, x) => s + porDiaCanal[x], 0),
       porDiaCanal,
-      base: ultimos / sumaFactores,
+      base: minorista / sumaFactores + porDiaCanal.Mayorista,
       tendencia: semAnt > 0 ? sem / semAnt - 1 : null,
     };
   });
 
   const sinColor = ventas.filter((v) => v.k.endsWith('|?')).reduce((s, v) => s + v.q, 0);
-  const ultimos14 = ventas.filter((v) => v.dia >= desde14 && v.dia <= ayer).reduce((s, v) => s + v.q, 0);
   return {
     generado: new Date().toISOString(),
     desde: DESDE,
@@ -369,7 +377,7 @@ export async function getChina() {
     conteo: conteo?.fecha ?? null,
     canales,
     total: ventas.reduce((s, v) => s + v.q, 0),
-    porDia: ultimos14 / VENTANA,
+    porDia: filas.reduce((s, f) => s + f.porDia, 0),
     sinColor,
     errores,
     filas,

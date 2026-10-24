@@ -4,8 +4,8 @@
 export const LEAD_TIME = 90; // días desde que se hace el pedido hasta que llega el container
 export const SAFETY = 30; // días de colchón por demoras de aduana/flete
 export const HORIZONTE = 135; // días que muestra el gráfico
-export const COBERTURA = 365; // el pedido sugerido cubre un año desde que llega
-export const CRECIMIENTO = 0.03; // por mes
+export const COBERTURA = 365; // por defecto, el pedido sugerido cubre un año desde que llega
+export const CRECIMIENTO = 0; // por mes (la página permite elegir +3%)
 export const UNIDADES_CAJA: Record<string, number> = { 'Mate Acero 236': 50 }; // el resto: 25 por caja
 
 const fecha = (s: string) => new Date(`${s}T12:00:00Z`);
@@ -32,30 +32,33 @@ export function factor(dia: string): number {
   return f;
 }
 
-// Venta esperada del día `i` contado desde hoy, con un ritmo base (día normal) y el boost elegido.
-const ventaDia = (base: number, hoy: string, i: number, boost: number) =>
-  base * (1 + boost) * factor(sumarDias(hoy, i)) * (1 + CRECIMIENTO) ** (i / 30.4);
+export type Opciones = { boost?: number; cobertura?: number; crecimiento?: number };
+
+// Venta esperada del día `i` contado desde hoy, con un ritmo base (día normal), el boost y el crecimiento elegidos.
+const ventaDia = (base: number, hoy: string, i: number, boost: number, crecimiento: number) =>
+  base * (1 + boost) * factor(sumarDias(hoy, i)) * (1 + crecimiento) ** (i / 30.4);
 
 export type Proyeccion = {
   curva: number[]; // stock al final de cada día, de hoy a HORIZONTE
   agota: string | null; // día en que llega a 0 (null: más de 3 años)
   dias: number | null;
-  sugerido: number; // unidades a pedir hoy para cubrir COBERTURA días desde que llega
+  sugerido: number; // unidades a pedir hoy para cubrir `cobertura` días desde que llega
 };
 
-export function proyectar(stock: number, base: number, hoy: string, boost = 0): Proyeccion {
+export function proyectar(stock: number, base: number, hoy: string, op: Opciones = {}): Proyeccion {
+  const { boost = 0, cobertura = COBERTURA, crecimiento = CRECIMIENTO } = op;
   const curva = [stock];
   let s = stock;
   let agota: string | null = stock <= 0 ? hoy : null;
   let dias: number | null = stock <= 0 ? 0 : null;
   let demanda = 0;
   for (let i = 1; i <= 1095; i++) {
-    const v = ventaDia(base, hoy, i, boost);
-    if (i <= LEAD_TIME + COBERTURA) demanda += v;
+    const v = ventaDia(base, hoy, i, boost, crecimiento);
+    if (i <= LEAD_TIME + cobertura) demanda += v;
     s -= v;
     if (i <= HORIZONTE) curva.push(Math.max(0, s));
     if (agota == null && s <= 0) { agota = sumarDias(hoy, i); dias = i; }
-    if (agota != null && i >= Math.max(HORIZONTE, LEAD_TIME + COBERTURA)) break;
+    if (agota != null && i >= Math.max(HORIZONTE, LEAD_TIME + cobertura)) break;
   }
   if (base <= 0) { agota = stock <= 0 ? hoy : null; dias = stock <= 0 ? 0 : null; }
   return { curva, agota, dias, sugerido: Math.max(0, Math.round(demanda - stock)) };
