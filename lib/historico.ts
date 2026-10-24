@@ -76,12 +76,20 @@ export async function guardarMes(mes: string) {
     }),
     getShopifyVentasRango(desde, hasta).catch(() => null),
     (async () => {
+      // Pestaña del mes ("SEPT 26"; febrero 2026 quedó como "FEB 26."). Fila 1 = títulos, fila 2 = totales (A = pedidos).
+      // La columna del total se busca por su título: hasta marzo 2026 "MONTO TOTAL" es la L y la M es "COSTO";
+      // desde abril se agregó "CMV" y el total pasó a la M.
       const [y, m] = mes.split('-').map(Number);
-      const tab = `${MAY_TAB[m - 1]} ${String(y).slice(-2)}`;
+      const base = `${MAY_TAB[m - 1]} ${String(y).slice(-2)}`;
       const sheets = google.sheets({ version: 'v4', auth: getAuth() });
-      const r = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A2:M2`, valueRenderOption: 'UNFORMATTED_VALUE' });
-      const row = r.data.values?.[0] ?? [];
-      return { monto: parseMonto(row[12]), ventas: Number(row[0]) || 0, tab };
+      const titulos = (await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID, fields: 'sheets.properties.title' })).data.sheets?.map((x) => x.properties?.title ?? '') ?? [];
+      const tab = titulos.find((t) => t.trim().replace(/\.$/, '') === base);
+      if (!tab) throw new Error(`No hay pestaña ${base}`);
+      const r = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A1:Z2`, valueRenderOption: 'UNFORMATTED_VALUE' });
+      const [cab = [], tot = []] = r.data.values ?? [];
+      const col = cab.findIndex((c) => /MONTO\s*TOTAL/i.test(String(c)));
+      if (col < 0) throw new Error(`No encontré "MONTO TOTAL" en ${tab}`);
+      return { monto: parseMonto(tot[col]), ventas: Number(tot[0]) || 0, tab };
     })().catch(() => null),
   ]);
   const filas: FilaHist[] = [{ mes, canal: 'ml', monto: ml.monto, ventas: ml.ventas, fuente: 'API Mercado Libre', actualizado: ahora }];
