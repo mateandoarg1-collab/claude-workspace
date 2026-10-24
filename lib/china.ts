@@ -3,7 +3,7 @@ import { getOrdenes, ACORDAR, PAGO } from './empretiendaOrdenes';
 import { getAuth } from './sheets';
 import { getShopifyLineas } from './shopify';
 import { mlFetch, ML_USER_ID, isValidOrder, fmtTZ, type MLOrder } from './ml';
-import { factor, iso, sumarDias } from './chinaProyeccion';
+import { factor, FACTORES, eventosDel, iso, NOMBRE_EVENTO, sumarDias, type Ajustes, type Evento } from './chinaProyeccion';
 
 // Productos importados de China (container que llegó en sep-2026): ventas de todos los canales desde el 1/9 y stock
 // en vivo. Los kits se desarman en piezas (Set 1 L = Termo 1 L + Mate; Set 750 = Termo 750 + Mate), porque lo que se
@@ -276,7 +276,86 @@ async function ultimoConteo(): Promise<Conteo | null> {
   return { fecha, stock };
 }
 
-const VENTANA = 30; // días completos para medir el ritmo de los canales minoristas
+const VENTANA = 30; // días del promedio por canal que muestra cada tarjeta
+const MEDIA_VIDA = 30; // el ritmo usa toda la historia: una venta de hace 30 días pesa la mitad que una de ayer
+const HORIZONTE_PRUEBA = 7; // días que se pronostican en cada prueba contra el historial
+// El ritmo se aprende desde el 1/10: en septiembre todavía se estaba lanzando (colores nuevos llegando, publicaciones
+// nuevas de MeLi del 30/9) y se vendía la mitad; usarlo hacía que todo pareciera crecer y exageraba las fechas fuertes.
+const DESDE_RITMO = '2026-10-01';
+
+const entre = (a: string, b: string) => Math.round((Date.parse(a) - Date.parse(b)) / 864e5);
+function dias(desde: string, hasta: string): string[] {
+  const out: string[] = [];
+  for (let d = desde; d <= hasta; d = sumarDias(d, 1)) out.push(d);
+  return out;
+}
+
+// Ritmo de un día normal (sin fechas fuertes) con todas las ventas minoristas desde el 1/10 hasta `hasta`: cada día
+// se divide por su factor de fecha fuerte y pesa menos cuanto más viejo es.
+function ritmoBase(porDia: Map<string, number>, hasta: string, ajustes: Ajustes): number {
+  let num = 0;
+  let den = 0;
+  for (const d of dias(DESDE_RITMO, hasta)) {
+    const w = 0.5 ** (entre(hasta, d) / MEDIA_VIDA);
+    num += (porDia.get(d) ?? 0) * w;
+    den += factor(d, ajustes) * w;
+  }
+  return den > 0 ? num / den : 0;
+}
+
+export type Aprendido = { evento: Evento; nombre: string; supuesto: number; medido: number; dias: number; desde: string; hasta: string };
+
+// Cuánto se vendió de verdad en cada fecha fuerte que ya pasó, contra el ritmo normal de antes. Solo días con un
+// único evento (para no mezclar efectos), la última vez que ocurrió, mínimo 3 días y 5 de historia previa.
+function aprenderFactores(porDia: Map<string, number>, hasta: string): Aprendido[] {
+  const grupos = new Map<Evento, string[]>();
+  for (const d of dias(DESDE_RITMO, hasta)) {
+    const ev = eventosDel(d);
+    if (ev.length === 1) grupos.set(ev[0], [...(grupos.get(ev[0]) ?? []), d]);
+  }
+  const out: Aprendido[] = [];
+  for (const [evento, ds] of grupos) {
+    const bloque = [ds[ds.length - 1]];
+    for (let j = ds.length - 2; j >= 0 && entre(bloque[0], ds[j]) === 1; j--) bloque.unshift(ds[j]);
+    const antes = sumarDias(bloque[0], -1);
+    if (bloque.length < 3 || entre(antes, DESDE_RITMO) < 4) continue;
+    const base = ritmoBase(porDia, antes, {});
+    if (base <= 0) continue;
+    const real = bloque.reduce((s, d) => s + (porDia.get(d) ?? 0), 0);
+    out.push({
+      evento,
+      nombre: NOMBRE_EVENTO[evento],
+      supuesto: FACTORES[evento],
+      medido: Math.min(6, Math.max(0.3, real / (base * bloque.length))),
+      dias: bloque.length,
+      desde: bloque[0],
+      hasta: bloque[bloque.length - 1],
+    });
+  }
+  return out;
+}
+const comoAjustes = (a: Aprendido[]): Ajustes => Object.fromEntries(a.map((x) => [x.evento, x.medido]));
+
+export type Prueba = { corte: string; pronostico: number; real: number };
+
+// Prueba contra el historial: parado en cada fecha pasada (una por semana), pronostica la semana siguiente con lo
+// que se sabía hasta ese día y lo compara con lo que se vendió. Ventas minoristas de todos los productos juntos.
+function probar(porDia: Map<string, number>, ayer: string): Prueba[] {
+  const out: Prueba[] = [];
+  for (let corte = sumarDias(DESDE_RITMO, 6); sumarDias(corte, HORIZONTE_PRUEBA) <= ayer; corte = sumarDias(corte, 7)) {
+    const ajustes = comoAjustes(aprenderFactores(porDia, corte));
+    const base = ritmoBase(porDia, corte, ajustes);
+    let pronostico = 0;
+    let real = 0;
+    for (let i = 1; i <= HORIZONTE_PRUEBA; i++) {
+      const d = sumarDias(corte, i);
+      pronostico += base * factor(d, ajustes);
+      real += porDia.get(d) ?? 0;
+    }
+    out.push({ corte, pronostico: Math.round(pronostico), real });
+  }
+  return out;
+}
 
 export type Fila = {
   producto: string;
@@ -287,9 +366,10 @@ export type Fila = {
   stock: number | null; // conteo físico − ventas desde el conteo
   full: number;
   foto: string | null; // portada de la publicación de MeLi
-  porDia: number; // minoristas: promedio de los últimos 30 días · mayorista: promedio desde el 1/9
-  porDiaCanal: Record<Canal, number>;
-  base: number; // ritmo de un día "normal" (sin fechas fuertes) para proyectar
+  porDia: number; // minoristas (MeLi, web, local, Shopify): promedio de los últimos 30 días
+  porDiaCanal: Record<Canal, number>; // minoristas, últimos 30 días (Mayorista queda en 0: va aparte)
+  base: number; // ritmo minorista de un día "normal" (sin fechas fuertes): define el quiebre
+  mayoristaDia: number; // promedio mayorista desde el 1/9: solo para el pedido sugerido
   tendencia: number | null; // minoristas, últimos 7 días vs los 7 anteriores
 };
 
@@ -315,11 +395,17 @@ export async function getChina() {
   const desdeVentana = sumarDias(hoy, -VENTANA);
   const desde7 = sumarDias(hoy, -7);
   const desde14 = sumarDias(hoy, -14);
-  // Minoristas: ventas de los últimos 30 días completos ÷ suma de factores de esos días (saca el efecto de las
-  // fechas fuertes). Mayorista: llega en pedidos grandes y sueltos, así que se promedia desde el 1/9.
-  let sumaFactores = 0;
-  for (let i = VENTANA; i >= 1; i--) sumaFactores += factor(sumarDias(hoy, -i));
-  const diasMayorista = Math.max(1, Math.round((Date.parse(ayer) - Date.parse(DESDE)) / 864e5) + 1);
+  // Mayorista (pedidos grandes y sueltos): descuenta del stock pero no define el quiebre; para el pedido sugerido se
+  // suma su promedio desde el 1/9.
+  const diasMayorista = Math.max(1, entre(ayer, DESDE) + 1);
+
+  // Ventas minoristas por día (todos los productos): de acá salen las fechas fuertes medidas y las pruebas.
+  const minorista = ventas.filter((v) => v.canal !== 'Mayorista' && v.dia <= ayer);
+  const totalDia = new Map<string, number>();
+  for (const v of minorista) totalDia.set(v.dia, (totalDia.get(v.dia) ?? 0) + v.q);
+  const aprendido = aprenderFactores(totalDia, ayer);
+  const ajustes = comoAjustes(aprendido);
+  const pruebas = probar(totalDia, ayer);
 
   const cero = () => Object.fromEntries(CANALES.map((c) => [c, 0])) as Record<Canal, number>;
   const canales = cero();
@@ -330,20 +416,15 @@ export async function getChina() {
     const mias = ventas.filter((v) => v.k === k);
     const porCanal = cero();
     const porDiaCanal = cero();
-    let minorista = 0;
+    const minoristaDia = new Map<string, number>();
     let sem = 0;
     let semAnt = 0;
     for (const v of mias) {
       porCanal[v.canal] += v.q;
       if (v.dia > ayer) continue;
-      if (v.canal === 'Mayorista') {
-        porDiaCanal.Mayorista += v.q / diasMayorista;
-        continue;
-      }
-      if (v.dia >= desdeVentana) {
-        porDiaCanal[v.canal] += v.q / VENTANA;
-        minorista += v.q;
-      }
+      if (v.canal === 'Mayorista') continue; // descuenta stock (más abajo), pero no entra en el ritmo
+      minoristaDia.set(v.dia, (minoristaDia.get(v.dia) ?? 0) + v.q);
+      if (v.dia >= desdeVentana) porDiaCanal[v.canal] += v.q / VENTANA;
       if (v.dia >= desde7) sem += v.q;
       else if (v.dia >= desde14) semAnt += v.q;
     }
@@ -364,7 +445,8 @@ export async function getChina() {
       foto: full.fotos[k] ?? null,
       porDia: CANALES.reduce((s, x) => s + porDiaCanal[x], 0),
       porDiaCanal,
-      base: minorista / sumaFactores + porDiaCanal.Mayorista,
+      base: ritmoBase(minoristaDia, ayer, ajustes),
+      mayoristaDia: porCanal.Mayorista / diasMayorista,
       tendencia: semAnt > 0 ? sem / semAnt - 1 : null,
     };
   });
@@ -379,6 +461,16 @@ export async function getChina() {
     total: ventas.reduce((s, v) => s + v.q, 0),
     porDia: filas.reduce((s, f) => s + f.porDia, 0),
     sinColor,
+    diasHistoria: entre(ayer, DESDE_RITMO) + 1,
+    desdeRitmo: DESDE_RITMO,
+    diario: dias(DESDE, ayer).map((d) => ({
+      dia: d,
+      minorista: totalDia.get(d) ?? 0,
+      mayorista: ventas.filter((v) => v.canal === 'Mayorista' && v.dia === d).reduce((s, v) => s + v.q, 0),
+    })),
+    ajustes,
+    aprendido,
+    pruebas,
     errores,
     filas,
   };

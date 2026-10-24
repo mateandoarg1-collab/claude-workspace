@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import AppHeader from '../components/AppHeader';
-import { estado, HORIZONTE, LEAD_TIME, proyectar, SAFETY, UNIDADES_CAJA } from '@/lib/chinaProyeccion';
+import { estado, FACTORES, HORIZONTE, LEAD_TIME, NOMBRE_EVENTO, proyectar, SAFETY, UNIDADES_CAJA, type Ajustes, type Evento } from '@/lib/chinaProyeccion';
 
 type Canal = 'MeLi' | 'Empre' | 'Local' | 'Shopify' | 'Mayorista';
 type Fila = {
@@ -17,6 +17,7 @@ type Fila = {
   porDia: number;
   porDiaCanal: Record<Canal, number>;
   base: number;
+  mayoristaDia: number;
   tendencia: number | null;
 };
 type Data = {
@@ -28,6 +29,12 @@ type Data = {
   total: number;
   porDia: number;
   sinColor: number;
+  diasHistoria: number;
+  desdeRitmo: string;
+  ajustes: Ajustes;
+  aprendido: { evento: Evento; nombre: string; supuesto: number; medido: number; dias: number; desde: string; hasta: string }[];
+  pruebas: { corte: string; pronostico: number; real: number }[];
+  diario: { dia: string; minorista: number; mayorista: number }[];
   errores: string[];
   filas: Fila[];
 };
@@ -44,7 +51,8 @@ const BOOSTS = [0.25, 0.5, 1, 2];
 const COBERTURAS = [{ meses: 6, dias: 182 }, { meses: 9, dias: 273 }, { meses: 12, dias: 365 }];
 const CRECIMIENTOS = [0, 0.03];
 const CONTAINER_ANTERIOR = { unidades: 19800, cajas: 780 };
-type Opc = { cobertura: number; crecimiento: number };
+type Opc = { cobertura: number; crecimiento: number; ajustes?: Ajustes };
+const MINORISTAS = CANALES.filter((c) => c.k !== 'Mayorista');
 const cajas = (producto: string, u: number) => Math.ceil(u / (UNIDADES_CAJA[producto] ?? 25));
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
@@ -85,10 +93,10 @@ function Curva({ curva }: { curva: number[] }) {
 
 function Tarjeta({ f, hoy, opc }: { f: Fila; hoy: string; opc: Opc }) {
   const [boost, setBoost] = useState(0);
-  const p = useMemo(() => proyectar(f.stock ?? 0, f.base, hoy, { ...opc, boost }), [f, hoy, opc, boost]);
+  const p = useMemo(() => proyectar(f.stock ?? 0, f.base, hoy, { ...opc, boost, mayoristaDia: f.mayoristaDia }), [f, hoy, opc, boost]);
   const e = ESTADO[estado(p.dias)];
   const caja = UNIDADES_CAJA[f.producto] ?? 25;
-  const totalCanal = CANALES.reduce((s, c) => s + f.porDiaCanal[c.k], 0);
+  const totalCanal = MINORISTAS.reduce((s, c) => s + f.porDiaCanal[c.k], 0);
   const vendidoPct = Math.round((f.vendidos / f.llegaron) * 100);
   return (
     <article className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden flex flex-col">
@@ -138,7 +146,7 @@ function Tarjeta({ f, hoy, opc }: { f: Fila; hoy: string; opc: Opc }) {
           <div className="tabular-nums min-w-0 truncate">
             <b className="text-slate-100">{n1(f.porDia)}</b> <span className="text-slate-400">ud/día</span>
             <span className="text-slate-500">
-              {CANALES.filter((c) => f.porDiaCanal[c.k] >= 0.05).map((c) => ` · ${c.corto} ${n1(f.porDiaCanal[c.k])}`)}
+              {MINORISTAS.filter((c) => f.porDiaCanal[c.k] >= 0.05).map((c) => ` · ${c.corto} ${n1(f.porDiaCanal[c.k])}`)}
             </span>
           </div>
           {f.tendencia != null && (
@@ -148,15 +156,21 @@ function Tarjeta({ f, hoy, opc }: { f: Fila; hoy: string; opc: Opc }) {
           )}
         </div>
         <div className="h-2 rounded-full bg-slate-800 overflow-hidden flex">
-          {totalCanal > 0 && CANALES.map((c) => <div key={c.k} className={c.color} style={{ width: `${(f.porDiaCanal[c.k] / totalCanal) * 100}%` }} />)}
+          {totalCanal > 0 && MINORISTAS.map((c) => <div key={c.k} className={c.color} style={{ width: `${(f.porDiaCanal[c.k] / totalCanal) * 100}%` }} />)}
         </div>
         <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-400">
-          {totalCanal > 0 && CANALES.filter((c) => f.porDiaCanal[c.k] > 0).map((c) => (
+          {totalCanal > 0 && MINORISTAS.filter((c) => f.porDiaCanal[c.k] > 0).map((c) => (
             <span key={c.k} className="flex items-center gap-1">
               <span className={`w-2 h-2 rounded-full ${c.color}`} />{c.label} {Math.round((f.porDiaCanal[c.k] / totalCanal) * 100)}%
             </span>
           ))}
         </div>
+        {f.porCanal.Mayorista > 0 && (
+          <div className="text-[11px] text-slate-400 flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-violet-400" />
+            Mayorista {n0(f.porCanal.Mayorista)} u desde el 1/9 · descuenta stock, no mueve el quiebre
+          </div>
+        )}
       </div>
 
       <div className="px-4 py-3 border-t border-slate-800">
@@ -174,10 +188,98 @@ function Tarjeta({ f, hoy, opc }: { f: Fila; hoy: string; opc: Opc }) {
       <div className="mt-auto px-4 py-3 border-t border-slate-800 bg-slate-950/40 flex items-baseline justify-between gap-2 text-sm">
         <span className="text-slate-400">
           Sugerido: <b className="text-slate-100 tabular-nums">{n0(p.sugerido)} ud</b>
+          {f.mayoristaDia > 0 && <span className="text-[11px] text-slate-500"> (incl. mayorista)</span>}
         </span>
         <span className="text-slate-300 tabular-nums">{n0(cajas(f.producto, p.sugerido))} cajas × {caja}</span>
       </div>
     </article>
+  );
+}
+
+// Cómo aprende el pronóstico: ventas por día, fechas fuertes medidas con las propias ventas y pruebas contra el historial.
+function Aprendizaje({ d }: { d: Data }) {
+  const W = 600, H = 90;
+  const max = Math.max(1, ...d.diario.map((x) => x.minorista + x.mayorista));
+  const bw = W / d.diario.length;
+  const errores = d.pruebas.filter((p) => p.real > 0).map((p) => p.pronostico / p.real - 1);
+  const errorMedio = errores.length ? errores.reduce((s, e) => s + Math.abs(e), 0) / errores.length : null;
+  return (
+    <section className="rounded-2xl bg-slate-900 border border-slate-800 p-4 space-y-4">
+      <div>
+        <h2 className="text-sm font-semibold text-slate-100">Cómo aprende el pronóstico</h2>
+        <p className="text-xs text-slate-500">
+          Usa todas las ventas desde el {dia(d.desdeRitmo)} ({d.diasHistoria} días; lo más reciente pesa más) y mejora solo a medida que se suman días,
+          fechas fuertes y pruebas. Septiembre no entra en el ritmo: era el lanzamiento y se vendía la mitad.
+        </p>
+      </div>
+
+      <div>
+        <div className="text-xs text-slate-400 mb-1">Ventas por día desde el 1/9 · <span className="text-emerald-300">minoristas</span> + <span className="text-violet-300">mayorista</span></div>
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-24" preserveAspectRatio="none" aria-hidden>
+          {d.diario.map((x, i) => {
+            const hMin = (x.minorista / max) * (H - 2);
+            const hMay = (Math.min(x.mayorista, max - x.minorista) / max) * (H - 2);
+            return (
+              <g key={x.dia}>
+                <rect x={i * bw + 0.5} width={Math.max(0.5, bw - 1)} y={H - hMin} height={hMin} className={x.dia < d.desdeRitmo ? 'fill-emerald-400/30' : 'fill-emerald-400/80'} />
+                {hMay > 0 && <rect x={i * bw + 0.5} width={Math.max(0.5, bw - 1)} y={H - hMin - hMay} height={hMay} className="fill-violet-400/70" />}
+              </g>
+            );
+          })}
+        </svg>
+        <div className="flex justify-between text-[10px] text-slate-500"><span>{dia(d.diario[0]?.dia ?? null)}</span><span>{dia(d.diario.at(-1)?.dia ?? null)}</span></div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <div className="text-xs text-slate-400 mb-1">Fechas fuertes (cuánto se vende vs un día normal)</div>
+          <table className="w-full text-xs tabular-nums">
+            <tbody>
+              {(Object.keys(FACTORES) as Evento[]).map((e) => {
+                const a = d.aprendido.find((x) => x.evento === e);
+                return (
+                  <tr key={e} className="border-t border-slate-800">
+                    <td className="py-1 text-slate-300">{NOMBRE_EVENTO[e]}</td>
+                    <td className="py-1 text-right">
+                      {a ? <b className="text-emerald-300">×{n1(a.medido)}</b> : <span className="text-slate-400">×{n1(FACTORES[e])}</span>}
+                    </td>
+                    <td className="py-1 pl-2 text-slate-500">{a ? `medido ${dia(a.desde)} al ${dia(a.hasta)}` : 'supuesto (historial MeLi)'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div className="text-xs text-slate-400 mb-1">
+            Pruebas contra el historial (pronóstico de 7 días vs lo que se vendió)
+            {errorMedio != null && <> · error medio <b className="text-slate-200">{Math.round(errorMedio * 100)}%</b></>}
+          </div>
+          {d.pruebas.length === 0 ? (
+            <p className="text-xs text-slate-500">Todavía no hay semanas suficientes. Se suma una prueba por semana.</p>
+          ) : (
+            <table className="w-full text-xs tabular-nums">
+              <tbody>
+                {d.pruebas.map((p) => {
+                  const e = p.real > 0 ? p.pronostico / p.real - 1 : null;
+                  return (
+                    <tr key={p.corte} className="border-t border-slate-800">
+                      <td className="py-1 text-slate-300">Semana después del {dia(p.corte)}</td>
+                      <td className="py-1 text-right text-slate-400">pronóstico {n0(p.pronostico)}</td>
+                      <td className="py-1 text-right text-slate-300">real {n0(p.real)}</td>
+                      <td className={`py-1 text-right ${e == null ? '' : Math.abs(e) <= 0.15 ? 'text-emerald-300' : Math.abs(e) <= 0.35 ? 'text-amber-300' : 'text-red-300'}`}>
+                        {e == null ? '—' : `${e >= 0 ? '+' : ''}${Math.round(e * 100)}%`}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+          <p className="mt-1 text-[11px] text-slate-500">Cada prueba usa solo lo que se sabía hasta ese día. Ventas minoristas de todos los productos juntos.</p>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -207,7 +309,7 @@ export default function China() {
 
   // Más urgente primero (sin boost), y el pedido sugerido total con la cobertura y el crecimiento elegidos.
   const { filas, pedido } = useMemo(() => {
-    const p = (data?.filas ?? []).map((f) => ({ f, p: proyectar(f.stock ?? 0, f.base, data!.hoy, opc) }));
+    const p = (data?.filas ?? []).map((f) => ({ f, p: proyectar(f.stock ?? 0, f.base, data!.hoy, { ...opc, ajustes: data!.ajustes, mayoristaDia: f.mayoristaDia }) }));
     return {
       filas: [...p].sort((a, b) => (a.p.dias ?? 1e9) - (b.p.dias ?? 1e9) || b.f.porDia - a.f.porDia).map((x) => x.f),
       pedido: {
@@ -236,7 +338,7 @@ export default function China() {
           <div className="rounded-xl bg-emerald-950/40 border border-emerald-800 p-3">
             <div className="text-xs text-emerald-300">Total vendido</div>
             <div className="text-xl font-semibold tabular-nums">{data ? n0(data.total) : '…'}</div>
-            <div className="text-[11px] text-slate-400 tabular-nums">{data ? `${n1(data.porDia)}/día` : ''}</div>
+            <div className="text-[11px] text-slate-400 tabular-nums">{data ? `${n1(data.porDia)}/día sin mayorista` : ''}</div>
           </div>
         </section>
 
@@ -294,16 +396,19 @@ export default function China() {
 
         {data && (
           <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filas.map((f) => <Tarjeta key={`${f.producto}|${f.color}`} f={f} hoy={data.hoy} opc={opc} />)}
+            {filas.map((f) => <Tarjeta key={`${f.producto}|${f.color}`} f={f} hoy={data.hoy} opc={{ ...opc, ajustes: data.ajustes }} />)}
           </section>
         )}
 
+        {data && <Aprendizaje d={data} />}
+
         {data && (
           <p className="text-xs text-slate-500 leading-relaxed">
-            Stock = conteo físico del {dia(data.conteo)} (Full + Local + depósito Paraguay) menos todo lo vendido desde el día siguiente. Para cargar un
-            conteo nuevo: pestaña <b>china_conteo</b> de la planilla MATEANDO MAYORISTA 2026, filas con la fecha nueva. Los kits se cuentan por pieza
-            (termo + mate). Ritmo: MeLi, web, local y Shopify = promedio de los últimos 30 días; mayorista = promedio desde el 1/9 (llega en pedidos grandes y
-            sueltos). La proyección suma Cyber, Navidad, regalos empresariales, Hot Sale y Día del Padre, y el crecimiento elegido arriba. {data.sinColor > 0 && `${n0(data.sinColor)} unidades vendidas sin color identificado (mayorista o kits) no se descuentan de ningún color.`}
+            Stock = conteo físico del {dia(data.conteo)} (Full + Local + depósito Paraguay) menos todo lo vendido desde el día siguiente, mayorista
+            incluido. Para cargar un conteo nuevo: pestaña <b>china_conteo</b> de la planilla MATEANDO MAYORISTA 2026, filas con la fecha nueva. Los kits
+            se cuentan por pieza (termo + mate). El quiebre sale del ritmo de MeLi, web, local y Shopify; mayorista descuenta stock pero no lo mueve
+            (son pedidos grandes y sueltos) y solo se suma, con su promedio desde el 1/9, al pedido sugerido.{' '}
+            {data.sinColor > 0 && `${n0(data.sinColor)} unidades vendidas sin color identificado (mayorista o kits) no se descuentan de ningún color.`}
           </p>
         )}
       </main>
