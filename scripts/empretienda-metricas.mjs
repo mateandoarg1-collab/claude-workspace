@@ -292,6 +292,36 @@ try {
   console.log(`::warning::No pude bajar las órdenes: ${String(e?.message ?? e).split('\n')[0]}`);
 }
 
+// Histórico mensual (pestaña historico_mensual, la lee /canales): Tienda Online y Local del mes en curso. Se pisa en
+// cada lectura, así el último valor del mes queda como su cierre. Mercado Libre, Shopify y Mayorista los guarda el
+// cron de Vercel (/api/canales/historico/guardar).
+try {
+  const mesRow = values.find((v) => v[0] === 'mes');
+  if (mesRow) {
+    const HIST = 'historico_mensual';
+    const mesAct = hoy.slice(0, 7);
+    const titulos = (await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID, fields: 'sheets.properties.title' })).data.sheets.map((x) => x.properties?.title);
+    if (!titulos.includes(HIST)) {
+      await sheets.spreadsheets.batchUpdate({ spreadsheetId: SPREADSHEET_ID, requestBody: { requests: [{ addSheet: { properties: { title: HIST } } }] } });
+    }
+    const previas = ((await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${HIST}'!A2:F`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [])
+      .filter((r) => !(r[0] === mesAct && (r[1] === 'online' || r[1] === 'local')));
+    const [, , tMonto, tCant, aMonto, aCant] = mesRow;
+    const nuevas = [
+      [mesAct, 'online', tMonto - aMonto, tCant - aCant, 'Métricas Empretienda (total − Acordar)', ahora],
+      [mesAct, 'local', aMonto, aCant, 'Métricas Empretienda (Acordar)', ahora],
+    ];
+    const todas = [...previas, ...nuevas].sort((x, y) => String(x[0]).localeCompare(String(y[0])) || String(x[1]).localeCompare(String(y[1])));
+    await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `'${HIST}'!A:F` });
+    await sheets.spreadsheets.values.update({
+      spreadsheetId: SPREADSHEET_ID, range: `'${HIST}'!A1`, valueInputOption: 'RAW',
+      requestBody: { values: [['mes', 'canal', 'monto', 'ventas', 'fuente', 'actualizado'], ...todas] },
+    });
+  }
+} catch (e) {
+  console.log(`::warning::No pude guardar el histórico mensual: ${e.message.split('\n')[0]}`);
+}
+
 // Guardar la sesión renovada para la próxima corrida (cifrada: el cache de Actions no es secreto).
 const renovada = await context.storageState();
 writeFileSync(SESION_ENC, cifrar({ ...renovada, _guardado: new Date().toISOString() }));

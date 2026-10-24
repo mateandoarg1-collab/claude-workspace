@@ -1,3 +1,8 @@
 {
-  "crons": []
+  "crons": [
+    {
+      "path": "/api/canales/historico/guardar",
+      "schedule": "30 3 * * *"
+    }
+  ]
 }

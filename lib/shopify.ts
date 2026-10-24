@@ -42,10 +42,21 @@ const QUERY = `query($q: String!, $after: String) {
   }
 }`;
 
+// Ventas de Shopify entre dos días AR inclusive (YYYY-MM-DD), mismo criterio que getShopifyVentas. Para el histórico.
+export async function getShopifyVentasRango(desde: string, hasta: string) {
+  const fin = new Date(`${hasta}T12:00:00Z`);
+  fin.setUTCDate(fin.getUTCDate() + 1);
+  return ventasConsulta(`financial_status:paid created_at:>='${desde}T00:00:00-03:00' created_at:<'${fin.toISOString().slice(0, 10)}T00:00:00-03:00' -test:true`);
+}
+
 export async function getShopifyVentas(periodo: Periodo = 'mes') {
-  const token = await getToken();
   const hasta = periodo === 'ayer' ? ` created_at:<'${desdeAR('hoy')}T00:00:00-03:00'` : '';
   const q = `financial_status:paid created_at:>='${desdeAR(periodo)}T00:00:00-03:00'${hasta} -test:true`;
+  return ventasConsulta(q);
+}
+
+async function ventasConsulta(q: string) {
+  const token = await getToken();
   let after: string | null = null;
   let orders = 0;
   let amount = 0;

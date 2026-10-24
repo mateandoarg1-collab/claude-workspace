@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import AppHeader from '../components/AppHeader';
 import CanalMarca, { type CanalId } from '../components/CanalMarca';
 import CanalDailyChart from '../components/CanalDailyChart';
+import HistoricoMensual from '../components/HistoricoMensual';
 import { EmpretiendaManual, fetchEmpretiendaManual } from '@/lib/manual';
 import { desdeAR, type Periodo } from '@/lib/periodo';
 
@@ -336,6 +337,7 @@ export default function Canales() {
             Tienda Online y Local: % de costo del listado de productos de Empretienda (se actualiza cada 30 min) aplicado a su facturación. Mayorista todavía no tiene CMV.
           </p>
         </section>
+        <HistoricoMensual />
       </main>
     </div>
   );
