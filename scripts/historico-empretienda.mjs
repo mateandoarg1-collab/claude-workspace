@@ -4,7 +4,8 @@
 //
 // Uso (con un perfil de Chrome logueado en Empretienda, p. ej. una copia de ~/tildar_profile):
 //   node scripts/historico-empretienda.mjs <perfil> 2026-05 2026-09
-// Cuenta solo órdenes pagadas (payment.status 1). Local = payment.method 3 (Acordar); el resto, Tienda Online.
+// Usa la consulta de Métricas (solo pagadas, filtrada por fecha, de a 750) mes por mes: el listado completo de órdenes
+// trae todos los intentos de pago fallidos y las páginas viejas no cargan. Local = payment.method 3 (Acordar).
 // Monto = order.total. Escribe historico_mensual con la cuenta de servicio de ~/.claude/.mateando-credentials.json.
 import { chromium } from 'playwright';
 import { homedir } from 'os';
@@ -19,8 +20,6 @@ const ORDENES = 'https://dashboard.empretienda.ar.ua.la/1/orders';
 const SPREADSHEET_ID = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
 const HIST = 'historico_mensual';
 const RASTREO = /amplitude\.com|braze\.com|d22fxaf9t8d39k\.cloudfront\.net|googletagmanager|google-analytics|analytics\.google|doubleclick|ccm\/collect/;
-const mesAR = (iso) => new Date(Date.parse(iso) - 3 * 3600e3).toISOString().slice(0, 7);
-const corte = new Date(`${desdeMes}-01T00:00:00-03:00`).toISOString();
 
 const ctx = await chromium.launchPersistentContext(perfil, { headless: true });
 await ctx.route(RASTREO, (r) => r.abort());
@@ -32,22 +31,26 @@ for (let i = 0; i < 40 && !auth; i++) await page.waitForTimeout(1000);
 if (!auth) throw new Error('No conseguí el token del panel (¿sesión vencida?)');
 
 const meses = new Map(); // `${mes}|${canal}` → { monto, ventas }
-const vistas = new Set();
-for (const archived of [0, 1]) {
-  for (let p = 0; p < 1000; p++) {
+// Misma consulta que usa Métricas: solo pagadas (payment_status=1) y filtrada por fecha, de a 750, mes por mes.
+const lista = [];
+for (let d = new Date(`${desdeMes}-01T12:00:00Z`); d.toISOString().slice(0, 7) <= hastaMes; d.setUTCMonth(d.getUTCMonth() + 1)) lista.push(d.toISOString().slice(0, 7));
+for (const mes of lista) {
+  const [y, m] = mes.split('-').map(Number);
+  const from = new Date(`${mes}-01T00:00:00-03:00`).toISOString();
+  const until = new Date(new Date(`${y}-${String(m + 1 > 12 ? 1 : m + 1).padStart(2, '0')}-01T00:00:00-03:00`.replace(/^\d{4}/, String(m === 12 ? y + 1 : y))).getTime() - 1).toISOString();
+  const vistas = new Set();
+  for (let p = 0; p < 40; p++) {
     let lote;
     for (let i = 1; ; i++) {
-      const r = await page.request.get(`${ORDENES}?page=${p}&limit=100&sort=1&archived=${archived}`, { headers: { authorization: auth, accept: 'application/json' }, timeout: 90000 }).catch(() => null);
+      const r = await page.request.get(`${ORDENES}?payment_status=1&from=${from}&until=${until}&page=${p}&limit=750`, { headers: { authorization: auth, accept: 'application/json' }, timeout: 120000 }).catch(() => null);
       if (r?.ok()) { lote = await r.json(); break; }
-      if (i === 4) throw new Error(`No pude leer la página ${p} (archived ${archived})`);
-      await page.waitForTimeout(3000 * i);
+      if (i === 5) throw new Error(`No pude leer ${mes} página ${p}`);
+      await page.waitForTimeout(5000 * i);
     }
-    for (const o of lote) {
-      if (o.created_at < corte || vistas.has(o.id)) continue;
+    const arr = Array.isArray(lote) ? lote : lote.data ?? [];
+    for (const o of arr) {
+      if (vistas.has(o.id) || String(o.payment?.status) !== '1') continue;
       vistas.add(o.id);
-      if (String(o.payment?.status) !== '1') continue;
-      const mes = mesAR(o.created_at);
-      if (mes > hastaMes) continue;
       const canal = String(o.payment?.method) === '3' ? 'local' : 'online';
       const k = `${mes}|${canal}`;
       const x = meses.get(k) ?? { monto: 0, ventas: 0 };
@@ -55,9 +58,9 @@ for (const archived of [0, 1]) {
       x.ventas += 1;
       meses.set(k, x);
     }
-    if (p % 20 === 0) console.log(`archived ${archived} · página ${p} · ${vistas.size} órdenes desde ${desdeMes}`);
-    if (lote.length < 100 || lote.at(-1).created_at < corte) break;
+    if (arr.length < 750) break;
   }
+  console.log(`${mes}: ${vistas.size} órdenes pagadas`);
 }
 await ctx.close();
 
