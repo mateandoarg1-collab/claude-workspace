@@ -10,6 +10,7 @@
 const ORDENES = 'https://dashboard.empretienda.ar.ua.la/1/orders';
 const PRODUCTOS = 'https://api.empretienda.com/producto';
 const DIAS = 60;
+const DESDE_CHINA = '2026-09-01T03:00:00Z'; // /china cuenta las ventas desde que llegó el container: no se borran
 const RECIENTES = 7;
 const IMG = 'https://d22fxaf9t8d39k.cloudfront.net/';
 
@@ -103,7 +104,7 @@ export async function volcarOrdenes(page, sheets, spreadsheetId) {
   const nuevas = await leerOrdenes(page, desde);
   console.log(`Órdenes de ${desde} días bajadas (${seg()})`);
   const corteNuevas = new Date(Date.now() - desde * 864e5).toISOString();
-  const corte = new Date(Date.now() - DIAS * 864e5).toISOString();
+  const corte = new Date(Math.min(Date.now() - DIAS * 864e5, Date.parse(DESDE_CHINA))).toISOString();
   const ids = new Set(nuevas.map((o) => o[0]));
   const ordenes = [...nuevas, ...previas.filter((o) => o[2] >= corte && o[2] < corteNuevas && !ids.has(o[0]))];
   await escribir(sheets, spreadsheetId, 'emp_ordenes', ['order_id', 'numero', 'fecha', 'total', 'metodo', 'pago', 'provincia', 'productos'], ordenes);
