@@ -16,10 +16,12 @@ const num = (n: number) => (n ? Math.round(n).toLocaleString('es-AR') : '—');
 export default function HistoricoMensual() {
   const [filas, setFilas] = useState<Fila[] | null>(null);
   const [err, setErr] = useState('');
-  const [ver, setVer] = useState<'monto' | 'ventas'>('monto');
+  const [ver, setVer] = useState<'monto' | 'usd' | 'ventas'>('monto');
+  const [blue, setBlue] = useState<Record<string, number>>({});
   const [mesActual] = useState(() => new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 7));
 
   useEffect(() => {
+    fetch('/api/dolar').then((r) => r.json()).then((d) => setBlue(d.meses ?? {})).catch(() => {});
     fetch('/api/canales/historico', { cache: 'no-store' })
       .then((r) => r.json())
       .then((d) => (d.error ? setErr(d.error) : setFilas(d.filas)))
@@ -29,21 +31,25 @@ export default function HistoricoMensual() {
   const meses = [...new Set((filas ?? []).map((f) => f.mes))].sort().reverse();
   const val = (mes: string, canal: string) => {
     const f = filas?.find((x) => x.mes === mes && x.canal === canal);
-    return f ? (ver === 'monto' ? f.monto : f.ventas) : 0;
+    if (!f) return 0;
+    if (ver === 'ventas') return f.ventas;
+    if (ver === 'usd') return blue[mes] ? f.monto / blue[mes] : 0; // promedio del blue venta de ese mes
+    return f.monto;
   };
   const total = (mes: string) => CANALES.reduce((s, c) => s + val(mes, c), 0);
   const maxTotal = Math.max(1, ...meses.map(total));
-  const fmtV = ver === 'monto' ? millones : num;
+  const dolares = (n: number) => (n ? `US$ ${Math.round(n / 1000).toLocaleString('es-AR')} mil` : '—');
+  const fmtV = ver === 'monto' ? millones : ver === 'usd' ? dolares : num;
 
   return (
     <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-6">
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <h2 className="text-lg font-semibold">Histórico por mes</h2>
         <div className="inline-flex rounded-lg border border-slate-800 p-0.5 bg-slate-950">
-          {(['monto', 'ventas'] as const).map((v) => (
+          {(['monto', 'usd', 'ventas'] as const).map((v) => (
             <button key={v} onClick={() => setVer(v)}
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${ver === v ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-100'}`}>
-              {v === 'monto' ? 'Facturación' : 'Ventas'}
+              {v === 'monto' ? 'Facturación' : v === 'usd' ? 'Dólares' : 'Ventas'}
             </button>
           ))}
         </div>
@@ -67,6 +73,7 @@ export default function HistoricoMensual() {
                 <tr key={m} className="border-t border-slate-800">
                   <td className="py-2.5 font-medium whitespace-nowrap">
                     {nomMes(m)}
+                    {ver === 'usd' && blue[m] && <div className="text-[11px] font-normal text-slate-500">blue ${blue[m].toLocaleString('es-AR')}</div>}
                     {m === mesActual && <span className="ml-1 text-[11px] font-normal text-slate-500">(en curso)</span>}
                   </td>
                   {CANALES.map((c) => (
@@ -85,7 +92,7 @@ export default function HistoricoMensual() {
         </div>
       )}
       <p className="text-xs text-slate-500 mt-3">
-        Facturación con IVA, mismos criterios que la tabla de arriba. Tienda Online y Local: hasta septiembre, de las órdenes pagadas del panel de
+        Facturación con IVA, mismos criterios que la tabla de arriba. «Dólares» = facturación ÷ promedio del dólar blue venta de ese mes. Tienda Online y Local: hasta septiembre, de las órdenes pagadas del panel de
         Empretienda (carga única); desde octubre, de Métricas. Meli, Shopify y Mayorista se guardan una vez por día; el mes se cierra el día 1.
       </p>
     </section>

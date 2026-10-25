@@ -48,6 +48,8 @@ export default function Canales() {
   const [grafico, setGrafico] = useState<CanalId | null>(null);
   const [sinIva, setSinIva] = useState(true); // CMV y margen sobre ventas netas de IVA, como el estado de resultados
   const ml = useApi<Venta & { ads: number | null; cmv?: number | null; sinCosto?: number }>(`/api/ml/periodo?periodo=${periodo}`);
+  const dolar = useApi<{ compra: number; venta: number; fecha: string; meses: Record<string, number> }>('/api/dolar');
+  const usd = (pesos: number) => (dolar.data?.venta ? `US$ ${Math.round(pesos / dolar.data.venta).toLocaleString('es-AR')}` : '');
   const shopify = useApi<Venta & { cmv?: { cmv: number; sinCosto: number; montoTransf: number } | { error: string } }>(`/api/shopify?periodo=${periodo}`);
   const meta = useApi<{ spend: number | null; motivo?: string }>(`/api/meta?periodo=${periodo}`);
   const metaShop = useApi<{ spend: number | null; motivo?: string }>(`/api/meta?cuenta=shopify&periodo=${periodo}`);
@@ -148,6 +150,20 @@ export default function Canales() {
       <AppHeader title="Ventas por canal" width="5xl" />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <div className="flex items-center gap-x-4 gap-y-1 flex-wrap rounded-xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm">
+          <span className="font-semibold text-emerald-300">💵 Dólar blue</span>
+          {dolar.data ? (
+            <>
+              <span>Compra <b className="tabular-nums">{fmt(dolar.data.compra)}</b></span>
+              <span>Venta <b className="tabular-nums">{fmt(dolar.data.venta)}</b></span>
+              <span className="text-xs text-slate-500">
+                {new Date(dolar.data.fecha).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })} · los dólares se calculan con el blue venta
+              </span>
+            </>
+          ) : (
+            <span className="text-slate-500">{dolar.err ? 'No se pudo leer la cotización' : 'Cargando…'}</span>
+          )}
+        </div>
         <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-6">
           <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
             <h2 className="text-lg font-semibold">{PERIODOS.find((p) => p.id === periodo)?.titulo}</h2>
@@ -184,14 +200,20 @@ export default function Canales() {
                     </span>
                     {c.fuente.startsWith('Error') && <div className="sm:hidden text-xs font-normal text-red-400">{c.fuente}</div>}
                   </td>
-                  <td className="text-right tabular-nums">{fmt(c.monto)}</td>
+                  <td className="text-right tabular-nums">
+                    {fmt(c.monto)}
+                    {c.monto > 0 && <div className="text-[11px] text-slate-500">{usd(c.monto)}</div>}
+                  </td>
                   <td className="text-right tabular-nums pl-4">{c.cantidad}</td>
                   <td className="hidden sm:table-cell text-right text-xs text-slate-500 pl-4">{c.fuente}</td>
                 </tr>
               ))}
               <tr className="border-t-2 border-slate-700 font-bold">
                 <td className="py-3">Total</td>
-                <td className="text-right tabular-nums">{fmt(totalGeneral)}</td>
+                <td className="text-right tabular-nums">
+                  {fmt(totalGeneral)}
+                  <div className="text-xs font-semibold text-emerald-300">{usd(totalGeneral)}</div>
+                </td>
                 <td className="text-right tabular-nums pl-4">{totalVentas}</td>
                 <td className="hidden sm:table-cell"></td>
               </tr>
