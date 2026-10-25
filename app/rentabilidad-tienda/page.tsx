@@ -91,7 +91,7 @@ function DetalleVenta({ v, onCerrar }: { v: Venta; onCerrar: () => void }) {
   const filas = [
     { nombre: `Comisión de cobro (${PAGO[v.pago] ?? v.pago}${v.cuotas && v.cuotas > 1 ? `, ${v.cuotas} cuotas` : ''})`, valor: -v.comision },
     { nombre: 'Envío gratis (lo paga la tienda)', valor: -v.envio_tienda },
-    { nombre: 'Impuestos (5%)', valor: -v.impuestos },
+    { nombre: v.impuestos ? 'IIBB (5% de la venta sin IVA)' : 'IIBB (no se factura)', valor: -v.impuestos },
     { nombre: 'Costo de productos', valor: -v.costo },
     { nombre: 'Packaging', valor: -v.packaging },
   ];
@@ -290,9 +290,9 @@ export default function RentabilidadTienda() {
   const cascada = t
     ? [
         { nombre: 'Venta sin IVA', valor: t.venta, total: true, nota: t.descuentos ? `Ya con ${fmt(t.descuentos)} de descuentos (cupones y 20% de transferencia)` : undefined },
-        { nombre: 'Comisión de cobro', valor: -t.comision, nota: 'Mercado Pago (incluye el costo de las cuotas sin interés) y GoCuotas (7,9% + IVA)' },
+        { nombre: 'Comisión de cobro', valor: -t.comision, nota: 'Mercado Pago (con el costo de las cuotas sin interés), GoCuotas 7,9% + IVA y transferencias 3% de la financiera' },
         { nombre: 'Envíos gratis', valor: -t.envio_tienda, nota: 'Lo que cobra OCA cuando el envío corre por cuenta de la tienda' },
-        { nombre: 'Impuestos (5%)', valor: -t.impuestos },
+        { nombre: 'IIBB (5%)', valor: -t.impuestos, nota: 'Sobre la venta sin IVA de las ventas facturadas (Mercado Pago y GoCuotas). Las transferencias no se facturan' },
         { nombre: 'Costo de producto', valor: -t.costo },
         { nombre: 'Packaging', valor: -t.packaging, nota: 'Packaging de mates y caja de despacho (bolsa en el local)' },
         { nombre: 'Neto antes de publicidad', valor: t.neto, total: true },

@@ -3,8 +3,11 @@
 // (una fila por venta) y rentabilidad_tienda_ads (pauta de Meta y Google por día) en MATEANDO MAYORISTA 2026.
 //   - Venta: subtotal − cupón − descuento por medio de pago, sin IVA. El envío que paga el comprador se lo lleva OCA.
 //   - Envío de la tienda: lo que cuesta el envío gratis (Empretienda lo cotiza con la cuenta de OCA), sin IVA.
-//   - Comisión: Mercado Pago, la real de cada pago (comisión + costo de cuotas sin interés), sin IVA. Transferencia: 0.
+//   - Comisión: Mercado Pago, la real de cada pago (comisión + costo de cuotas sin interés), sin IVA.
 //     GoCuotas: 7,9% + IVA sobre lo cobrado (con el envío), a 22 días hábiles (condiciones de la cuenta, 25-oct-2026).
+//     Transferencia: 3% de lo transferido, que cobra la financiera.
+//   - Impuestos: IIBB 5% de la venta sin IVA, solo en las ventas facturadas (Mercado Pago y GoCuotas). Las
+//     transferencias no se facturan: solo pagan el 3% de la financiera (Juampi, 25-oct-2026).
 //   - Costo de producto y packaging: reglas de scripts/cmv (las mismas del CMV de /canales), venta por venta.
 // Solo cuentan las ventas pagadas. canal = local si se pagó "a acordar" (retiro en el local).
 //   node scripts/tienda-rentabilidad.mjs               → 60 días a las 6 de la mañana, 10 días el resto de las horas
@@ -22,7 +25,9 @@ const COSTOS_JP = '1VP12eqQsJpZdOA6crIUMZccqpPobVZzxc8jev2iUkF8';
 const TAB = 'rentabilidad_tienda';
 const TAB_ADS = 'rentabilidad_tienda_ads';
 const IVA = 1.21;
-const IMPUESTOS = 0.05; // igual que Mercado Libre (confirmado por Juampi, 25-oct-2026)
+const IIBB = 0.05; // sobre la venta facturada sin IVA
+const FACTURADAS = new Set(['mercadopago', 'gocuotas', 'acordar']); // acordar (local): a confirmar
+const FINANCIERA_TASA = 0.03; // transferencias
 const GOCUOTAS_TASA = 0.079; // + IVA, sobre el total cobrado
 const PAGO = { 1: 'mercadopago', 3: 'acordar', 5: 'transferencia', 8: 'gocuotas' };
 // Pauta que va contra la tienda online (ver /canales): Meta MATEANDO2 (+8% de comisiones) y MATEANDO 3 MP, y Google Ads.
@@ -167,13 +172,15 @@ const filas = ventas.map((v) => {
   const metodo = PAGO[Number(v.pago_metodo)] ?? 'otro';
   const ventaIva = Number(v.subtotal) - Number(v.cupon) - Number(v.desc_pago);
   const mp = pagosMP.get(String(v.order_id));
-  const comisionIva = metodo === 'mercadopago' ? (mp?.comision ?? 0) : metodo === 'gocuotas' ? (ventaIva + Number(v.envio_cobrado)) * GOCUOTAS_TASA * IVA : 0;
+  const cobrado = ventaIva + Number(v.envio_cobrado);
+  const comisionIva = metodo === 'mercadopago' ? (mp?.comision ?? 0) : metodo === 'gocuotas' ? cobrado * GOCUOTAS_TASA * IVA : 0;
   const sinComision = metodo === 'mercadopago' && !mp ? 1 : 0;
   const c = cmv.get(String(v.order_id)) ?? { cmv: 0, empaque: 0, despacho: 0, sin_costo: 0, sin_regla: [] };
   const ventaSinIva = ventaIva / IVA;
-  const comision = comisionIva / IVA;
+  // La de la financiera no lleva IVA: se resta tal cual.
+  const comision = comisionIva / IVA + (metodo === 'transferencia' ? cobrado * FINANCIERA_TASA : 0);
   const envioTienda = Number(v.envio_gratis || 0) / IVA;
-  const impuestos = ventaIva * IMPUESTOS;
+  const impuestos = FACTURADAS.has(metodo) ? ventaSinIva * IIBB : 0;
   const packaging = c.empaque + c.despacho;
   const productos = JSON.parse(v.productos || '[]');
   return [
