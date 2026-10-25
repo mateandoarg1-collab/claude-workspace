@@ -22,7 +22,7 @@ const COSTOS_JP = '1VP12eqQsJpZdOA6crIUMZccqpPobVZzxc8jev2iUkF8';
 const TAB = 'rentabilidad_tienda';
 const TAB_ADS = 'rentabilidad_tienda_ads';
 const IVA = 1.21;
-const IMPUESTOS = 0.05; // como Mercado Libre, hasta que Juampi diga otra cosa
+const IMPUESTOS = 0.05; // igual que Mercado Libre (confirmado por Juampi, 25-oct-2026)
 const GOCUOTAS_TASA = 0.079; // + IVA, sobre el total cobrado
 const PAGO = { 1: 'mercadopago', 3: 'acordar', 5: 'transferencia', 8: 'gocuotas' };
 // Pauta que va contra la tienda online (ver /canales): Meta MATEANDO2 (+8% de comisiones) y MATEANDO 3 MP, y Google Ads.
