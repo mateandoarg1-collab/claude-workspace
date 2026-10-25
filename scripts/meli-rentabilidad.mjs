@@ -20,9 +20,6 @@ const IVA = 1.21;
 const IMPUESTOS = 0.05;
 // Flex netos de IVA (Juampi, 24-oct-2026). El cordón sale del código postal (scripts/meli/flex-cordones.json, sacado de Escalafy).
 const FLEX = { caba: 3400, 1: 5200, 2: 6500, 3: 8000 };
-// Lo que ML le reconoce al vendedor por cada envío Flex según la zona (con IVA). No sale en /shipments/{id}/costs:
-// es lo que descontaba Escalafy, igual en todas las órdenes de oct-2026.
-const FLEX_BONIF = { caba: 876, 1: 698, 2: 1125, 3: 810 };
 const CORDONES = JSON.parse(readFileSync(new URL('./meli/flex-cordones.json', import.meta.url), 'utf8'));
 const CP_CONOCIDOS = Object.keys(CORDONES).map(Number).sort((a, b) => a - b);
 
@@ -90,11 +87,17 @@ async function ordenesDelDia(dia) {
 }
 
 // Costo del envío para el vendedor (ya neto de bonificaciones) + logística y destino.
+// En Flex ML no cobra ese costo (no aparece en el pago ni en la facturación): al revés, le paga al vendedor
+// la bonificación Flex (transferencias "bonificaciones_flex_fc" en MP = `save` del vendedor + envío gratis "loyal"
+// que banca ML) y el envío que pagó el comprador. Verificado contra MP en oct-2026.
 async function envio(id) {
   const [costos, s] = await Promise.all([ml(`/shipments/${id}/costs`), ml(`/shipments/${id}`, { 'x-format-new': 'true' })]);
   const a = s.destination?.shipping_address ?? {};
+  const vendedor = costos.senders?.find((x) => x.user_id === SELLER) ?? {};
+  const loyal = (costos.receiver?.discounts ?? []).filter((d) => d.type === 'loyal').reduce((t, d) => t + (d.promoted_amount ?? 0), 0);
   return {
-    costo: costos.senders?.find((x) => x.user_id === SELLER)?.cost ?? 0,
+    costo: vendedor.cost ?? 0,
+    ingresoFlex: (vendedor.save ?? 0) + loyal + (costos.receiver?.cost ?? 0),
     tipo: s.logistic?.type ?? '',
     estado: a.state?.id ?? '',
     cp: String(a.zip_code ?? ''),
@@ -104,12 +107,12 @@ async function envio(id) {
 // Flex: CABA tarifa fija; provincia por cordón del CP. Un CP que Escalafy nunca mostró toma el cordón del CP conocido
 // más cercano y queda marcado como estimado.
 function flex(e) {
-  const zona = (z, estimado) => ({ costo: FLEX[z], bonif: FLEX_BONIF[z], estimado });
+  const zona = (z, estimado) => ({ costo: FLEX[z], estimado });
   if (e.estado === 'AR-C') return zona('caba', false);
-  if (e.estado !== 'AR-B') return { costo: 0, bonif: 0, estimado: false };
+  if (e.estado !== 'AR-B') return { costo: 0, estimado: false };
   if (CORDONES[e.cp]) return zona(CORDONES[e.cp], false);
   const cp = Number(e.cp);
-  if (!cp) return { costo: 0, bonif: 0, estimado: true };
+  if (!cp) return { costo: 0, estimado: true };
   const cerca = CP_CONOCIDOS.reduce((a, b) => (Math.abs(b - cp) < Math.abs(a - cp) ? b : a));
   return zona(CORDONES[cerca], true);
 }
@@ -173,7 +176,7 @@ async function calcular(desde, hasta, costos) {
     const e = o.shipping?.id ? envios.get(o.shipping.id) : null;
     const parte = e ? o.total_amount / totalPorEnvio.get(o.shipping.id) : 0;
     const esFlex = e?.tipo === 'self_service';
-    const f = esFlex ? flex(e) : { costo: 0, bonif: 0, estimado: false };
+    const f = esFlex ? flex(e) : { costo: 0, estimado: false };
     let costo = 0;
     let sinCosto = 0;
     for (const oi of o.order_items) {
@@ -183,7 +186,8 @@ async function calcular(desde, hasta, costos) {
     }
     const venta = bruto / IVA;
     const envioDev = (devoluciones.get(o.id) ?? 0) / IVA;
-    const envioMl = (((e?.costo ?? 0) - f.bonif) * parte) / IVA + envioDev;
+    // Flex: negativo = lo que ML le paga al vendedor por el envío.
+    const envioMl = ((esFlex ? -e.ingresoFlex : (e?.costo ?? 0)) * parte) / IVA + envioDev;
     const envioFlex = f.costo * parte;
     const impuestos = bruto * IMPUESTOS;
     const comisionSinIva = comision / IVA;

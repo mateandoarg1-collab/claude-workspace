@@ -66,7 +66,7 @@ export default function RentabilidadMeli() {
     ? [
         { nombre: 'Venta sin IVA', valor: t.venta, total: true },
         { nombre: 'Comisión de Mercado Libre', valor: -t.comision },
-        { nombre: 'Envíos que cobra ML', valor: -t.envio_ml, nota: 'Mercado Envíos y Full, neto de bonificaciones; en Flex resta lo que ML reconoce por zona' },
+        { nombre: 'Envíos de ML', valor: -t.envio_ml, nota: 'Full y Colecta: lo que cobra ML. Flex: ML no cobra y te paga la bonificación Flex y el envío que paga el comprador (se resta)' },
         { nombre: 'Envíos Flex propios', valor: -t.envio_flex, nota: 'CABA $3.400 · cordón 1 $5.200 · 2 $6.500 · 3 $8.000' },
         { nombre: 'Impuestos (5%)', valor: -t.impuestos },
         { nombre: 'Costo de producto', valor: -t.costo },

@@ -34,9 +34,10 @@ Objetivo: replicar el reporte MeLi de Escalafy con la API de ML y dar de baja la
 - `scripts/meli-rentabilidad.mjs` (launchd `com.mateando.meli-rentabilidad`, cada hora: 3 días; a las 6 AM: 45 días) → pestañas `rentabilidad_meli` y `rentabilidad_meli_ads` de MATEANDO MAYORISTA 2026.
 - Detalles que hubo que copiar para que coincida:
   - Venta = total − reembolsos − **cupones que paga el vendedor** (`/orders/{id}/discounts`, type coupon, amounts.seller). Los descuentos "discount" (ofertas) ya vienen en el precio.
-  - Flex: ML le reconoce al vendedor un monto por zona que se resta del envío ML (con IVA): CABA 876 · C1 698 · C2 1.125 · C3 810. No sale en ningún endpoint; se sacó de Escalafy.
+  - Flex (corregido 24-oct): ML **no cobra** el envío Flex (el pago en MP no tiene `shp_*` y la facturación no tiene CXD/CFF), aunque `/shipments/{id}/costs` muestre `senders.cost`. Al revés, paga: `senders.save` (10%) + descuento `loyal` del comprador (envío gratis que banca ML) — llegan como transferencias MP "bonificaciones_flex_fc" — + el envío que pagó el comprador (`receiver.cost`, viene en el pago). Todo eso se resta del envío ML. Escalafy en cambio cobraba `senders.cost` menos un promedio por zona.
   - Devoluciones con reclamo despachadas: se suma lo que ML le cobra al vendedor por el envío de vuelta.
   - `/orders/search` repite órdenes entre páginas → se deduplica y se consulta de a 3 horas.
 - Validación oct 1–23 contra el dashboard de Escalafy: venta 133,68 M vs 133,62 M · comisión 28,63 vs 28,62 · impuestos 8,09 vs 8,08 · pauta igual · costo 41,02 vs 41,33 · envío ML 12,23 vs 12,43 · Flex 5,56 vs 5,69.
-- **Escalafy NO resta el Flex propio en su neto ni en su ganancia** (muestra `meli_private_shipping` pero `meli_net_revenue` no lo descuenta). Nuestro neto sí: por eso da ~5,7 M menos en octubre.
+- **Escalafy NO resta el Flex propio en su neto ni en su ganancia** (muestra `meli_private_shipping` pero `meli_net_revenue` no lo descuenta).
+- Conciliación oct 1–24: Escalafy ganancia 26,64 M → nuestra 24,40 M. Envío ML +5,82 M (Escalafy cobra un Flex que ML no cobra y no suma lo que ML paga) · Flex propio −5,62 M (Escalafy no lo resta) · costo +0,31 M · Pichón −2,71 M y Nubimetrics −0,08 M (Escalafy no los resta en la ganancia de MeLi).
 - Costos de producto: hoy se copian de Escalafy a `costos_meli` (`scripts/costos-meli-a-planilla.mjs`). Al dar de baja Escalafy, esa pestaña pasa a ser la fuente y se edita a mano.
