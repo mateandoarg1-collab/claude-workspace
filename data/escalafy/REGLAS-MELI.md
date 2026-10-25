@@ -7,8 +7,8 @@ Objetivo: replicar el reporte MeLi de Escalafy con la API de ML y dar de baja la
 - **Quitar IVA**: SÍ, 21%. Venta, devoluciones, comisión ML y envío ML se dividen por 1,21.
   Los costos de producto y de Flex se cargan SIN IVA y no se tocan.
 - **Envío Flex / "a acordar"**: tabla por provincia. En Escalafy solo está CABA (AR-C) = $3.650, el resto en 0.
-  Tarifas reales que pasó Juampi (24-oct-2026) para nuestro panel:
-  - CABA: $3.650 · Cordón 1: $5.200 · Cordón 2: $6.500 · Cordón 3: $8.000
+  Tarifas reales que pasó Juampi (24-oct-2026), **netas de IVA**, para nuestro panel:
+  - CABA: $3.400 · Cordón 1: $5.200 · Cordón 2: $6.500 · Cordón 3: $8.000
   - El cordón sale del código postal del envío Flex. Si no matchea un cordón, cae a "Buenos Aires" genérico (AR-B), que hoy está sin tarifa.
   Mercado Envíos y Full: lo que cobra ML al vendedor en el envío (ya neto de bonificaciones).
 - **Costos adicionales**:
