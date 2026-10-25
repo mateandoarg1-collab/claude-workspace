@@ -4,7 +4,7 @@
 //   - Venta: subtotal − cupón − descuento por medio de pago, sin IVA. El envío que paga el comprador se lo lleva OCA.
 //   - Envío de la tienda: lo que cuesta el envío gratis (Empretienda lo cotiza con la cuenta de OCA), sin IVA.
 //   - Comisión: Mercado Pago, la real de cada pago (comisión + costo de cuotas sin interés), sin IVA. Transferencia: 0.
-//     GoCuotas: GOCUOTAS_TASA (pendiente de que Juampi la confirme).
+//     GoCuotas: 7,9% + IVA sobre lo cobrado (con el envío), a 22 días hábiles (condiciones de la cuenta, 25-oct-2026).
 //   - Costo de producto y packaging: reglas de scripts/cmv (las mismas del CMV de /canales), venta por venta.
 // Solo cuentan las ventas pagadas. canal = local si se pagó "a acordar" (retiro en el local).
 //   node scripts/tienda-rentabilidad.mjs               → 60 días a las 6 de la mañana, 10 días el resto de las horas
@@ -23,7 +23,7 @@ const TAB = 'rentabilidad_tienda';
 const TAB_ADS = 'rentabilidad_tienda_ads';
 const IVA = 1.21;
 const IMPUESTOS = 0.05; // como Mercado Libre, hasta que Juampi diga otra cosa
-const GOCUOTAS_TASA = null; // % que cobra GoCuotas: pendiente
+const GOCUOTAS_TASA = 0.079; // + IVA, sobre el total cobrado
 const PAGO = { 1: 'mercadopago', 3: 'acordar', 5: 'transferencia', 8: 'gocuotas' };
 // Pauta que va contra la tienda online (ver /canales): Meta MATEANDO2 (+8% de comisiones) y MATEANDO 3 MP, y Google Ads.
 const META_RECARGO = { act_1439554678210755: 1.08 };
@@ -138,10 +138,13 @@ async function pautaPorDia(desde, hasta) {
 const hasta = diaAR(new Date().toISOString());
 const d0 = new Date(`${hasta}T12:00:00Z`);
 d0.setUTCDate(d0.getUTCDate() - (DIAS - 1));
-const desde = d0.toISOString().slice(0, 10);
+let desde = d0.toISOString().slice(0, 10);
 
 const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'emp_ventas'!A1:Q`, valueRenderOption: 'UNFORMATTED_VALUE' });
 const [enc, ...crudas] = res.data.values ?? [];
+// emp_ventas guarda ~60 días: no recalcular (ni borrar de rentabilidad_tienda) días que ya no tiene.
+const primerDia = crudas.reduce((m, r) => (diaAR(r[2]) < m ? diaAR(r[2]) : m), '9999-12-31');
+if (primerDia > desde) desde = primerDia;
 const col = Object.fromEntries(enc.map((k, i) => [k, i]));
 const ventas = crudas
   .map((r) => Object.fromEntries(Object.keys(col).map((k) => [k, r[col[k]] ?? ''])))
@@ -164,8 +167,8 @@ const filas = ventas.map((v) => {
   const metodo = PAGO[Number(v.pago_metodo)] ?? 'otro';
   const ventaIva = Number(v.subtotal) - Number(v.cupon) - Number(v.desc_pago);
   const mp = pagosMP.get(String(v.order_id));
-  const comisionIva = metodo === 'mercadopago' ? (mp?.comision ?? 0) : metodo === 'gocuotas' && GOCUOTAS_TASA != null ? ventaIva * GOCUOTAS_TASA : 0;
-  const sinComision = (metodo === 'mercadopago' && !mp) || (metodo === 'gocuotas' && GOCUOTAS_TASA == null) ? 1 : 0;
+  const comisionIva = metodo === 'mercadopago' ? (mp?.comision ?? 0) : metodo === 'gocuotas' ? (ventaIva + Number(v.envio_cobrado)) * GOCUOTAS_TASA * IVA : 0;
+  const sinComision = metodo === 'mercadopago' && !mp ? 1 : 0;
   const c = cmv.get(String(v.order_id)) ?? { cmv: 0, empaque: 0, despacho: 0, sin_costo: 0, sin_regla: [] };
   const ventaSinIva = ventaIva / IVA;
   const comision = comisionIva / IVA;

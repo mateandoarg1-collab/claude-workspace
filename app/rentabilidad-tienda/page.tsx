@@ -290,7 +290,7 @@ export default function RentabilidadTienda() {
   const cascada = t
     ? [
         { nombre: 'Venta sin IVA', valor: t.venta, total: true, nota: t.descuentos ? `Ya con ${fmt(t.descuentos)} de descuentos (cupones y 20% de transferencia)` : undefined },
-        { nombre: 'Comisión de cobro', valor: -t.comision, nota: 'Mercado Pago (incluye el costo de las cuotas sin interés) y GoCuotas' },
+        { nombre: 'Comisión de cobro', valor: -t.comision, nota: 'Mercado Pago (incluye el costo de las cuotas sin interés) y GoCuotas (7,9% + IVA)' },
         { nombre: 'Envíos gratis', valor: -t.envio_tienda, nota: 'Lo que cobra OCA cuando el envío corre por cuenta de la tienda' },
         { nombre: 'Impuestos (5%)', valor: -t.impuestos },
         { nombre: 'Costo de producto', valor: -t.costo },
@@ -367,7 +367,7 @@ export default function RentabilidadTienda() {
             {(t.sinCosto > 0 || t.sinComision > 0) && (
               <div className="rounded-xl border border-amber-700/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200 space-y-1">
                 {t.sinCosto > 0 && <p>⚠️ {t.sinCosto} unidades sin costo (productos nuevos sin regla en scripts/cmv): cuentan $0.</p>}
-                {t.sinComision > 0 && <p>⚠️ {t.sinComision} ventas sin comisión de pago (GoCuotas: falta el porcentaje).</p>}
+                {t.sinComision > 0 && <p>⚠️ {t.sinComision} ventas de Mercado Pago sin el pago encontrado en MP: cuentan comisión $0.</p>}
               </div>
             )}
 
