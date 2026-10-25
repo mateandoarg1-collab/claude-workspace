@@ -226,7 +226,7 @@ export async function getCostosSku(): Promise<Record<string, number>> {
 export type FilaRentaMeli = {
   fecha: string; order_id: string; pack_id: string; logistica: string; item_id: string; titulo: string; unidades: number;
   venta: number; comision: number; envio_ml: number; envio_flex: number; impuestos: number; costo: number; neto: number;
-  sin_costo: number; flex_estimado: number;
+  sin_costo: number; flex_estimado: number; anulada: number;
 };
 export async function getRentabilidadMeli(desde: string, hasta: string) {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
@@ -248,6 +248,7 @@ export async function getRentabilidadMeli(desde: string, hasta: string) {
       item_id: str(r, 'item_id'), titulo: str(r, 'titulo'), unidades: num(r, 'unidades'), venta: num(r, 'venta'),
       comision: num(r, 'comision'), envio_ml: num(r, 'envio_ml'), envio_flex: num(r, 'envio_flex'), impuestos: num(r, 'impuestos'),
       costo: num(r, 'costo'), neto: num(r, 'neto'), sin_costo: num(r, 'sin_costo'), flex_estimado: num(r, 'flex_estimado'),
+      anulada: num(r, 'anulada'),
     })),
     ads: (ads?.values ?? []).slice(1).filter((r) => enRango(String(r[0]))).map((r) => ({
       fecha: String(r[0]), gasto: Number(r[1]) || 0, atribuidas: Number(r[2]) || 0,

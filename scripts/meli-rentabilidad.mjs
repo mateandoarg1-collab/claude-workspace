@@ -127,29 +127,55 @@ async function cuponVendedor(o) {
     .reduce((s, x) => s + x.items.reduce((t, i) => t + (i.amounts?.seller ?? 0), 0), 0);
 }
 
+// Costo actual (pestaña costos_meli) y costos viejos con su período (costos_meli_historial): una venta se valora
+// con el costo vigente el día que se hizo, como Escalafy.
 async function costosMeli(sheets) {
-  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'costos_meli'!A2:D` });
-  const map = new Map();
-  for (const [item, variante, tipo, costo] of res.data.values ?? []) {
-    const v = { tipo: String(tipo), costo: Number(costo) || 0 };
-    map.set(variante && variante !== item ? `${item}|${variante}` : String(item), v);
+  const res = await sheets.spreadsheets.values.batchGet({
+    spreadsheetId: SPREADSHEET_ID,
+    ranges: [`'costos_meli'!A2:D`, `'costos_meli_historial'!A2:F`],
+    valueRenderOption: 'UNFORMATTED_VALUE',
+  });
+  const [actuales, viejos] = res.data.valueRanges ?? [];
+  const clave = (item, variante) => (variante && String(variante) !== String(item) ? `${item}|${variante}` : String(item));
+  const actual = new Map();
+  for (const [item, variante, tipo, costo] of actuales?.values ?? []) actual.set(clave(item, variante), { tipo: String(tipo), costo: Number(costo) || 0 });
+  const historial = new Map();
+  for (const [item, variante, desde, hasta, tipo, costo] of viejos?.values ?? []) {
+    const k = clave(item, variante);
+    historial.set(k, [...(historial.get(k) ?? []), { desde: String(desde ?? ''), hasta: String(hasta), tipo: String(tipo ?? ''), costo: Number(costo) || 0 }]);
   }
-  return map;
+  const buscar = (k, fecha) => historial.get(k)?.find((v) => (!v.desde || v.desde <= fecha) && fecha < v.hasta) ?? actual.get(k);
+  // Una variación sin costo propio usa el de la publicación.
+  return (item, variacion, fecha) => (variacion ? buscar(`${item}|${variacion}`, fecha) : undefined) ?? buscar(String(item), fecha);
 }
 
 // Envío de la devolución de un reclamo: lo que ML le cobra al vendedor, solo si la devolución ya se despachó.
-async function envioDevolucion(o) {
-  let total = 0;
+// Si el producto volvió y el vendedor lo revisó bien (seller_status success), vuelve al stock: su costo no se pierde.
+async function devolucion(o) {
+  let envio = 0;
+  let aStock = false;
   for (const m of o.mediations ?? []) {
     const dev = await ml(`/post-purchase/v2/claims/${m.id}/returns`).catch(() => null);
     if (!dev || !['shipped', 'delivered'].includes(dev.status)) continue;
     for (const sh of dev.shipments ?? []) {
       if (sh.type !== 'return') continue;
       const c = await ml(`/shipments/${sh.shipment_id}/costs`).catch(() => null);
-      if (c?.receiver?.user_id === SELLER) total += c.receiver.cost ?? 0;
+      if (c?.receiver?.user_id === SELLER) envio += c.receiver.cost ?? 0;
+    }
+    if (dev.status === 'delivered' && dev.id) {
+      const r = await ml(`/post-purchase/v1/returns/${dev.id}/reviews`).catch(() => null);
+      aStock ||= (r?.reviews ?? []).some((x) => x.resource_reviews?.some((rr) => rr.seller_status === 'success'));
     }
   }
-  return total;
+  return { envio, aStock };
+}
+
+// Una orden cancelada cuyo envío ya había salido no es anulada: queda la pérdida del envío, del producto
+// (salvo que vuelva al stock) y de la devolución, como en Escalafy.
+async function salioElEnvio(o) {
+  if (!o.shipping?.id) return false;
+  const s = await ml(`/shipments/${o.shipping.id}`).catch(() => null);
+  return !!s?.status_history?.date_shipped;
 }
 
 const r2 = (n) => Math.round(n * 100) / 100;
@@ -157,19 +183,26 @@ const r2 = (n) => Math.round(n * 100) / 100;
 async function calcular(desde, hasta, costos) {
   // La paginación de /orders/search a veces repite órdenes entre páginas: se dejan una vez.
   const todas = [...new Map((await enLotes(dias(desde, hasta), 4, ordenesDelDia)).flat().map((o) => [o.id, o])).values()];
-  // Cancelada = anulada: no es venta ni tiene costos. Igual que Escalafy, solo cuentan paid y partially_refunded.
-  const ordenes = todas.filter((o) => (o.status === 'paid' || o.status === 'partially_refunded') && o.total_amount > 0);
+  // Ventas: paid y partially_refunded. Cancelada antes de despachar = anulada (sin venta ni costos);
+  // cancelada después de despachar = pérdida (envío, producto, devolución).
+  const ventas = todas.filter((o) => (o.status === 'paid' || o.status === 'partially_refunded') && o.total_amount > 0);
+  const canceladas = todas.filter((o) => o.status === 'cancelled' && o.shipping?.id);
+  const despachadas = (await enLotes(canceladas, 10, async (o) => ((await salioElEnvio(o)) ? o : null))).filter(Boolean);
+  const anuladaConPerdida = new Set(despachadas.map((o) => o.id));
+  const ordenes = [...ventas, ...despachadas];
   const idsEnvio = [...new Set(ordenes.map((o) => o.shipping?.id).filter(Boolean))];
   const envios = new Map(await enLotes(idsEnvio, 10, async (id) => [id, await envio(id)]));
   const cupones = new Map(await enLotes(ordenes, 10, async (o) => [o.id, await cuponVendedor(o)]));
-  const devoluciones = new Map(await enLotes(ordenes.filter((o) => o.mediations?.length), 5, async (o) => [o.id, await envioDevolucion(o)]));
+  const devoluciones = new Map(await enLotes(ordenes.filter((o) => o.mediations?.length), 5, async (o) => [o.id, await devolucion(o)]));
   // Un carrito comparte el envío: se reparte según el monto de cada orden.
   const totalPorEnvio = new Map();
   for (const o of ordenes) if (o.shipping?.id) totalPorEnvio.set(o.shipping.id, (totalPorEnvio.get(o.shipping.id) ?? 0) + o.total_amount);
 
   return ordenes.map((o) => {
-    const reembolsado = (o.payments ?? []).reduce((s, p) => s + (p.transaction_amount_refunded || 0), 0);
-    const bruto = Math.max(0, o.total_amount - reembolsado - cupones.get(o.id));
+    const perdida = anuladaConPerdida.has(o.id);
+    const dev = devoluciones.get(o.id) ?? { envio: 0, aStock: false };
+    const reembolsado = perdida ? o.total_amount : (o.payments ?? []).reduce((s, p) => s + (p.transaction_amount_refunded || 0), 0);
+    const bruto = Math.max(0, o.total_amount - reembolsado - (cupones.get(o.id) ?? 0));
     // La comisión se devuelve en proporción a lo reembolsado (el cupón del vendedor no la cambia).
     const proporcionVendida = o.total_amount ? Math.max(0, o.total_amount - reembolsado) / o.total_amount : 0;
     const comision = o.order_items.reduce((s, oi) => s + (oi.sale_fee || 0) * oi.quantity, 0) * proporcionVendida;
@@ -180,12 +213,13 @@ async function calcular(desde, hasta, costos) {
     let costo = 0;
     let sinCosto = 0;
     for (const oi of o.order_items) {
-      const c = costos.get(`${oi.item.id}|${oi.item.variation_id}`) ?? costos.get(oi.item.id);
+      const c = costos(oi.item.id, oi.item.variation_id, diaAR(o.date_created));
       if (!c || !c.costo) sinCosto += oi.quantity;
       else costo += (c.tipo === '%' ? (oi.unit_price * c.costo) / 100 : c.costo) * oi.quantity;
     }
+    if (dev.aStock) costo = 0;
     const venta = bruto / IVA;
-    const envioDev = (devoluciones.get(o.id) ?? 0) / IVA;
+    const envioDev = dev.envio / IVA;
     // Flex: negativo = lo que ML le paga al vendedor por el envío.
     const envioMl = ((esFlex ? -e.ingresoFlex : (e?.costo ?? 0)) * parte) / IVA + envioDev;
     const envioFlex = f.costo * parte;
@@ -213,6 +247,7 @@ async function calcular(desde, hasta, costos) {
       flex_estimado: f.estimado ? 1 : 0,
       reembolsado: r2(reembolsado / IVA),
       envio_devolucion: r2(envioDev),
+      anulada: perdida ? 1 : 0,
     };
   });
 }
@@ -294,7 +329,7 @@ const desde = d0.toISOString().slice(0, 10);
 
 const filas = await calcular(desde, hasta, costos);
 const ads = await enLotes(dias(desde, hasta), 4, adsDelDia);
-const COLS = ['fecha', 'order_id', 'pack_id', 'envio_id', 'logistica', 'item_id', 'variante', 'titulo', 'unidades', 'venta', 'comision', 'envio_ml', 'envio_flex', 'impuestos', 'costo', 'neto', 'sin_costo', 'flex_estimado', 'reembolsado', 'envio_devolucion'];
+const COLS = ['fecha', 'order_id', 'pack_id', 'envio_id', 'logistica', 'item_id', 'variante', 'titulo', 'unidades', 'venta', 'comision', 'envio_ml', 'envio_flex', 'impuestos', 'costo', 'neto', 'sin_costo', 'flex_estimado', 'reembolsado', 'envio_devolucion', 'anulada'];
 const suma = (k) => Math.round(filas.reduce((s, r) => s + r[k], 0)).toLocaleString('es-AR');
 console.log(`${desde} a ${hasta}: ${filas.length} órdenes · venta ${suma('venta')} · neto ${suma('neto')} · pauta ${Math.round(ads.reduce((s, a) => s + a[1], 0)).toLocaleString('es-AR')}`);
 if (DRY) process.exit(0);

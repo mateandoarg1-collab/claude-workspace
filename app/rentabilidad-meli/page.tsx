@@ -7,12 +7,12 @@ type Totales = {
   ordenes: number; unidades: number; venta: number; comision: number; envio_ml: number; envio_flex: number;
   impuestos: number; costo: number; neto: number;
 };
-type Dia = Totales & { fecha: string; pauta: number; pichon: number; nubimetrics: number; ganancia: number };
+type Dia = Totales & { fecha: string; pauta: number; pichon: number; nubimetrics: number; ganancia: number; gananciaFinal: number };
 type Data = {
   desde: string;
   hasta: string;
   actualizado: string;
-  total: Totales & { pauta: number; atribuidas: number; pichon: number; nubimetrics: number; ganancia: number; sinCosto: number; flexEstimados: number };
+  total: Totales & { pauta: number; atribuidas: number; pichon: number; nubimetrics: number; ganancia: number; gananciaFinal: number; sinCosto: number; flexEstimados: number };
   dias: Dia[];
   productos: (Totales & { item_id: string; titulo: string; sinCosto: boolean })[];
   logisticas: (Totales & { logistica: string })[];
@@ -72,9 +72,10 @@ export default function RentabilidadMeli() {
         { nombre: 'Costo de producto', valor: -t.costo },
         { nombre: 'Neto antes de publicidad', valor: t.neto, total: true },
         { nombre: 'Publicidad ML Ads', valor: -t.pauta },
+        { nombre: 'Ganancia', valor: t.ganancia, total: true, nota: 'La misma cuenta que la Ganancia de Mercado Libre en Escalafy' },
         { nombre: 'Pichón (2% de la venta)', valor: -t.pichon },
         { nombre: 'Nubimetrics', valor: -t.nubimetrics },
-        { nombre: 'Ganancia', valor: t.ganancia, total: true },
+        { nombre: 'Ganancia final', valor: t.gananciaFinal, total: true, nota: 'Después de Pichón y Nubimetrics (Escalafy los resta solo en el total de la empresa)' },
       ]
     : [];
 
@@ -106,7 +107,7 @@ export default function RentabilidadMeli() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <Kpi titulo="Venta sin IVA" valor={fmt(t.venta)} detalle={`${t.ordenes.toLocaleString('es-AR')} pedidos · ${t.unidades.toLocaleString('es-AR')} u.`} />
               <Kpi titulo="Neto antes de publicidad" valor={fmt(t.neto)} detalle={`${pct(t.neto, t.venta)} de la venta`} />
-              <Kpi titulo="Ganancia" valor={fmt(t.ganancia)} detalle={`${pct(t.ganancia, t.venta)} de la venta`} destacar={color(t.ganancia)} />
+              <Kpi titulo="Ganancia" valor={fmt(t.ganancia)} detalle={`${pct(t.ganancia, t.venta)} · final ${fmt(t.gananciaFinal)}`} destacar={color(t.ganancia)} />
               <Kpi titulo="ROAS ML Ads" valor={t.pauta ? (t.atribuidas / t.pauta).toLocaleString('es-AR', { maximumFractionDigits: 1 }) : '–'}
                 detalle={t.pauta && t.venta ? `ROAS real ${((t.neto / t.venta) * (t.atribuidas / 1.21) / t.pauta).toLocaleString('es-AR', { maximumFractionDigits: 2 })}` : undefined} />
             </div>
@@ -187,7 +188,7 @@ export default function RentabilidadMeli() {
                           <td className="py-2 whitespace-nowrap">{nomDia(x.fecha)}</td>
                           <td className="text-right">{fmt(x.venta)}</td>
                           <td className="text-right pl-3">{fmt(x.neto)}</td>
-                          <td className="text-right pl-3 text-slate-400 hidden sm:table-cell">{fmt(x.pauta + x.pichon)}</td>
+                          <td className="text-right pl-3 text-slate-400 hidden sm:table-cell">{fmt(x.pauta)}</td>
                           <td className={`text-right pl-3 ${color(x.ganancia)}`}>{fmt(x.ganancia)}</td>
                           <td className="text-right pl-3 text-slate-400 hidden sm:table-cell">{pct(x.ganancia, x.venta)}</td>
                         </tr>

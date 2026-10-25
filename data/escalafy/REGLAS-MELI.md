@@ -41,3 +41,10 @@ Objetivo: replicar el reporte MeLi de Escalafy con la API de ML y dar de baja la
 - **Escalafy NO resta el Flex propio en su neto ni en su ganancia** (muestra `meli_private_shipping` pero `meli_net_revenue` no lo descuenta).
 - Conciliación oct 1–24: Escalafy ganancia 26,64 M → nuestra 24,40 M. Envío ML +5,82 M (Escalafy cobra un Flex que ML no cobra y no suma lo que ML paga) · Flex propio −5,62 M (Escalafy no lo resta) · costo +0,31 M · Pichón −2,71 M y Nubimetrics −0,08 M (Escalafy no los resta en la ganancia de MeLi).
 - Costos de producto: hoy se copian de Escalafy a `costos_meli` (`scripts/costos-meli-a-planilla.mjs`). Al dar de baja Escalafy, esa pestaña pasa a ser la fuente y se edita a mano.
+
+### Ajustes para igualar a Escalafy (24-oct-2026, noche)
+- "Ganancia" = neto − ML Ads (igual que Escalafy); "Ganancia final" resta además Pichón y Nubimetrics (Escalafy los resta solo en el total de la empresa).
+- Costo por fecha: pestaña `costos_meli_historial` (períodos cerrados del historial de Escalafy, `scripts/costos-meli-historial-a-planilla.mjs`); si la fecha no cae en ninguno, `costos_meli`.
+- Canceladas después de despachar (`/shipments/{id}` → `status_history.date_shipped`): sin venta ni comisión, pero con envío, Flex propio, costo y envío de devolución (columna `anulada`=1, no cuentan como pedido).
+- Devolución revisada OK (`/post-purchase/v1/returns/{id}/reviews` → `seller_status: success`): el producto vuelve al stock, costo 0.
+- Resultado oct 1–23 (días cerrados): neto 43,02 M vs Escalafy 43,16 M (−0,3%); 6 días dan exacto. El resto son diferencias chicas de envío de devoluciones y reparto de carritos.

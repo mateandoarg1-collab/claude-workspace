@@ -24,16 +24,19 @@ type Totales = Record<(typeof CAMPOS)[number], number> & { ordenes: number; unid
 function sumar(filas: FilaRentaMeli[]): Totales {
   const t = Object.fromEntries(CAMPOS.map((k) => [k, 0])) as Totales;
   for (const f of filas) for (const k of CAMPOS) t[k] += f[k];
-  t.ordenes = new Set(filas.map((f) => f.pack_id || f.order_id)).size;
-  t.unidades = filas.reduce((s, f) => s + f.unidades, 0);
+  // Las canceladas después de despachar suman sus costos pero no son pedidos ni unidades vendidas.
+  const vendidas = filas.filter((f) => !f.anulada);
+  t.ordenes = new Set(vendidas.map((f) => f.pack_id || f.order_id)).size;
+  t.unidades = vendidas.reduce((s, f) => s + f.unidades, 0);
   return t;
 }
 
-// Pauta y costos fuera de la orden de un conjunto de días.
+// Pauta y costos fuera de la orden de un conjunto de días. `ganancia` es la de Escalafy (neto − ML Ads): ahí Pichón
+// cuenta como publicidad general y Nubimetrics como costo fijo de la empresa, no del canal. `gananciaFinal` los resta.
 function debajo(t: Totales, fechas: string[], pauta: number) {
   const pichon = fechas.every((f) => f >= PICHON.desde) ? t.venta * PICHON.tasa : 0;
   const nubimetrics = fechas.length * NUBIMETRICS_DIA;
-  return { pauta, pichon, nubimetrics, ganancia: t.neto - pauta - pichon - nubimetrics };
+  return { pauta, pichon, nubimetrics, ganancia: t.neto - pauta, gananciaFinal: t.neto - pauta - pichon - nubimetrics };
 }
 
 export async function GET(req: Request) {
@@ -81,7 +84,8 @@ export async function GET(req: Request) {
         atribuidas,
         pichon,
         nubimetrics,
-        ganancia: total.neto - pauta - pichon - nubimetrics,
+        ganancia: total.neto - pauta,
+        gananciaFinal: total.neto - pauta - pichon - nubimetrics,
         sinCosto: ordenes.reduce((s, o) => s + o.sin_costo, 0),
         flexEstimados: ordenes.filter((o) => o.flex_estimado).length,
       },
