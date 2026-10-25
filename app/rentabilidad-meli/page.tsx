@@ -211,7 +211,7 @@ export default function RentabilidadMeli() {
                 detalle={t.tacos == null ? 'Inversión ÷ facturación total' : `Sin IVA (Escalafy): ${porc(t.tacos)}`} puntos={serie((x) => x.tacosMl)} formato={porc} />
             </div>
             <p className="text-[11px] text-slate-500 -mt-1">
-              ROAS, ACOS y TACOS como el panel de ML Ads (ventas con IVA); abajo, sin IVA como Escalafy. TACOS = inversión ÷ facturación total de Mercado Libre.
+              ROAS, ACOS y TACOS como el panel de ML Ads (con IVA; TACOS = inversión ÷ ventas por publicidad + orgánicas de las publicaciones en campaña). Abajo, sin IVA como Escalafy.
               {d.anterior ? ` Variación contra ${nomDia(d.anterior.desde)} – ${nomDia(d.anterior.hasta)}.` : ' Sin período anterior cargado para comparar.'}
             </p>
 

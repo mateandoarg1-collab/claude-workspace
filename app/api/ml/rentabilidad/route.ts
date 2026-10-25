@@ -44,10 +44,10 @@ function listaDias(desde: string, hasta: string) {
   return out;
 }
 
-// Indicadores de publicidad. ROAS como Escalafy: ventas atribuidas a ML Ads sin IVA ÷ inversión. ACOS = inversión ÷
-// ventas atribuidas y TACOS = inversión ÷ facturación total, también sin IVA. Los "Ml" son como los muestra el panel de
-// ML Ads (ventas con IVA).
-function ratios(venta: number, ganancia: number, pauta: number, atribuidas: number) {
+// Indicadores de publicidad. Sin sufijo, como Escalafy (sin IVA): ROAS = ventas atribuidas ÷ inversión, ACOS = al revés,
+// TACOS = inversión ÷ facturación total. Los "Ml" como el panel de ML Ads (con IVA): ahí el TACOS es inversión ÷
+// (ventas por publicidad + ventas orgánicas de las publicaciones que están en campañas).
+function ratios(venta: number, ganancia: number, pauta: number, atribuidas: number, organicas: number) {
   const atribSinIva = atribuidas / IVA;
   return {
     margen: venta ? ganancia / venta : null,
@@ -56,11 +56,11 @@ function ratios(venta: number, ganancia: number, pauta: number, atribuidas: numb
     tacos: venta ? pauta / venta : null,
     roasMl: pauta ? atribuidas / pauta : null,
     acosMl: atribuidas ? pauta / atribuidas : null,
-    tacosMl: venta ? pauta / (venta * IVA) : null,
+    tacosMl: atribuidas + organicas ? pauta / (atribuidas + organicas) : null,
   };
 }
 
-function resumen(ordenes: FilaRentaMeli[], ads: { fecha: string; gasto: number; atribuidas: number }[], adicionales: CostoAdicional[], desde: string, hasta: string) {
+function resumen(ordenes: FilaRentaMeli[], ads: { fecha: string; gasto: number; atribuidas: number; organicas: number }[], adicionales: CostoAdicional[], desde: string, hasta: string) {
   const fechas = listaDias(desde, hasta);
   const enRango = (f: string) => f >= desde && f <= hasta;
   const os = ordenes.filter((o) => enRango(o.fecha));
@@ -70,11 +70,12 @@ function resumen(ordenes: FilaRentaMeli[], ads: { fecha: string; gasto: number; 
     const t = sumar(os.filter((o) => o.fecha === fecha));
     const a = adsDia.get(fecha);
     const d = debajo(t, fecha, a?.gasto ?? 0, adicionales);
-    return { fecha, ...t, ...d, atribuidas: a?.atribuidas ?? 0, ...ratios(t.venta, d.ganancia, d.pauta, a?.atribuidas ?? 0) };
+    return { fecha, ...t, ...d, atribuidas: a?.atribuidas ?? 0, ...ratios(t.venta, d.ganancia, d.pauta, a?.atribuidas ?? 0, a?.organicas ?? 0) };
   });
   const t = sumar(os);
   const pauta = as.reduce((s, a) => s + a.gasto, 0);
   const atribuidas = as.reduce((s, a) => s + a.atribuidas, 0);
+  const organicas = as.reduce((s, a) => s + a.organicas, 0);
   // Cada costo adicional se calcula por día (tienen fechas de inicio y fin) y se suma.
   const otros = adicionales.map((c, i) => ({ ...c, total: dias.reduce((s, d) => s + d.otros[i], 0) }));
   const sumaOtros = otros.reduce((s, c) => s + c.total, 0);
@@ -88,7 +89,7 @@ function resumen(ordenes: FilaRentaMeli[], ads: { fecha: string; gasto: number; 
       adicionales: sumaOtros,
       ganancia,
       gananciaFinal: ganancia - sumaOtros,
-      ...ratios(t.venta, ganancia, pauta, atribuidas),
+      ...ratios(t.venta, ganancia, pauta, atribuidas, organicas),
       sinCosto: os.reduce((s, o) => s + o.sin_costo, 0),
       flexEstimados: os.filter((o) => o.flex_estimado).length,
     },

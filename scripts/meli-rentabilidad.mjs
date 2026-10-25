@@ -253,19 +253,21 @@ async function calcular(desde, hasta, costos) {
   });
 }
 
-// Pauta de ML Ads por día (Product Ads; Display no tiene permisos).
+// Pauta de ML Ads por día (Product Ads; Display no tiene permisos). `organicas` = ventas sin publicidad de las
+// publicaciones que están en campañas: ML calcula el TACOS como inversión ÷ (ventas por publicidad + orgánicas).
 async function adsDelDia(dia) {
-  let m = { cost: 0, total_amount: 0, clicks: 0, prints: 0 };
+  let m = { cost: 0, total_amount: 0, clicks: 0, prints: 0, organic_units_amount: 0 };
   for (let offset = 0; ; offset += 50) {
     const j = await ml(
-      `/advertising/MLA/advertisers/${ADS_ADVERTISER_ID}/product_ads/campaigns/search?limit=50&offset=${offset}&date_from=${dia}&date_to=${dia}&metrics=cost,total_amount,clicks,prints&metrics_summary=true`,
+      `/advertising/MLA/advertisers/${ADS_ADVERTISER_ID}/product_ads/campaigns/search?limit=50&offset=${offset}&date_from=${dia}&date_to=${dia}&metrics=cost,total_amount,clicks,prints,organic_units_amount&metrics_summary=true`,
       { 'api-version': '2' },
     );
     const s = j.metrics_summary ?? {};
-    m = { cost: m.cost + (s.cost ?? 0), total_amount: m.total_amount + (s.total_amount ?? 0), clicks: m.clicks + (s.clicks ?? 0), prints: m.prints + (s.prints ?? 0) };
-    if (offset + 50 >= j.paging.total) return [dia, r2(m.cost), r2(m.total_amount), m.clicks, m.prints];
+    for (const k of Object.keys(m)) m[k] += s[k] ?? 0;
+    if (offset + 50 >= j.paging.total) return [dia, r2(m.cost), r2(m.total_amount), m.clicks, m.prints, r2(m.organic_units_amount)];
   }
 }
+const COLS_ADS = ['fecha', 'gasto', 'ventas_atribuidas', 'clicks', 'impresiones', 'organicas'];
 
 // Reemplaza en la pestaña las filas de los días recalculados y deja el resto como estaba.
 async function guardar(sheets, tab, encabezado, filasNuevas, desde, hasta) {
@@ -349,12 +351,18 @@ const d0 = new Date(`${hasta}T12:00:00Z`);
 d0.setUTCDate(d0.getUTCDate() - (DIAS - 1));
 const desde = d0.toISOString().slice(0, 10);
 
-const filas = await calcular(desde, hasta, costos);
 const ads = await enLotes(dias(desde, hasta), 4, adsDelDia);
+// --solo-ads: actualiza solo la pestaña de publicidad (rápido; no recalcula órdenes).
+if (args.includes('--solo-ads')) {
+  console.log(`${desde} a ${hasta}: pauta ${Math.round(ads.reduce((s, a) => s + a[1], 0)).toLocaleString('es-AR')}`);
+  if (!DRY) await guardar(sheets, TAB_ADS, [...COLS_ADS, new Date().toISOString()], ads, desde, hasta);
+  process.exit(0);
+}
+const filas = await calcular(desde, hasta, costos);
 const COLS = ['fecha', 'order_id', 'pack_id', 'envio_id', 'logistica', 'item_id', 'variante', 'titulo', 'unidades', 'venta', 'comision', 'envio_ml', 'envio_flex', 'impuestos', 'costo', 'neto', 'sin_costo', 'flex_estimado', 'reembolsado', 'envio_devolucion', 'anulada', 'creada'];
 const suma = (k) => Math.round(filas.reduce((s, r) => s + r[k], 0)).toLocaleString('es-AR');
 console.log(`${desde} a ${hasta}: ${filas.length} órdenes · venta ${suma('venta')} · neto ${suma('neto')} · pauta ${Math.round(ads.reduce((s, a) => s + a[1], 0)).toLocaleString('es-AR')}`);
 if (DRY) process.exit(0);
 const total = await guardar(sheets, TAB, [...COLS, new Date().toISOString()], filas.map((r) => COLS.map((k) => r[k])), desde, hasta);
-await guardar(sheets, TAB_ADS, ['fecha', 'gasto', 'ventas_atribuidas', 'clicks', 'impresiones', new Date().toISOString()], ads, desde, hasta);
+await guardar(sheets, TAB_ADS, [...COLS_ADS, new Date().toISOString()], ads, desde, hasta);
 console.log(`${TAB}: ${total} filas en total`);

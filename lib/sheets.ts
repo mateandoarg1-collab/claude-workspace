@@ -233,7 +233,7 @@ async function leerRentabilidadMeli() {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
   const res = await sheets.spreadsheets.values.batchGet({
     spreadsheetId: SPREADSHEET_ID,
-    ranges: [`'rentabilidad_meli'!A1:Z`, `'rentabilidad_meli_ads'!A1:F`],
+    ranges: [`'rentabilidad_meli'!A1:Z`, `'rentabilidad_meli_ads'!A1:G`],
     valueRenderOption: 'UNFORMATTED_VALUE', // con formato la planilla devuelve "43.041,32"
   });
   const [ordenes, ads] = res.data.valueRanges ?? [];
@@ -251,7 +251,7 @@ async function leerRentabilidadMeli() {
       anulada: num(r, 'anulada'), envio_id: str(r, 'envio_id'), variante: str(r, 'variante'), reembolsado: num(r, 'reembolsado'),
       envio_devolucion: num(r, 'envio_devolucion'), creada: str(r, 'creada'),
     })),
-    ads: (ads?.values ?? []).slice(1).map((r) => ({ fecha: String(r[0]), gasto: Number(r[1]) || 0, atribuidas: Number(r[2]) || 0 })),
+    ads: (ads?.values ?? []).slice(1).map((r) => ({ fecha: String(r[0]), gasto: Number(r[1]) || 0, atribuidas: Number(r[2]) || 0, organicas: Number(r[5]) || 0 })),
   };
 }
 
