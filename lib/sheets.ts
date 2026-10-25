@@ -232,7 +232,7 @@ export async function getRentabilidadMeli(desde: string, hasta: string) {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
   const res = await sheets.spreadsheets.values.batchGet({
     spreadsheetId: SPREADSHEET_ID,
-    ranges: [`'rentabilidad_meli'!A1:U`, `'rentabilidad_meli_ads'!A1:F`],
+    ranges: [`'rentabilidad_meli'!A1:Z`, `'rentabilidad_meli_ads'!A1:F`],
     valueRenderOption: 'UNFORMATTED_VALUE', // con formato la planilla devuelve "43.041,32"
   });
   const [ordenes, ads] = res.data.valueRanges ?? [];
@@ -243,6 +243,8 @@ export async function getRentabilidadMeli(desde: string, hasta: string) {
   const enRango = (f: string) => f >= desde && f <= hasta;
   return {
     actualizado: String(enc?.at(-1) ?? ''),
+    // Primer día con datos en la planilla (para no comparar contra un período que no está cargado entero).
+    primerDia: filas.reduce((m, r) => (String(r[0]) < m ? String(r[0]) : m), '9999-12-31'),
     ordenes: filas.filter((r) => enRango(String(r[0]))).map((r): FilaRentaMeli => ({
       fecha: str(r, 'fecha'), order_id: str(r, 'order_id'), pack_id: str(r, 'pack_id'), logistica: str(r, 'logistica'),
       item_id: str(r, 'item_id'), titulo: str(r, 'titulo'), unidades: num(r, 'unidades'), venta: num(r, 'venta'),

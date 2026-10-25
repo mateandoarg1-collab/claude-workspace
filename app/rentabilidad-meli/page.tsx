@@ -7,12 +7,16 @@ type Totales = {
   ordenes: number; unidades: number; venta: number; comision: number; envio_ml: number; envio_flex: number;
   impuestos: number; costo: number; neto: number;
 };
-type Dia = Totales & { fecha: string; pauta: number; pichon: number; nubimetrics: number; ganancia: number; gananciaFinal: number };
+type Ratios = { margen: number | null; roas: number | null; acos: number | null; tacos: number | null; roasMl: number | null; acosMl: number | null; tacosMl: number | null };
+type Dia = Totales & Ratios & { fecha: string; pauta: number; pichon: number; nubimetrics: number; ganancia: number; gananciaFinal: number };
+type Total = Totales & Ratios & { pauta: number; atribuidas: number; pichon: number; nubimetrics: number; ganancia: number; gananciaFinal: number; sinCosto: number; flexEstimados: number };
 type Data = {
   desde: string;
   hasta: string;
   actualizado: string;
-  total: Totales & { pauta: number; atribuidas: number; pichon: number; nubimetrics: number; ganancia: number; gananciaFinal: number; sinCosto: number; flexEstimados: number };
+  total: Total;
+  anterior: (Total & { desde: string; hasta: string }) | null;
+  serie: Dia[];
   dias: Dia[];
   productos: (Totales & { item_id: string; titulo: string; sinCosto: boolean })[];
   logisticas: (Totales & { logistica: string })[];
@@ -34,12 +38,73 @@ const nomDia = (f: string) => `${DIAS[new Date(`${f}T12:00:00Z`).getUTCDay()]} $
 const LOGISTICA: Record<string, string> = { full: 'Full', flex: 'Flex', colecta: 'Colecta', agencia: 'Agencia', correo: 'Correo', 'sin envío': 'Sin envío' };
 const color = (n: number) => (n < 0 ? 'text-rose-400' : 'text-emerald-300');
 
-function Kpi({ titulo, valor, detalle, destacar }: { titulo: string; valor: string; detalle?: string; destacar?: string }) {
+const num = (n: number, dec = 2) => n.toLocaleString('es-AR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+const porc = (n: number) => `${num(n * 100, 1)}%`;
+
+// Línea diaria de una métrica, con el valor del día bajo el cursor. Los días sin dato (p. ej. ROAS sin pauta) cortan la línea.
+function Minigrafico({ puntos, formato }: { puntos: { fecha: string; v: number | null }[]; formato: (n: number) => string }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const vals = puntos.map((p) => p.v).filter((v): v is number => v != null);
+  if (puntos.length < 2 || vals.length < 2) return <div className="h-10" />;
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  const x = (i: number) => (i / (puntos.length - 1)) * 100;
+  const y = (v: number) => (max === min ? 20 : 36 - ((v - min) / (max - min)) * 32);
+  let d = '';
+  puntos.forEach((p, i) => {
+    if (p.v == null) return;
+    d += `${i && puntos[i - 1].v != null ? 'L' : 'M'}${x(i)},${y(p.v)}`;
+  });
+  const h = hover != null ? puntos[hover] : null;
   return (
-    <div className="bg-slate-900 rounded-2xl border border-slate-800 p-4">
-      <p className="text-xs text-slate-400">{titulo}</p>
-      <p className={`text-xl sm:text-2xl font-semibold tabular-nums mt-1 ${destacar ?? 'text-slate-50'}`}>{valor}</p>
-      {detalle && <p className="text-xs text-slate-500 mt-0.5">{detalle}</p>}
+    <div className="relative h-10 mt-2"
+      onMouseLeave={() => setHover(null)}
+      onMouseMove={(e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        setHover(Math.round(((e.clientX - r.left) / r.width) * (puntos.length - 1)));
+      }}>
+      <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="w-full h-full overflow-visible">
+        <path d={d} fill="none" stroke="currentColor" strokeWidth={2} vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" className="text-emerald-400" />
+        {h && <line x1={x(hover!)} x2={x(hover!)} y1={0} y2={40} stroke="currentColor" strokeWidth={1} vectorEffect="non-scaling-stroke" className="text-slate-600" />}
+      </svg>
+      {h && h.v != null && (
+        <span className="absolute w-2 h-2 -ml-1 -mt-1 rounded-full bg-emerald-400 ring-2 ring-slate-900 pointer-events-none"
+          style={{ left: `${x(hover!)}%`, top: `${(y(h.v) / 40) * 100}%` }} />
+      )}
+      {h && (
+        <span className={`absolute top-0 ${x(hover!) < 50 ? 'right-0' : 'left-0'} text-[11px] tabular-nums text-slate-200 bg-slate-800/95 rounded px-1.5 py-0.5 pointer-events-none whitespace-nowrap`}>
+          {nomDia(h.fecha)} · {h.v == null ? '–' : formato(h.v)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// Tarjeta tipo Escalafy: valor del período, variación contra el período anterior del mismo largo y la línea diaria.
+// `mejorSiSube` pinta la variación de verde o rojo; los porcentajes (margen, ACOS, TACOS) varían en puntos.
+function Tarjeta({ titulo, valor, actual, anterior, enPuntos, mejorSiSube = true, detalle, puntos, formato }: {
+  titulo: string; valor: string; actual: number | null; anterior?: number | null; enPuntos?: boolean; mejorSiSube?: boolean;
+  detalle?: string; puntos: { fecha: string; v: number | null }[]; formato: (n: number) => string;
+}) {
+  let variacion: { texto: string; sube: boolean } | null = null;
+  if (actual != null && anterior != null && (enPuntos || anterior !== 0)) {
+    const dif = enPuntos ? (actual - anterior) * 100 : ((actual - anterior) / Math.abs(anterior)) * 100;
+    variacion = { texto: enPuntos ? `${num(Math.abs(dif), 1)} pp` : `${num(Math.abs(dif), 1)}%`, sube: dif >= 0 };
+  }
+  return (
+    <div className="bg-slate-900 rounded-2xl border border-slate-800 p-4 min-w-0">
+      <p className="text-xs text-slate-400 truncate">{titulo}</p>
+      <div className="flex items-baseline gap-2 mt-1 flex-wrap">
+        <p className="text-xl sm:text-2xl font-semibold tabular-nums text-slate-50">{valor}</p>
+        {variacion && (
+          <span className={`text-xs tabular-nums ${variacion.sube === mejorSiSube ? 'text-emerald-400' : 'text-rose-400'}`}
+            title="Contra el período anterior del mismo largo">
+            {variacion.sube ? '↑' : '↓'} {variacion.texto}
+          </span>
+        )}
+      </div>
+      {detalle && <p className="text-[11px] text-slate-500 mt-0.5 truncate">{detalle}</p>}
+      <Minigrafico puntos={puntos} formato={formato} />
     </div>
   );
 }
@@ -61,6 +126,8 @@ export default function RentabilidadMeli() {
   const d = res?.periodo === periodo ? res.data : undefined;
   const err = res?.periodo === periodo ? res.err : '';
   const t = d?.total;
+  const a = d?.anterior;
+  const serie = (f: (x: Dia) => number | null) => (d?.serie ?? []).map((x) => ({ fecha: x.fecha, v: f(x) }));
 
   const cascada = t
     ? [
@@ -104,13 +171,28 @@ export default function RentabilidadMeli() {
 
         {t && (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Kpi titulo="Venta sin IVA" valor={fmt(t.venta)} detalle={`${t.ordenes.toLocaleString('es-AR')} pedidos · ${t.unidades.toLocaleString('es-AR')} u.`} />
-              <Kpi titulo="Neto antes de publicidad" valor={fmt(t.neto)} detalle={`${pct(t.neto, t.venta)} de la venta`} />
-              <Kpi titulo="Ganancia" valor={fmt(t.ganancia)} detalle={`${pct(t.ganancia, t.venta)} · final ${fmt(t.gananciaFinal)}`} destacar={color(t.ganancia)} />
-              <Kpi titulo="ROAS ML Ads" valor={t.pauta ? (t.atribuidas / t.pauta).toLocaleString('es-AR', { maximumFractionDigits: 1 }) : '–'}
-                detalle={t.pauta && t.venta ? `ROAS real ${((t.neto / t.venta) * (t.atribuidas / 1.21) / t.pauta).toLocaleString('es-AR', { maximumFractionDigits: 2 })}` : undefined} />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <Tarjeta titulo="Ventas" valor={t.ordenes.toLocaleString('es-AR')} actual={t.ordenes} anterior={a?.ordenes}
+                detalle={`${t.unidades.toLocaleString('es-AR')} unidades`} puntos={serie((x) => x.ordenes)} formato={(n) => n.toLocaleString('es-AR')} />
+              <Tarjeta titulo="Facturación sin IVA" valor={fmt(t.venta)} actual={t.venta} anterior={a?.venta}
+                puntos={serie((x) => x.venta)} formato={fmt} />
+              <Tarjeta titulo="Margen de ganancia" valor={t.margen == null ? '–' : porc(t.margen)} actual={t.margen} anterior={a?.margen} enPuntos
+                puntos={serie((x) => x.margen)} formato={porc} />
+              <Tarjeta titulo="Ganancia" valor={fmt(t.ganancia)} actual={t.ganancia} anterior={a?.ganancia}
+                detalle={`Final ${fmt(t.gananciaFinal)} (con Pichón y Nubimetrics)`} puntos={serie((x) => x.ganancia)} formato={fmt} />
+              <Tarjeta titulo="Inversión publicitaria" valor={fmt(t.pauta)} actual={t.pauta} anterior={a?.pauta} mejorSiSube={false}
+                detalle="ML Ads" puntos={serie((x) => x.pauta)} formato={fmt} />
+              <Tarjeta titulo="ROAS" valor={t.roas == null ? '–' : num(t.roas)} actual={t.roas} anterior={a?.roas}
+                detalle={t.roasMl == null ? undefined : `En ML Ads (con IVA): ${num(t.roasMl)}`} puntos={serie((x) => x.roas)} formato={(n) => num(n)} />
+              <Tarjeta titulo="ACOS" valor={t.acos == null ? '–' : porc(t.acos)} actual={t.acos} anterior={a?.acos} enPuntos mejorSiSube={false}
+                detalle={t.acosMl == null ? 'Inversión ÷ ventas por publicidad' : `En ML Ads (con IVA): ${porc(t.acosMl)}`} puntos={serie((x) => x.acos)} formato={porc} />
+              <Tarjeta titulo="TACOS" valor={t.tacos == null ? '–' : porc(t.tacos)} actual={t.tacos} anterior={a?.tacos} enPuntos mejorSiSube={false}
+                detalle={t.tacosMl == null ? 'Inversión ÷ facturación total' : `Con IVA: ${porc(t.tacosMl)}`} puntos={serie((x) => x.tacos)} formato={porc} />
             </div>
+            <p className="text-[11px] text-slate-500 -mt-1">
+              ROAS, ACOS y TACOS sin IVA, como Escalafy (el panel de ML Ads los muestra con IVA).
+              {d.anterior ? ` Variación contra ${nomDia(d.anterior.desde)} – ${nomDia(d.anterior.hasta)}.` : ' Sin período anterior cargado para comparar.'}
+            </p>
 
             {(t.sinCosto > 0 || t.flexEstimados > 0) && (
               <div className="rounded-xl border border-amber-700/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200 space-y-1">
