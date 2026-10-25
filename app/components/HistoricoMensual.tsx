@@ -38,7 +38,8 @@ export default function HistoricoMensual() {
   };
   const total = (mes: string) => CANALES.reduce((s, c) => s + val(mes, c), 0);
   const maxTotal = Math.max(1, ...meses.map(total));
-  const dolares = (n: number) => (n ? `US$ ${Math.round(n / 1000).toLocaleString('es-AR')} mil` : '—');
+  const dolares = (n: number) =>
+    !n ? '—' : n < 10000 ? `US$ ${Math.round(n).toLocaleString('es-AR')}` : `US$ ${Math.round(n / 1000).toLocaleString('es-AR')} mil`;
   const fmtV = ver === 'monto' ? millones : ver === 'usd' ? dolares : num;
 
   return (
