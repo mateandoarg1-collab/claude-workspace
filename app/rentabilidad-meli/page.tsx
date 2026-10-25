@@ -203,15 +203,15 @@ export default function RentabilidadMeli() {
                 detalle={`Final ${fmt(t.gananciaFinal)} (con costos adicionales)`} puntos={serie((x) => x.ganancia)} formato={fmt} />
               <Tarjeta titulo="Inversión publicitaria" valor={fmt(t.pauta)} actual={t.pauta} anterior={a?.pauta} mejorSiSube={false}
                 detalle="ML Ads" puntos={serie((x) => x.pauta)} formato={fmt} />
-              <Tarjeta titulo="ROAS" valor={t.roas == null ? '–' : num(t.roas)} actual={t.roas} anterior={a?.roas}
-                detalle={t.roasMl == null ? undefined : `En ML Ads (con IVA): ${num(t.roasMl)}`} puntos={serie((x) => x.roas)} formato={(n) => num(n)} />
-              <Tarjeta titulo="ACOS" valor={t.acos == null ? '–' : porc(t.acos)} actual={t.acos} anterior={a?.acos} enPuntos mejorSiSube={false}
-                detalle={t.acosMl == null ? 'Inversión ÷ ventas por publicidad' : `En ML Ads (con IVA): ${porc(t.acosMl)}`} puntos={serie((x) => x.acos)} formato={porc} />
-              <Tarjeta titulo="TACOS" valor={t.tacos == null ? '–' : porc(t.tacos)} actual={t.tacos} anterior={a?.tacos} enPuntos mejorSiSube={false}
-                detalle={t.tacosMl == null ? 'Inversión ÷ facturación total' : `Con IVA: ${porc(t.tacosMl)}`} puntos={serie((x) => x.tacos)} formato={porc} />
+              <Tarjeta titulo="ROAS" valor={t.roasMl == null ? '–' : `${num(t.roasMl)}x`} actual={t.roasMl} anterior={a?.roasMl}
+                detalle={t.roas == null ? undefined : `Sin IVA (Escalafy): ${num(t.roas)}`} puntos={serie((x) => x.roasMl)} formato={(n) => `${num(n)}x`} />
+              <Tarjeta titulo="ACOS" valor={t.acosMl == null ? '–' : porc(t.acosMl)} actual={t.acosMl} anterior={a?.acosMl} enPuntos mejorSiSube={false}
+                detalle={t.acos == null ? 'Inversión ÷ ventas por publicidad' : `Sin IVA (Escalafy): ${porc(t.acos)}`} puntos={serie((x) => x.acosMl)} formato={porc} />
+              <Tarjeta titulo="TACOS" valor={t.tacosMl == null ? '–' : porc(t.tacosMl)} actual={t.tacosMl} anterior={a?.tacosMl} enPuntos mejorSiSube={false}
+                detalle={t.tacos == null ? 'Inversión ÷ facturación total' : `Sin IVA (Escalafy): ${porc(t.tacos)}`} puntos={serie((x) => x.tacosMl)} formato={porc} />
             </div>
             <p className="text-[11px] text-slate-500 -mt-1">
-              ROAS, ACOS y TACOS sin IVA, como Escalafy (el panel de ML Ads los muestra con IVA).
+              ROAS, ACOS y TACOS como el panel de ML Ads (ventas con IVA); abajo, sin IVA como Escalafy. TACOS = inversión ÷ facturación total de Mercado Libre.
               {d.anterior ? ` Variación contra ${nomDia(d.anterior.desde)} – ${nomDia(d.anterior.hasta)}.` : ' Sin período anterior cargado para comparar.'}
             </p>
 
