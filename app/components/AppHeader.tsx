@@ -10,6 +10,7 @@ const NAV: Array<{ href: string; label: string; badge?: boolean }> = [
   { href: '/canales', label: 'Canales' },
   { href: '/estadisticas', label: 'Estadísticas' },
   { href: '/mercadolibre', label: 'Mercado Libre' },
+  { href: '/rentabilidad-meli', label: 'Rentabilidad ML' },
   { href: '/full', label: 'Stock Full' },
   { href: '/china', label: 'Container China' },
   { href: '/posventa', label: 'Posventa' },

@@ -220,3 +220,37 @@ export async function getCostosSku(): Promise<Record<string, number>> {
   for (const [k, v] of Object.entries(costosOverride)) if (!k.startsWith('_') && typeof v === 'number') costos[k] = v;
   return costos;
 }
+
+// Rentabilidad de Mercado Libre por orden y pauta de ML Ads por día (pestañas rentabilidad_meli y rentabilidad_meli_ads,
+// las llena scripts/meli-rentabilidad.mjs). Importes sin IVA, salvo impuestos (5% de la venta con IVA) y la pauta.
+export type FilaRentaMeli = {
+  fecha: string; order_id: string; pack_id: string; logistica: string; item_id: string; titulo: string; unidades: number;
+  venta: number; comision: number; envio_ml: number; envio_flex: number; impuestos: number; costo: number; neto: number;
+  sin_costo: number; flex_estimado: number;
+};
+export async function getRentabilidadMeli(desde: string, hasta: string) {
+  const sheets = google.sheets({ version: 'v4', auth: getAuth() });
+  const res = await sheets.spreadsheets.values.batchGet({
+    spreadsheetId: SPREADSHEET_ID,
+    ranges: [`'rentabilidad_meli'!A1:U`, `'rentabilidad_meli_ads'!A1:F`],
+    valueRenderOption: 'UNFORMATTED_VALUE', // con formato la planilla devuelve "43.041,32"
+  });
+  const [ordenes, ads] = res.data.valueRanges ?? [];
+  const [enc, ...filas] = ordenes?.values ?? [];
+  const col = Object.fromEntries((enc ?? []).map((k, i) => [k, i]));
+  const num = (r: string[], k: string) => Number(r[col[k]]) || 0;
+  const str = (r: string[], k: string) => String(r[col[k]] ?? '');
+  const enRango = (f: string) => f >= desde && f <= hasta;
+  return {
+    actualizado: String(enc?.at(-1) ?? ''),
+    ordenes: filas.filter((r) => enRango(String(r[0]))).map((r): FilaRentaMeli => ({
+      fecha: str(r, 'fecha'), order_id: str(r, 'order_id'), pack_id: str(r, 'pack_id'), logistica: str(r, 'logistica'),
+      item_id: str(r, 'item_id'), titulo: str(r, 'titulo'), unidades: num(r, 'unidades'), venta: num(r, 'venta'),
+      comision: num(r, 'comision'), envio_ml: num(r, 'envio_ml'), envio_flex: num(r, 'envio_flex'), impuestos: num(r, 'impuestos'),
+      costo: num(r, 'costo'), neto: num(r, 'neto'), sin_costo: num(r, 'sin_costo'), flex_estimado: num(r, 'flex_estimado'),
+    })),
+    ads: (ads?.values ?? []).slice(1).filter((r) => enRango(String(r[0]))).map((r) => ({
+      fecha: String(r[0]), gasto: Number(r[1]) || 0, atribuidas: Number(r[2]) || 0,
+    })),
+  };
+}
