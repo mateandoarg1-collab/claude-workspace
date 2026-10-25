@@ -42,18 +42,26 @@ async function json(page, url, auth) {
   }
 }
 
-// TEMPORAL (25-oct-2026): estructura de 3 órdenes, sin datos personales, a la pestaña emp_muestra para diseñar la
-// rentabilidad de la tienda (qué trae cada orden de envío, descuentos y precios). Se saca cuando esté armada.
-const muestra = [];
-const PERSONAL = /mail|phone|tel|name|surname|dni|document|identif|street|address_line|floor|apart|cuit|ip$|note|comment|first|last|birth|token|card/i;
-function aplanar(x, ruta = '', out = []) {
-  if (Array.isArray(x)) x.slice(0, 2).forEach((v, i) => aplanar(v, `${ruta}[${i}]`, out));
-  else if (x && typeof x === 'object') for (const [k, v] of Object.entries(x)) {
-    if (PERSONAL.test(k)) out.push([`${ruta}.${k}`, '(oculto)']);
-    else aplanar(v, ruta ? `${ruta}.${k}` : k, out);
-  }
-  else out.push([ruta, String(x ?? '').slice(0, 100)]);
-  return out;
+// Detalle de cada venta para /rentabilidad-tienda (scripts/tienda-rentabilidad.mjs): montos, descuentos, envío
+// (lo cobrado al comprador y lo que paga la tienda por el envío gratis, que Empretienda cotiza con la cuenta de OCA),
+// pago y productos con SKU. Sin datos personales: del destino solo ciudad, provincia y código postal.
+const ventas = new Map();
+export const VENTAS_COLS = ['order_id', 'numero', 'fecha', 'pago_metodo', 'pago_estado', 'mp_pago_id', 'subtotal', 'cupon', 'desc_pago',
+  'envio_cobrado', 'envio_gratis', 'envio_metodo', 'envio', 'cp', 'provincia', 'ciudad', 'productos'];
+export function venta(o) {
+  const s = o.shipping ?? {};
+  const a = s.address ?? {};
+  return [
+    o.id.replace(/^order-/, ''), o.number, o.created_at, o.payment?.method ?? '', o.payment?.status ?? '',
+    o.payment?.method === 1 ? String(o.payment?.extra_reference_id ?? '') : '',
+    o.subtotal ?? 0, o.coupon_discount ?? 0, o.payment_method_discount ?? 0, o.shipment_price ?? 0, s.free_shipment_price ?? 0,
+    s.method ?? '', s.metadata?.label ?? '', a.zip_code ?? '', a.state ?? '', a.city ?? '',
+    // productos: nombre y variante ("Opción: valor | Opción: valor", como el listado de Métricas que usa scripts/cmv)
+    JSON.stringify((o.products ?? []).map((x) => ({
+      id: String(x.product_id).replace(/^product-/, ''), sku: x.sku ?? '', n: x.name ?? '', q: x.quantity, p: x.price,
+      v: (x.attributes ?? []).map((at) => `${at.name}: ${at.value}`).join(' | '),
+    }))),
+  ];
 }
 
 // Órdenes creadas en los últimos `dias` días (el listado viene de la más nueva a la más vieja).
@@ -66,7 +74,7 @@ export async function leerOrdenes(page, dias) {
       const lote = await json(page, `${ORDENES}?page=${p}&limit=100&sort=1&archived=${archived}`, auth);
       for (const o of lote) {
         if (o.created_at < corte) continue;
-        if (muestra.length < 3) muestra.push(o);
+        ventas.set(o.id, venta(o));
         filas.set(o.id, [
           o.id.replace(/^order-/, ''), // el mismo order_id que queda en la URL de la página de gracias (/order) en GA4
           o.number,
@@ -118,13 +126,19 @@ export async function volcarOrdenes(page, sheets, spreadsheetId) {
   const desde = previas.length ? RECIENTES : DIAS;
   const nuevas = await leerOrdenes(page, desde);
   console.log(`Órdenes de ${desde} días bajadas (${seg()})`);
-  await escribir(sheets, spreadsheetId, 'emp_muestra', ['orden', 'campo', 'valor'], muestra.flatMap((o, i) => aplanar(o).map(([k, v]) => [i, k, v]))).catch(() => {});
   const corteNuevas = new Date(Date.now() - desde * 864e5).toISOString();
   const corte = new Date(Math.min(Date.now() - DIAS * 864e5, Date.parse(DESDE_CHINA))).toISOString();
   const ids = new Set(nuevas.map((o) => o[0]));
   const ordenes = [...nuevas, ...previas.filter((o) => o[2] >= corte && o[2] < corteNuevas && !ids.has(o[0]))];
   await escribir(sheets, spreadsheetId, 'emp_ordenes', ['order_id', 'numero', 'fecha', 'total', 'metodo', 'pago', 'provincia', 'productos'], ordenes);
   console.log(`emp_ordenes escrita (${seg()})`);
+  // Detalle para la rentabilidad: mismas reglas de corte que emp_ordenes (las viejas se conservan de la planilla).
+  const previasVentas = (await sheets.spreadsheets.values.get({ spreadsheetId, range: "'emp_ventas'!A2:Q", valueRenderOption: 'UNFORMATTED_VALUE' }).catch(() => null))?.data.values ?? [];
+  const idsVentas = new Set([...ventas.keys()].map((k) => k.replace(/^order-/, '')));
+  const filasVentas = [...ventas.values(), ...previasVentas.filter((v) => v[2] >= corte && v[2] < corteNuevas && !idsVentas.has(String(v[0])))]
+    .sort((x, y) => String(y[2]).localeCompare(String(x[2])));
+  await escribir(sheets, spreadsheetId, 'emp_ventas', VENTAS_COLS, filasVentas);
+  console.log(`emp_ventas escrita: ${filasVentas.length} (${seg()})`);
   const productos = await leerProductos(page);
   await escribir(sheets, spreadsheetId, 'emp_productos', ['id', 'nombre', 'link', 'desactivado', 'imagen'], productos);
   console.log(`Órdenes de los últimos ${DIAS} días: ${ordenes.length} · productos: ${productos.length} (${seg()})`);
