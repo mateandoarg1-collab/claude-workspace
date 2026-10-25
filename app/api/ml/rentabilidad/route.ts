@@ -3,9 +3,10 @@ import { desdeAR, hastaAR } from '@/lib/periodo';
 
 export const maxDuration = 30;
 
-// Costos fuera de la orden, como estaban en Escalafy: Pichón 2% de la venta sin IVA (pauta, desde oct-2026)
-// y Nubimetrics $101.035 por mes repartidos por día.
+// Costos fuera de la orden: Pichón 2% de (venta concretada CON IVA − inversión en ML Ads), desde oct-2026
+// (pedido de Juampi, 24-oct-2026), y Nubimetrics $101.035 por mes repartidos por día.
 const PICHON = { desde: '2026-10-01', tasa: 0.02 };
+const IVA = 1.21;
 const NUBIMETRICS_DIA = 101035 / 30;
 
 // ?periodo=hoy|ayer|semana|mes|mesant (mes anterior completo)
@@ -34,7 +35,8 @@ function sumar(filas: FilaRentaMeli[]): Totales {
 // Pauta y costos fuera de la orden de un conjunto de días. `ganancia` es la de Escalafy (neto − ML Ads): ahí Pichón
 // cuenta como publicidad general y Nubimetrics como costo fijo de la empresa, no del canal. `gananciaFinal` los resta.
 function debajo(t: Totales, fechas: string[], pauta: number) {
-  const pichon = fechas.every((f) => f >= PICHON.desde) ? t.venta * PICHON.tasa : 0;
+  // La venta ya viene neta de cancelaciones y reembolsos; se le vuelve a sumar el IVA.
+  const pichon = fechas.every((f) => f >= PICHON.desde) ? (t.venta * IVA - pauta) * PICHON.tasa : 0;
   const nubimetrics = fechas.length * NUBIMETRICS_DIA;
   return { pauta, pichon, nubimetrics, ganancia: t.neto - pauta, gananciaFinal: t.neto - pauta - pichon - nubimetrics };
 }

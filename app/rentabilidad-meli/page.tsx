@@ -73,7 +73,7 @@ export default function RentabilidadMeli() {
         { nombre: 'Neto antes de publicidad', valor: t.neto, total: true },
         { nombre: 'Publicidad ML Ads', valor: -t.pauta },
         { nombre: 'Ganancia', valor: t.ganancia, total: true, nota: 'La misma cuenta que la Ganancia de Mercado Libre en Escalafy' },
-        { nombre: 'Pichón (2% de la venta)', valor: -t.pichon },
+        { nombre: 'Pichón', valor: -t.pichon, nota: '2% de (venta con IVA, neta de cancelaciones y devoluciones − publicidad ML Ads)' },
         { nombre: 'Nubimetrics', valor: -t.nubimetrics },
         { nombre: 'Ganancia final', valor: t.gananciaFinal, total: true, nota: 'Después de Pichón y Nubimetrics (Escalafy los resta solo en el total de la empresa)' },
       ]
