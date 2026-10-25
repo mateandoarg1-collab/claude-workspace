@@ -227,8 +227,9 @@ export type FilaRentaMeli = {
   fecha: string; order_id: string; pack_id: string; logistica: string; item_id: string; titulo: string; unidades: number;
   venta: number; comision: number; envio_ml: number; envio_flex: number; impuestos: number; costo: number; neto: number;
   sin_costo: number; flex_estimado: number; anulada: number;
+  envio_id: string; variante: string; reembolsado: number; envio_devolucion: number; creada: string;
 };
-export async function getRentabilidadMeli(desde: string, hasta: string) {
+async function leerRentabilidadMeli() {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
   const res = await sheets.spreadsheets.values.batchGet({
     spreadsheetId: SPREADSHEET_ID,
@@ -239,21 +240,35 @@ export async function getRentabilidadMeli(desde: string, hasta: string) {
   const [enc, ...filas] = ordenes?.values ?? [];
   const col = Object.fromEntries((enc ?? []).map((k, i) => [k, i]));
   const num = (r: string[], k: string) => Number(r[col[k]]) || 0;
-  const str = (r: string[], k: string) => String(r[col[k]] ?? '');
-  const enRango = (f: string) => f >= desde && f <= hasta;
+  const str = (r: string[], k: string) => (col[k] == null ? '' : String(r[col[k]] ?? ''));
   return {
     actualizado: String(enc?.at(-1) ?? ''),
-    // Primer día con datos en la planilla (para no comparar contra un período que no está cargado entero).
-    primerDia: filas.reduce((m, r) => (String(r[0]) < m ? String(r[0]) : m), '9999-12-31'),
-    ordenes: filas.filter((r) => enRango(String(r[0]))).map((r): FilaRentaMeli => ({
+    ordenes: filas.map((r): FilaRentaMeli => ({
       fecha: str(r, 'fecha'), order_id: str(r, 'order_id'), pack_id: str(r, 'pack_id'), logistica: str(r, 'logistica'),
       item_id: str(r, 'item_id'), titulo: str(r, 'titulo'), unidades: num(r, 'unidades'), venta: num(r, 'venta'),
       comision: num(r, 'comision'), envio_ml: num(r, 'envio_ml'), envio_flex: num(r, 'envio_flex'), impuestos: num(r, 'impuestos'),
       costo: num(r, 'costo'), neto: num(r, 'neto'), sin_costo: num(r, 'sin_costo'), flex_estimado: num(r, 'flex_estimado'),
-      anulada: num(r, 'anulada'),
+      anulada: num(r, 'anulada'), envio_id: str(r, 'envio_id'), variante: str(r, 'variante'), reembolsado: num(r, 'reembolsado'),
+      envio_devolucion: num(r, 'envio_devolucion'), creada: str(r, 'creada'),
     })),
-    ads: (ads?.values ?? []).slice(1).filter((r) => enRango(String(r[0]))).map((r) => ({
-      fecha: String(r[0]), gasto: Number(r[1]) || 0, atribuidas: Number(r[2]) || 0,
-    })),
+    ads: (ads?.values ?? []).slice(1).map((r) => ({ fecha: String(r[0]), gasto: Number(r[1]) || 0, atribuidas: Number(r[2]) || 0 })),
   };
+}
+
+export async function getRentabilidadMeli(desde: string, hasta: string) {
+  const { actualizado, ordenes, ads } = await leerRentabilidadMeli();
+  const enRango = (f: string) => f >= desde && f <= hasta;
+  return {
+    actualizado,
+    // Primer día con datos en la planilla (para no comparar contra un período que no está cargado entero).
+    primerDia: ordenes.reduce((m, o) => (o.fecha < m ? o.fecha : m), '9999-12-31'),
+    ordenes: ordenes.filter((o) => enRango(o.fecha)),
+    ads: ads.filter((a) => enRango(a.fecha)),
+  };
+}
+
+// Las órdenes de una venta, buscando por número de orden o de carrito (pack).
+export async function getVentaMeli(id: string) {
+  const { actualizado, ordenes } = await leerRentabilidadMeli();
+  return { actualizado, ordenes: ordenes.filter((o) => o.order_id === id || o.pack_id === id) };
 }

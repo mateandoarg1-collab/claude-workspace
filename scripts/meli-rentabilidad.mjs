@@ -248,6 +248,7 @@ async function calcular(desde, hasta, costos) {
       reembolsado: r2(reembolsado / IVA),
       envio_devolucion: r2(envioDev),
       anulada: perdida ? 1 : 0,
+      creada: o.date_created,
     };
   });
 }
@@ -350,7 +351,7 @@ const desde = d0.toISOString().slice(0, 10);
 
 const filas = await calcular(desde, hasta, costos);
 const ads = await enLotes(dias(desde, hasta), 4, adsDelDia);
-const COLS = ['fecha', 'order_id', 'pack_id', 'envio_id', 'logistica', 'item_id', 'variante', 'titulo', 'unidades', 'venta', 'comision', 'envio_ml', 'envio_flex', 'impuestos', 'costo', 'neto', 'sin_costo', 'flex_estimado', 'reembolsado', 'envio_devolucion', 'anulada'];
+const COLS = ['fecha', 'order_id', 'pack_id', 'envio_id', 'logistica', 'item_id', 'variante', 'titulo', 'unidades', 'venta', 'comision', 'envio_ml', 'envio_flex', 'impuestos', 'costo', 'neto', 'sin_costo', 'flex_estimado', 'reembolsado', 'envio_devolucion', 'anulada', 'creada'];
 const suma = (k) => Math.round(filas.reduce((s, r) => s + r[k], 0)).toLocaleString('es-AR');
 console.log(`${desde} a ${hasta}: ${filas.length} órdenes · venta ${suma('venta')} · neto ${suma('neto')} · pauta ${Math.round(ads.reduce((s, a) => s + a[1], 0)).toLocaleString('es-AR')}`);
 if (DRY) process.exit(0);

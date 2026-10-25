@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import AppHeader from '../components/AppHeader';
+import Ventas, { type VentaFila } from './Ventas';
 import { describirAdicional, type CostoAdicional } from '@/lib/costosAdicionales';
 
 type Totales = {
@@ -23,6 +24,7 @@ type Data = {
   anterior: (Total & { desde: string; hasta: string }) | null;
   serie: Dia[];
   dias: Dia[];
+  ventas: VentaFila[];
   productos: (Totales & { item_id: string; titulo: string; foto: string | null; sinCosto: boolean })[];
   logisticas: (Totales & { logistica: string })[];
 };
@@ -357,6 +359,8 @@ export default function RentabilidadMeli() {
                 </button>
               )}
             </section>
+
+            <Ventas key={`${d.desde}-${d.hasta}`} ventas={d.ventas} />
           </>
         )}
       </main>

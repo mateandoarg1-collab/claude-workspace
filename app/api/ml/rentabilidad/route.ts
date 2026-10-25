@@ -129,10 +129,20 @@ export async function GET(req: Request) {
       .map(([logistica, fs]) => ({ logistica, ...sumar(fs) }))
       .sort((a, b) => b.venta - a.venta);
 
+    // Ventas del período, de la más nueva a la más vieja, para la tabla de últimas ventas.
+    const ventas = [...actual.ordenes]
+      .sort((x, y) => (y.creada || y.fecha).localeCompare(x.creada || x.fecha))
+      .map((o) => ({
+        order_id: o.order_id, pack_id: o.pack_id, fecha: o.fecha, creada: o.creada, titulo: o.titulo, item_id: o.item_id,
+        foto: fotos.get(o.item_id) ?? null, logistica: o.logistica, venta: o.venta, neto: o.neto, sin_costo: o.sin_costo,
+        flex_estimado: o.flex_estimado, anulada: o.anulada, reembolsado: o.reembolsado, envio_devolucion: o.envio_devolucion,
+      }));
+
     return Response.json({
       desde,
       hasta,
       actualizado,
+      ventas,
       total: actual.total,
       anterior: anterior && { ...anterior, desde: desdeAnt, hasta: hastaAnt },
       serie: actual.dias,
