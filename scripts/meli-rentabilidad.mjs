@@ -269,10 +269,12 @@ async function adsDelDia(dia) {
 // Reemplaza en la pestaña las filas de los días recalculados y deja el resto como estaba.
 async function guardar(sheets, tab, encabezado, filasNuevas, desde, hasta) {
   const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
-  if (!meta.data.sheets.some((s) => s.properties?.title === tab)) {
+  let hoja = meta.data.sheets.find((s) => s.properties?.title === tab);
+  if (!hoja) {
     await sheets.spreadsheets.batchUpdate({ spreadsheetId: SPREADSHEET_ID, requestBody: { requests: [{ addSheet: { properties: { title: tab } } }] } });
   }
-  const prev = (await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A2:Z` })).data.values ?? [];
+  // Sin formato: con formato la planilla devuelve "7926,45" y al reescribirlo quedaría como texto.
+  const prev = (await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A2:Z`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
   const quedan = prev.filter((r) => r[0] < desde || r[0] > hasta);
   const filas = [...quedan, ...filasNuevas].sort((a, b) => (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0));
   // Primero se escribe encima y después se borra lo que sobra: la pestaña nunca queda vacía mientras la lee el panel.
@@ -282,7 +284,10 @@ async function guardar(sheets, tab, encabezado, filasNuevas, desde, hasta) {
     valueInputOption: 'RAW',
     requestBody: { values: [encabezado, ...filas] },
   });
-  await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A${filas.length + 2}:Z` });
+  const filasHoja = hoja?.properties?.gridProperties?.rowCount ?? 0;
+  if (filasHoja > filas.length + 1) {
+    await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A${filas.length + 2}:Z${filasHoja}` });
+  }
   return filas.length;
 }
 
