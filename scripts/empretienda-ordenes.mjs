@@ -42,6 +42,20 @@ async function json(page, url, auth) {
   }
 }
 
+// TEMPORAL (25-oct-2026): estructura de 3 órdenes, sin datos personales, a la pestaña emp_muestra para diseñar la
+// rentabilidad de la tienda (qué trae cada orden de envío, descuentos y precios). Se saca cuando esté armada.
+const muestra = [];
+const PERSONAL = /mail|phone|tel|name|surname|dni|document|identif|street|address_line|floor|apart|cuit|ip$|note|comment|first|last|birth|token|card/i;
+function aplanar(x, ruta = '', out = []) {
+  if (Array.isArray(x)) x.slice(0, 2).forEach((v, i) => aplanar(v, `${ruta}[${i}]`, out));
+  else if (x && typeof x === 'object') for (const [k, v] of Object.entries(x)) {
+    if (PERSONAL.test(k)) out.push([`${ruta}.${k}`, '(oculto)']);
+    else aplanar(v, ruta ? `${ruta}.${k}` : k, out);
+  }
+  else out.push([ruta, String(x ?? '').slice(0, 100)]);
+  return out;
+}
+
 // Órdenes creadas en los últimos `dias` días (el listado viene de la más nueva a la más vieja).
 export async function leerOrdenes(page, dias) {
   const auth = await token(page, 'https://panel.empretienda.com/listado-de-ventas', 'ar.ua.la/1/orders');
@@ -52,6 +66,7 @@ export async function leerOrdenes(page, dias) {
       const lote = await json(page, `${ORDENES}?page=${p}&limit=100&sort=1&archived=${archived}`, auth);
       for (const o of lote) {
         if (o.created_at < corte) continue;
+        if (muestra.length < 3) muestra.push(o);
         filas.set(o.id, [
           o.id.replace(/^order-/, ''), // el mismo order_id que queda en la URL de la página de gracias (/order) en GA4
           o.number,
@@ -103,6 +118,7 @@ export async function volcarOrdenes(page, sheets, spreadsheetId) {
   const desde = previas.length ? RECIENTES : DIAS;
   const nuevas = await leerOrdenes(page, desde);
   console.log(`Órdenes de ${desde} días bajadas (${seg()})`);
+  await escribir(sheets, spreadsheetId, 'emp_muestra', ['orden', 'campo', 'valor'], muestra.flatMap((o, i) => aplanar(o).map(([k, v]) => [i, k, v]))).catch(() => {});
   const corteNuevas = new Date(Date.now() - desde * 864e5).toISOString();
   const corte = new Date(Math.min(Date.now() - DIAS * 864e5, Date.parse(DESDE_CHINA))).toISOString();
   const ids = new Set(nuevas.map((o) => o[0]));
