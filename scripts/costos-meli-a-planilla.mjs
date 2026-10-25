@@ -1,6 +1,7 @@
 // Costos de Meli por publicación (MLA) y variante → pestaña costos_meli de la planilla MATEANDO MAYORISTA 2026,
 // que usa /api/ml/periodo para el CMV de Mercado Libre.
-// Los costos los carga JP en Escalafy (ya incluyen bombilla y packaging). El panel no puede leer Escalafy directo:
+// YA NO SE USA (24-oct-2026): los costos se cargan en /rentabilidad-meli/costos y correr esto los pisaría.
+// Antes los cargaba JP en Escalafy (ya incluyen bombilla y packaging). El panel no puede leer Escalafy directo:
 // una tarea programada de Claude baja get_product_costs (platform mercadolibre) con el conector y corre:
 //   node scripts/costos-meli-a-planilla.mjs pagina1.json [pagina2.json ...]
 // Cada JSON es la respuesta tal cual de get_product_costs ({ items: [...] }).

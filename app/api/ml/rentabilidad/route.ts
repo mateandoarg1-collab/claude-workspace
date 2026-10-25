@@ -1,14 +1,11 @@
 import { getRentabilidadMeli, type FilaRentaMeli } from '@/lib/sheets';
 import { fetchThumbnails } from '@/lib/ml';
+import { adicionalDelDia, getCostosAdicionales, type CostoAdicional } from '@/lib/costosMeli';
 import { desdeAR, hastaAR } from '@/lib/periodo';
 
 export const maxDuration = 30;
 
-// Costos fuera de la orden: Pichón 2% de (venta concretada CON IVA − inversión en ML Ads), desde oct-2026
-// (pedido de Juampi, 24-oct-2026), y Nubimetrics $101.035 por mes repartidos por día.
-const PICHON = { desde: '2026-10-01', tasa: 0.02 };
 const IVA = 1.21;
-const NUBIMETRICS_DIA = 101035 / 30;
 
 // ?periodo=hoy|ayer|semana|mes|mesant (mes anterior completo)
 function rango(p: string | null): [string, string] {
@@ -33,13 +30,12 @@ function sumar(filas: FilaRentaMeli[]): Totales {
   return t;
 }
 
-// Pauta y costos fuera de la orden de un conjunto de días. `ganancia` es la de Escalafy (neto − ML Ads): ahí Pichón
-// cuenta como publicidad general y Nubimetrics como costo fijo de la empresa, no del canal. `gananciaFinal` los resta.
-function debajo(t: Totales, fechas: string[], pauta: number) {
-  // La venta ya viene neta de cancelaciones y reembolsos; se le vuelve a sumar el IVA.
-  const pichon = fechas.every((f) => f >= PICHON.desde) ? (t.venta * IVA - pauta) * PICHON.tasa : 0;
-  const nubimetrics = fechas.length * NUBIMETRICS_DIA;
-  return { pauta, pichon, nubimetrics, ganancia: t.neto - pauta, gananciaFinal: t.neto - pauta - pichon - nubimetrics };
+// Pauta y costos adicionales de un día (pestaña costos_adicionales, se cargan en /rentabilidad-meli/costos).
+// `ganancia` es la de Escalafy (neto − ML Ads): ahí los costos adicionales no restan en el canal. `gananciaFinal` sí.
+function debajo(t: Totales, fecha: string, pauta: number, adicionales: CostoAdicional[]) {
+  const otros = adicionales.map((c) => adicionalDelDia(c, fecha, { venta: t.venta, pauta, ordenes: t.ordenes }));
+  const sumaOtros = otros.reduce((s, x) => s + x, 0);
+  return { pauta, otros, adicionales: sumaOtros, ganancia: t.neto - pauta, gananciaFinal: t.neto - pauta - sumaOtros };
 }
 
 function listaDias(desde: string, hasta: string) {
@@ -64,7 +60,7 @@ function ratios(venta: number, ganancia: number, pauta: number, atribuidas: numb
   };
 }
 
-function resumen(ordenes: FilaRentaMeli[], ads: { fecha: string; gasto: number; atribuidas: number }[], desde: string, hasta: string) {
+function resumen(ordenes: FilaRentaMeli[], ads: { fecha: string; gasto: number; atribuidas: number }[], adicionales: CostoAdicional[], desde: string, hasta: string) {
   const fechas = listaDias(desde, hasta);
   const enRango = (f: string) => f >= desde && f <= hasta;
   const os = ordenes.filter((o) => enRango(o.fecha));
@@ -73,25 +69,25 @@ function resumen(ordenes: FilaRentaMeli[], ads: { fecha: string; gasto: number; 
   const dias = fechas.map((fecha) => {
     const t = sumar(os.filter((o) => o.fecha === fecha));
     const a = adsDia.get(fecha);
-    const d = debajo(t, [fecha], a?.gasto ?? 0);
+    const d = debajo(t, fecha, a?.gasto ?? 0, adicionales);
     return { fecha, ...t, ...d, atribuidas: a?.atribuidas ?? 0, ...ratios(t.venta, d.ganancia, d.pauta, a?.atribuidas ?? 0) };
   });
   const t = sumar(os);
   const pauta = as.reduce((s, a) => s + a.gasto, 0);
   const atribuidas = as.reduce((s, a) => s + a.atribuidas, 0);
-  // Pichón se calcula por día (arranca el 1-oct): se suma lo de cada día.
-  const pichon = dias.reduce((s, d) => s + d.pichon, 0);
-  const nubimetrics = fechas.length * NUBIMETRICS_DIA;
+  // Cada costo adicional se calcula por día (tienen fechas de inicio y fin) y se suma.
+  const otros = adicionales.map((c, i) => ({ ...c, total: dias.reduce((s, d) => s + d.otros[i], 0) }));
+  const sumaOtros = otros.reduce((s, c) => s + c.total, 0);
   const ganancia = t.neto - pauta;
   return {
     total: {
       ...t,
       pauta,
       atribuidas,
-      pichon,
-      nubimetrics,
+      otros: otros.filter((c) => c.total),
+      adicionales: sumaOtros,
       ganancia,
-      gananciaFinal: ganancia - pichon - nubimetrics,
+      gananciaFinal: ganancia - sumaOtros,
       ...ratios(t.venta, ganancia, pauta, atribuidas),
       sinCosto: os.reduce((s, o) => s + o.sin_costo, 0),
       flexEstimados: os.filter((o) => o.flex_estimado).length,
@@ -115,9 +111,9 @@ export async function GET(req: Request) {
     iniAnt.setUTCDate(iniAnt.getUTCDate() - (largo - 1));
     const [desdeAnt, hastaAnt] = [iniAnt.toISOString().slice(0, 10), finAnt.toISOString().slice(0, 10)];
 
-    const { actualizado, primerDia, ordenes, ads } = await getRentabilidadMeli(desdeAnt, hasta);
-    const actual = resumen(ordenes, ads, desde, hasta);
-    const anterior = desdeAnt >= primerDia ? resumen(ordenes, ads, desdeAnt, hastaAnt).total : null;
+    const [{ actualizado, primerDia, ordenes, ads }, adicionales] = await Promise.all([getRentabilidadMeli(desdeAnt, hasta), getCostosAdicionales()]);
+    const actual = resumen(ordenes, ads, adicionales, desde, hasta);
+    const anterior = desdeAnt >= primerDia ? resumen(ordenes, ads, adicionales, desdeAnt, hastaAnt).total : null;
 
     const porItem = new Map<string, FilaRentaMeli[]>();
     for (const o of actual.ordenes) porItem.set(o.item_id, [...(porItem.get(o.item_id) ?? []), o]);

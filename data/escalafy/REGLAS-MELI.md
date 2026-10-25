@@ -48,3 +48,8 @@ Objetivo: replicar el reporte MeLi de Escalafy con la API de ML y dar de baja la
 - Canceladas después de despachar (`/shipments/{id}` → `status_history.date_shipped`): sin venta ni comisión, pero con envío, Flex propio, costo y envío de devolución (columna `anulada`=1, no cuentan como pedido).
 - Devolución revisada OK (`/post-purchase/v1/returns/{id}/reviews` → `seller_status: success`): el producto vuelve al stock, costo 0.
 - Resultado oct 1–23 (días cerrados): neto 43,02 M vs Escalafy 43,16 M (−0,3%); 6 días dan exacto. El resto son diferencias chicas de envío de devoluciones y reparto de carritos.
+
+### Carga de costos sin Escalafy (24-oct-2026)
+- `/rentabilidad-meli/costos`: costo de producto por publicación/variación (pestaña `costos_meli`) y costos adicionales (pestaña `costos_adicionales`: fijo por mes o variable sobre facturación sin IVA, venta con IVA − publicidad, o $ por venta).
+- Publicación nueva → el costo vale para todas sus ventas. Cambio de costo → se elige desde qué fecha; el costo viejo va a `costos_meli_historial`. Al guardar se recalculan en el momento el costo y el neto de esas ventas en `rentabilidad_meli`.
+- La tarea programada `costos-meli-escalafy` quedó pausada (pisaba `costos_meli` con lo de Escalafy).

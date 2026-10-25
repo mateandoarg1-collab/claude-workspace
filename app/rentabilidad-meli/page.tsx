@@ -1,15 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import AppHeader from '../components/AppHeader';
+import { describirAdicional, type CostoAdicional } from '@/lib/costosAdicionales';
 
 type Totales = {
   ordenes: number; unidades: number; venta: number; comision: number; envio_ml: number; envio_flex: number;
   impuestos: number; costo: number; neto: number;
 };
 type Ratios = { margen: number | null; roas: number | null; acos: number | null; tacos: number | null; roasMl: number | null; acosMl: number | null; tacosMl: number | null };
-type Dia = Totales & Ratios & { fecha: string; pauta: number; pichon: number; nubimetrics: number; ganancia: number; gananciaFinal: number };
-type Total = Totales & Ratios & { pauta: number; atribuidas: number; pichon: number; nubimetrics: number; ganancia: number; gananciaFinal: number; sinCosto: number; flexEstimados: number };
+type Dia = Totales & Ratios & { fecha: string; pauta: number; adicionales: number; ganancia: number; gananciaFinal: number };
+type Total = Totales & Ratios & {
+  pauta: number; atribuidas: number; otros: (CostoAdicional & { total: number })[]; adicionales: number; ganancia: number; gananciaFinal: number;
+  sinCosto: number; flexEstimados: number;
+};
 type Data = {
   desde: string;
   hasta: string;
@@ -150,9 +155,8 @@ export default function RentabilidadMeli() {
         { nombre: 'Neto antes de publicidad', valor: t.neto, total: true },
         { nombre: 'Publicidad ML Ads', valor: -t.pauta },
         { nombre: 'Ganancia', valor: t.ganancia, total: true, nota: 'La misma cuenta que la Ganancia de Mercado Libre en Escalafy' },
-        { nombre: 'Pichón', valor: -t.pichon, nota: '2% de (venta con IVA, neta de cancelaciones y devoluciones − publicidad ML Ads)' },
-        { nombre: 'Nubimetrics', valor: -t.nubimetrics },
-        { nombre: 'Ganancia final', valor: t.gananciaFinal, total: true, nota: 'Después de Pichón y Nubimetrics (Escalafy los resta solo en el total de la empresa)' },
+        ...t.otros.map((c) => ({ nombre: c.nombre, valor: -c.total, nota: describirAdicional(c), total: false })),
+        { nombre: 'Ganancia final', valor: t.gananciaFinal, total: true, nota: 'Después de los costos adicionales (Escalafy los resta solo en el total de la empresa)' },
       ]
     : [];
 
@@ -169,11 +173,16 @@ export default function RentabilidadMeli() {
               </button>
             ))}
           </div>
-          {d?.actualizado && (
-            <span className="text-xs text-slate-500">
-              Actualizado {new Date(d.actualizado).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {d?.actualizado && (
+              <span className="text-xs text-slate-500">
+                Actualizado {new Date(d.actualizado).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            <Link href="/rentabilidad-meli/costos" className="text-sm rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-slate-200 hover:border-emerald-600 hover:text-emerald-300">
+              Cargar costos
+            </Link>
+          </div>
         </div>
 
         {err && <p className="text-sm text-rose-400">No se pudo leer la rentabilidad: {err}</p>}
@@ -189,7 +198,7 @@ export default function RentabilidadMeli() {
               <Tarjeta titulo="Margen de ganancia" valor={t.margen == null ? '–' : porc(t.margen)} actual={t.margen} anterior={a?.margen} enPuntos
                 puntos={serie((x) => x.margen)} formato={porc} />
               <Tarjeta titulo="Ganancia" valor={fmt(t.ganancia)} actual={t.ganancia} anterior={a?.ganancia}
-                detalle={`Final ${fmt(t.gananciaFinal)} (con Pichón y Nubimetrics)`} puntos={serie((x) => x.ganancia)} formato={fmt} />
+                detalle={`Final ${fmt(t.gananciaFinal)} (con costos adicionales)`} puntos={serie((x) => x.ganancia)} formato={fmt} />
               <Tarjeta titulo="Inversión publicitaria" valor={fmt(t.pauta)} actual={t.pauta} anterior={a?.pauta} mejorSiSube={false}
                 detalle="ML Ads" puntos={serie((x) => x.pauta)} formato={fmt} />
               <Tarjeta titulo="ROAS" valor={t.roas == null ? '–' : num(t.roas)} actual={t.roas} anterior={a?.roas}
@@ -206,7 +215,12 @@ export default function RentabilidadMeli() {
 
             {(t.sinCosto > 0 || t.flexEstimados > 0) && (
               <div className="rounded-xl border border-amber-700/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200 space-y-1">
-                {t.sinCosto > 0 && <p>⚠️ {t.sinCosto} unidades vendidas sin costo cargado: cuentan costo $0 y el margen sale inflado. Están marcadas en la tabla de publicaciones.</p>}
+                {t.sinCosto > 0 && (
+                  <p>
+                    ⚠️ {t.sinCosto} unidades vendidas sin costo cargado: cuentan costo $0 y el margen sale inflado.{' '}
+                    <Link href="/rentabilidad-meli/costos" className="underline hover:text-amber-100">Cargar costos</Link>
+                  </p>
+                )}
                 {t.flexEstimados > 0 && <p>📍 {t.flexEstimados} envíos Flex a un código postal sin cordón conocido: se usó el cordón del CP más cercano.</p>}
               </div>
             )}
