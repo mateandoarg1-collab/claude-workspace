@@ -18,7 +18,7 @@ type Data = {
   anterior: (Total & { desde: string; hasta: string }) | null;
   serie: Dia[];
   dias: Dia[];
-  productos: (Totales & { item_id: string; titulo: string; sinCosto: boolean })[];
+  productos: (Totales & { item_id: string; titulo: string; foto: string | null; sinCosto: boolean })[];
   logisticas: (Totales & { logistica: string })[];
 };
 
@@ -37,6 +37,8 @@ const DIAS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
 const nomDia = (f: string) => `${DIAS[new Date(`${f}T12:00:00Z`).getUTCDay()]} ${f.slice(8, 10)}/${f.slice(5, 7)}`;
 const LOGISTICA: Record<string, string> = { full: 'Full', flex: 'Flex', colecta: 'Colecta', agencia: 'Agencia', correo: 'Correo', 'sin envío': 'Sin envío' };
 const color = (n: number) => (n < 0 ? 'text-rose-400' : 'text-emerald-300');
+// La miniatura de ML termina en -I.jpg; -O.jpg es la misma foto más grande.
+const fotoGrande = (url: string) => url.replace(/-[A-Z]\.(jpg|jpeg|png|webp)$/i, '-O.$1');
 
 const num = (n: number, dec = 2) => n.toLocaleString('es-AR', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const porc = (n: number) => `${num(n * 100, 1)}%`;
@@ -113,6 +115,14 @@ export default function RentabilidadMeli() {
   const [periodo, setPeriodo] = useState<PeriodoId>('mes');
   const [res, setRes] = useState<{ periodo: PeriodoId; data?: Data; err?: string } | null>(null);
   const [verTodos, setVerTodos] = useState(false);
+  const [zoom, setZoom] = useState<{ src: string; titulo: string } | null>(null);
+
+  useEffect(() => {
+    if (!zoom) return;
+    const cerrar = (e: KeyboardEvent) => e.key === 'Escape' && setZoom(null);
+    window.addEventListener('keydown', cerrar);
+    return () => window.removeEventListener('keydown', cerrar);
+  }, [zoom]);
 
   useEffect(() => {
     let vivo = true;
@@ -299,10 +309,23 @@ export default function RentabilidadMeli() {
                   <tbody>
                     {(verTodos ? d.productos : d.productos.slice(0, 25)).map((p) => (
                       <tr key={p.item_id} className="border-t border-slate-800/60 tabular-nums">
-                        <td className="py-2 pr-2 max-w-[11rem] sm:max-w-sm">
-                          <a href={`https://articulo.mercadolibre.com.ar/${p.item_id.replace('MLA', 'MLA-')}`} target="_blank" rel="noreferrer"
-                            className="block truncate hover:text-emerald-300" title={p.titulo}>{p.titulo}</a>
-                          {p.sinCosto && <span className="text-[11px] text-amber-300">sin costo cargado</span>}
+                        <td className="py-2 pr-2 max-w-[13rem] sm:max-w-md">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {p.foto ? (
+                              <button onClick={() => setZoom({ src: fotoGrande(p.foto!), titulo: p.titulo })} title="Ver foto"
+                                className="shrink-0 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={p.foto} alt="" loading="lazy" className="w-9 h-9 rounded-lg object-cover bg-white border border-slate-800 hover:opacity-80 transition-opacity" />
+                              </button>
+                            ) : (
+                              <div className="w-9 h-9 shrink-0 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center text-xs">🧉</div>
+                            )}
+                            <div className="min-w-0">
+                              <a href={`https://articulo.mercadolibre.com.ar/${p.item_id.replace('MLA', 'MLA-')}`} target="_blank" rel="noreferrer"
+                                className="block truncate hover:text-emerald-300" title={p.titulo}>{p.titulo}</a>
+                              {p.sinCosto && <span className="text-[11px] text-amber-300">sin costo cargado</span>}
+                            </div>
+                          </div>
                         </td>
                         <td className="text-right pl-3">{p.unidades}</td>
                         <td className="text-right pl-3">{fmt(p.venta)}</td>
@@ -323,6 +346,16 @@ export default function RentabilidadMeli() {
           </>
         )}
       </main>
+      {zoom && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setZoom(null)} role="dialog" aria-label={zoom.titulo}>
+          <figure className="bg-slate-900 border border-slate-800 rounded-2xl p-3 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={zoom.src} alt={zoom.titulo} className="w-full aspect-square object-contain rounded-xl bg-white" />
+            <figcaption className="text-sm text-slate-300 mt-2 px-1">{zoom.titulo}</figcaption>
+            <button onClick={() => setZoom(null)} className="mt-2 w-full text-sm text-slate-400 hover:text-slate-100 py-1.5">Cerrar</button>
+          </figure>
+        </div>
+      )}
     </div>
   );
 }

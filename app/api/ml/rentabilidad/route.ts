@@ -1,4 +1,5 @@
 import { getRentabilidadMeli, type FilaRentaMeli } from '@/lib/sheets';
+import { fetchThumbnails } from '@/lib/ml';
 import { desdeAR, hastaAR } from '@/lib/periodo';
 
 export const maxDuration = 30;
@@ -120,8 +121,10 @@ export async function GET(req: Request) {
 
     const porItem = new Map<string, FilaRentaMeli[]>();
     for (const o of actual.ordenes) porItem.set(o.item_id, [...(porItem.get(o.item_id) ?? []), o]);
+    // Foto de portada de cada publicación (si ML no responde, la tabla sale sin fotos).
+    const fotos = await fetchThumbnails([...porItem.keys()]).catch(() => new Map<string, string>());
     const productos = [...porItem.entries()]
-      .map(([item_id, fs]) => ({ item_id, titulo: fs[0].titulo, sinCosto: fs.some((f) => f.sin_costo > 0), ...sumar(fs) }))
+      .map(([item_id, fs]) => ({ item_id, titulo: fs[0].titulo, foto: fotos.get(item_id) ?? null, sinCosto: fs.some((f) => f.sin_costo > 0), ...sumar(fs) }))
       .sort((a, b) => b.venta - a.venta);
 
     const porLogistica = new Map<string, FilaRentaMeli[]>();

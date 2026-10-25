@@ -6,7 +6,7 @@
 //   node scripts/meli-rentabilidad.mjs              → 45 días a las 6 de la mañana, 3 días el resto de las horas
 //   node scripts/meli-rentabilidad.mjs --dias 10
 //   node scripts/meli-rentabilidad.mjs --check ordenes-escalafy.json   → compara orden por orden contra list_orders de Escalafy
-import { readFileSync } from 'fs';
+import { readFileSync, rmSync, writeFileSync } from 'fs';
 import { execSync } from 'child_process';
 import { homedir } from 'os';
 import { google } from 'googleapis';
@@ -275,14 +275,30 @@ async function guardar(sheets, tab, encabezado, filasNuevas, desde, hasta) {
   const prev = (await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A2:Z` })).data.values ?? [];
   const quedan = prev.filter((r) => r[0] < desde || r[0] > hasta);
   const filas = [...quedan, ...filasNuevas].sort((a, b) => (a[0] < b[0] ? 1 : a[0] > b[0] ? -1 : 0));
-  await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A:Z` });
+  // Primero se escribe encima y después se borra lo que sobra: la pestaña nunca queda vacía mientras la lee el panel.
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
     range: `'${tab}'!A1`,
     valueInputOption: 'RAW',
     requestBody: { values: [encabezado, ...filas] },
   });
+  await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A${filas.length + 2}:Z` });
   return filas.length;
+}
+
+// Una corrida a la vez (la de cada hora y una manual podrían pisarse al escribir la planilla).
+const LOCK = `${homedir()}/Library/Caches/mateando-meli-rentabilidad.lock`;
+if (!DRY) {
+  try {
+    const pid = Number(readFileSync(LOCK, 'utf8'));
+    process.kill(pid, 0);
+    console.log(`Ya hay una corrida en curso (pid ${pid}), salgo.`);
+    process.exit(0);
+  } catch {
+    // no hay lock o el proceso ya no existe
+  }
+  writeFileSync(LOCK, String(process.pid));
+  process.on('exit', () => rmSync(LOCK, { force: true }));
 }
 
 const auth = new google.auth.GoogleAuth({
