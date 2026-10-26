@@ -8,8 +8,11 @@ type Totales = {
   ventas: number; unidades: number; venta: number; descuentos: number; comision: number; envio_tienda: number;
   impuestos: number; deb_cred: number; costo: number; packaging: number; neto: number;
 };
-type Ind = { pauta: number; ganancia: number; margen: number | null; roas: number | null; cpa: number | null; tacos: number | null; ticket: number | null };
-type Total = Totales & Ind & { meta: number; google: number; sinCosto: number; sinComision: number };
+type Ind = { pauta: number; machado: number; ganancia: number; margen: number | null; roas: number | null; cpa: number | null; tacos: number | null; ticket: number | null };
+type Total = Totales & Ind & {
+  meta: number; google: number; sinCosto: number; sinComision: number;
+  machadoShopify: number; machadoMetaShopify: number; machadoMotivo: string | null;
+};
 type Dia = Totales & Ind & { fecha: string };
 type Producto = { id: string; nombre: string; foto: string | null; link: string | null; unidades: number; venta: number; costo: number; neto: number };
 type Grupo = Totales & { nombre: string };
@@ -305,6 +308,13 @@ export default function RentabilidadTienda() {
         { nombre: 'Neto antes de publicidad', valor: t.neto, total: true },
         ...(conPauta ? [
           { nombre: 'Publicidad', valor: -t.pauta, nota: `Meta ${fmt(t.meta)} · Google ${fmt(t.google)}` },
+          {
+            nombre: 'Honorario Machado (2%)',
+            valor: -t.machado,
+            nota: t.machadoMotivo
+              ? `No se pudo calcular: ${t.machadoMotivo}`
+              : `2% de (venta online con IVA + Shopify ${fmt(t.machadoShopify)} − pauta de Meta, Google y Meta Shopify ${fmt(t.machadoMetaShopify)}). Sin TikTok, email ni MP Ads`,
+          },
           { nombre: 'Ganancia', valor: t.ganancia, total: true },
         ] : []),
       ]
@@ -352,7 +362,7 @@ export default function RentabilidadTienda() {
               <Tarjeta titulo="Margen de ganancia" valor={t.margen == null ? '–' : porc(t.margen)} actual={t.margen} anterior={a?.margen} enPuntos
                 puntos={serie((x) => x.margen)} formato={porc} />
               <Tarjeta titulo="Ganancia" valor={fmt(t.ganancia)} actual={t.ganancia} anterior={a?.ganancia}
-                detalle={conPauta ? 'Después de publicidad' : 'El local no tiene publicidad asignada'} puntos={serie((x) => x.ganancia)} formato={fmt} />
+                detalle={conPauta ? 'Después de publicidad y Machado' : 'El local no tiene publicidad asignada'} puntos={serie((x) => x.ganancia)} formato={fmt} />
               {conPauta && (
                 <>
                   <Tarjeta titulo="Inversión publicitaria" valor={fmt(t.pauta)} actual={t.pauta} anterior={a?.pauta} mejorSiSube={false}

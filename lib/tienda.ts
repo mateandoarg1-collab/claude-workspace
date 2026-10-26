@@ -49,3 +49,25 @@ export async function getRentabilidadTienda() {
     fotos: new Map((prods?.values ?? []).map((r) => [String(r[0]), { foto: String(r[4] ?? '') || null, link: String(r[2] ?? '') || null }])),
   };
 }
+
+// Para el honorario de Machado: venta de Shopify y gasto de la cuenta de Meta de Shopify por día AR, desde `desde`.
+// Necesita las variables de Vercel (Shopify y META_ACCESS_TOKEN + META_SHOPIFY_ACCOUNTS); si faltan, avisa por qué.
+export async function getShopifyParaMachado(desde: string, hasta: string) {
+  const { getShopifyDiario } = await import('./shopify');
+  const shopify = await getShopifyDiario(desde);
+  const metaShopify = new Map<string, number>();
+  const token = process.env.META_ACCESS_TOKEN;
+  const cuentas = (process.env.META_SHOPIFY_ACCOUNTS ?? '').split(',').map((c) => c.trim()).filter(Boolean);
+  if (!token || !cuentas.length) throw new Error('Falta el acceso a la cuenta de Meta de Shopify');
+  for (const cuenta of cuentas) {
+    let url: string | null = `https://graph.facebook.com/v21.0/${cuenta}/insights?fields=spend&time_increment=1&limit=100&time_range=${encodeURIComponent(JSON.stringify({ since: desde, until: hasta }))}&access_token=${token}`;
+    while (url) {
+      const j: { error?: { message: string }; data?: { date_start: string; spend: string }[]; paging?: { next?: string } } = await fetch(url, { cache: 'no-store' }).then((r) => r.json());
+      if (j.error) throw new Error(`Meta Shopify: ${j.error.message}`);
+      // +8% de comisiones, igual que en /canales
+      for (const d of j.data ?? []) metaShopify.set(d.date_start, (metaShopify.get(d.date_start) ?? 0) + Number(d.spend || 0) * 1.08);
+      url = j.paging?.next ?? null;
+    }
+  }
+  return { shopify: new Map([...shopify.entries()].map(([d, v]) => [d, v.monto])), metaShopify };
+}

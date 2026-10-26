@@ -1,4 +1,4 @@
-import { getRentabilidadTienda, type VentaTienda } from '@/lib/tienda';
+import { getRentabilidadTienda, getShopifyParaMachado, type VentaTienda } from '@/lib/tienda';
 import { desdeAR, hastaAR } from '@/lib/periodo';
 
 export const maxDuration = 30;
@@ -31,11 +31,18 @@ function sumar(vs: VentaTienda[]): Totales {
   return t;
 }
 
+// Honorario de Machado (ads manager): 2% de (venta online de Empretienda + venta de Shopify, con IVA, − toda la pauta).
+// Es la cuenta de su planilla. De la pauta se tiene Meta (tienda y Shopify) y Google; faltan TikTok, email y MP Ads.
+const MACHADO_TASA = 0.02;
+const IVA = 1.21;
+const cobrado = (v: VentaTienda) => (v.facturada ? (v.venta + v.envio_cobrado) * IVA : v.venta + v.envio_cobrado);
+
 // ROAS = facturación ÷ inversión; CPA = inversión por venta; TACOS = inversión ÷ facturación (todo sin IVA).
-function indicadores(t: Totales, pauta: number) {
-  const ganancia = t.neto - pauta;
+function indicadores(t: Totales, pauta: number, machado: number) {
+  const ganancia = t.neto - pauta - machado;
   return {
     pauta,
+    machado,
     ganancia,
     margen: t.venta ? ganancia / t.venta : null,
     roas: pauta ? t.venta / pauta : null,
@@ -45,19 +52,20 @@ function indicadores(t: Totales, pauta: number) {
   };
 }
 
-function resumen(ventas: VentaTienda[], ads: { fecha: string; meta: number; google: number; total: number }[], desde: string, hasta: string, conPauta: boolean) {
+function resumen(ventas: VentaTienda[], ads: { fecha: string; meta: number; google: number; total: number }[], desde: string, hasta: string, conPauta: boolean, machadoDia: Map<string, number>) {
   const vs = ventas.filter((v) => v.fecha >= desde && v.fecha <= hasta);
   const pautaDia = new Map(ads.map((a) => [a.fecha, conPauta ? a.total : 0]));
   const dias = listaDias(desde, hasta).map((fecha) => {
     const t = sumar(vs.filter((v) => v.fecha === fecha));
-    return { fecha, ...t, ...indicadores(t, pautaDia.get(fecha) ?? 0) };
+    return { fecha, ...t, ...indicadores(t, pautaDia.get(fecha) ?? 0, conPauta ? machadoDia.get(fecha) ?? 0 : 0) };
   });
   const t = sumar(vs);
   const pauta = dias.reduce((s, d) => s + d.pauta, 0);
+  const machado = dias.reduce((s, d) => s + d.machado, 0);
   const enRango = ads.filter((a) => conPauta && a.fecha >= desde && a.fecha <= hasta);
   const meta = enRango.reduce((s, a) => s + a.meta, 0);
   const googleAds = enRango.reduce((s, a) => s + a.google, 0);
-  return { total: { ...t, ...indicadores(t, pauta), meta, google: googleAds, sinCosto: vs.reduce((s, v) => s + v.sin_costo, 0), sinComision: vs.filter((v) => v.sin_comision).length }, dias, ventas: vs };
+  return { total: { ...t, ...indicadores(t, pauta, machado), meta, google: googleAds, sinCosto: vs.reduce((s, v) => s + v.sin_costo, 0), sinComision: vs.filter((v) => v.sin_comision).length }, dias, ventas: vs };
 }
 
 export async function GET(req: Request) {
@@ -77,8 +85,29 @@ export async function GET(req: Request) {
     const ventas = canal === 'todo' ? todas : todas.filter((v) => v.canal === canal);
     const conPauta = canal !== 'local';
     const primerDia = todas.reduce((m, v) => (v.fecha < m ? v.fecha : m), '9999-12-31');
-    const actual = resumen(ventas, ads, desde, hasta, conPauta);
-    const anterior = desdeAnt >= primerDia ? resumen(ventas, ads, desdeAnt, hastaAnt, conPauta).total : null;
+
+    // Machado por día (los dos períodos): sobre la venta online, aunque se mire el canal "todo".
+    const machadoDia = new Map<string, number>();
+    let machadoInfo: { shopify: number; metaShopify: number; motivo?: string } = { shopify: 0, metaShopify: 0 };
+    if (conPauta) {
+      try {
+        const { shopify, metaShopify } = await getShopifyParaMachado(desdeAnt, hasta);
+        const adsDia = new Map(ads.map((a) => [a.fecha, a.total]));
+        for (const fecha of listaDias(desdeAnt, hasta)) {
+          const online = todas.filter((v) => v.canal === 'online' && v.fecha === fecha).reduce((s, v) => s + cobrado(v), 0);
+          const base = online + (shopify.get(fecha) ?? 0) - (adsDia.get(fecha) ?? 0) - (metaShopify.get(fecha) ?? 0);
+          machadoDia.set(fecha, base * MACHADO_TASA);
+          if (fecha >= desde) {
+            machadoInfo.shopify += shopify.get(fecha) ?? 0;
+            machadoInfo.metaShopify += metaShopify.get(fecha) ?? 0;
+          }
+        }
+      } catch (e) {
+        machadoInfo = { shopify: 0, metaShopify: 0, motivo: e instanceof Error ? e.message : String(e) };
+      }
+    }
+    const actual = resumen(ventas, ads, desde, hasta, conPauta, machadoDia);
+    const anterior = desdeAnt >= primerDia ? resumen(ventas, ads, desdeAnt, hastaAnt, conPauta, machadoDia).total : null;
 
     // Por producto: el costo y el neto de cada venta se reparten entre sus productos según el precio.
     const porProducto = new Map<string, { id: string; nombre: string; foto: string | null; link: string | null; unidades: number; venta: number; costo: number; neto: number; ventas: number }>();
@@ -106,7 +135,7 @@ export async function GET(req: Request) {
       hasta,
       canal,
       actualizado,
-      total: actual.total,
+      total: { ...actual.total, machadoShopify: machadoInfo.shopify, machadoMetaShopify: machadoInfo.metaShopify, machadoMotivo: machadoInfo.motivo ?? null },
       anterior: anterior && { ...anterior, desde: desdeAnt, hasta: hastaAnt },
       serie: actual.dias,
       productos: [...porProducto.values()].sort((a, b) => b.venta - a.venta),
