@@ -158,11 +158,21 @@ async function getTransferenciasLocal(sheets: ReturnType<typeof google.sheets>, 
 }
 
 export async function getLocalVentasSummary(year: number, month: number) {
+  return getLocalVentasRango(dayNum(year, month, 1), dayNum(year, month + 1, 1));
+}
+
+// Cobro del local entre dos días (YYYY-MM-DD, el segundo inclusive).
+export async function getLocalVentasEntre(desdeDia: string, hastaDia: string) {
+  const [y1, m1, d1] = desdeDia.split('-').map(Number);
+  const [y2, m2, d2] = hastaDia.split('-').map(Number);
+  return getLocalVentasRango(dayNum(y1, m1, d1), dayNum(y2, m2, d2) + 1);
+}
+
+// desde/hasta en días epoch (hasta exclusivo).
+async function getLocalVentasRango(desde: number, hasta: number) {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
-  const desde = dayNum(year, month, 1);
-  const hasta = dayNum(year, month + 1, 1);
-  const mpFrom = new Date(Date.UTC(year, month - 1, 1, 3)).toISOString();
-  const mpTo = new Date(Math.min(Date.now(), Date.UTC(year, month, 1, 3))).toISOString();
+  const mpFrom = new Date(desde * DAY + 3 * 3600e3).toISOString();
+  const mpTo = new Date(Math.min(Date.now(), hasta * DAY + 3 * 3600e3)).toISOString();
 
   const [mp, efectivo, transferencias] = await Promise.all([
     getMercadoPagoLocalSummary(mpFrom, mpTo),

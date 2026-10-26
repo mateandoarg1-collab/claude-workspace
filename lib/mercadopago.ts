@@ -62,10 +62,11 @@ async function filtered(fromISO: string, toISO: string, filter: Record<string, s
       });
       if (!res.ok) throw new Error(`MP API: ${res.status} ${await res.text()}`);
       const data = (await res.json()) as Search;
-      total = data.paging.total;
+      // A veces MP informa total 0 aunque devuelve resultados: se pagina hasta que una página venga incompleta.
+      total = Math.max(data.paging.total, offset + data.results.length);
       for (const p of data.results) seen.set(p.id, p.transaction_amount);
       offset += 100;
-      if (offset >= total || data.results.length < 100) break;
+      if (data.results.length < 100) break;
     }
     if (total > 0) return seen;
   }
