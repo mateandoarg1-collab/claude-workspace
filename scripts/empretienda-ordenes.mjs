@@ -47,7 +47,18 @@ async function json(page, url, auth) {
 // pago y productos con SKU. Sin datos personales: del destino solo ciudad, provincia y código postal.
 const ventas = new Map();
 export const VENTAS_COLS = ['order_id', 'numero', 'fecha', 'pago_metodo', 'pago_estado', 'mp_pago_id', 'subtotal', 'cupon', 'desc_pago',
-  'envio_cobrado', 'envio_gratis', 'envio_metodo', 'envio', 'cp', 'provincia', 'ciudad', 'productos'];
+  'envio_cobrado', 'envio_gratis', 'envio_metodo', 'envio', 'cp', 'provincia', 'ciudad', 'productos', 'medio_local'];
+
+// Ventas del local ("a acordar"): desde el 26-oct-2026 las chicas anotan el medio de pago en las observaciones
+// (quedan en las notas de la dirección): la palabra o el código T = transferencia, E = efectivo, TAR = tarjeta. Como
+// Empretienda pide 10 caracteres, la estiran ("efectivooooo"). Se guarda solo el medio, nunca el texto de la nota.
+export function medioLocal(nota) {
+  const t = String(nota ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z ]/g, ' ').trim();
+  if (/^(tar|tj|deb|cred|posnet|point|mp\b|mercado ?pago|qr)/.test(t)) return 'tarjeta';
+  if (/^(tr|t\b|t+$)/.test(t)) return 'transferencia';
+  if (/^(ef|e\b|e+$|cash)/.test(t)) return 'efectivo';
+  return '';
+}
 export function venta(o) {
   const s = o.shipping ?? {};
   const a = s.address ?? {};
@@ -61,6 +72,7 @@ export function venta(o) {
       id: String(x.product_id).replace(/^product-/, ''), sku: x.sku ?? '', n: x.name ?? '', q: x.quantity, p: x.price,
       v: (x.attributes ?? []).map((at) => `${at.name}: ${at.value}`).join(' | '),
     }))),
+    o.payment?.method === 3 ? medioLocal(s.address?.notes ?? o.billing?.address?.notes) : '',
   ];
 }
 
@@ -133,7 +145,7 @@ export async function volcarOrdenes(page, sheets, spreadsheetId) {
   await escribir(sheets, spreadsheetId, 'emp_ordenes', ['order_id', 'numero', 'fecha', 'total', 'metodo', 'pago', 'provincia', 'productos'], ordenes);
   console.log(`emp_ordenes escrita (${seg()})`);
   // Detalle para la rentabilidad: mismas reglas de corte que emp_ordenes (las viejas se conservan de la planilla).
-  const previasVentas = (await sheets.spreadsheets.values.get({ spreadsheetId, range: "'emp_ventas'!A2:Q", valueRenderOption: 'UNFORMATTED_VALUE' }).catch(() => null))?.data.values ?? [];
+  const previasVentas = (await sheets.spreadsheets.values.get({ spreadsheetId, range: "'emp_ventas'!A2:R", valueRenderOption: 'UNFORMATTED_VALUE' }).catch(() => null))?.data.values ?? [];
   const idsVentas = new Set([...ventas.keys()].map((k) => k.replace(/^order-/, '')));
   const filasVentas = [...ventas.values(), ...previasVentas.filter((v) => v[2] >= corte && v[2] < corteNuevas && !idsVentas.has(String(v[0])))]
     .sort((x, y) => String(y[2]).localeCompare(String(x[2])));

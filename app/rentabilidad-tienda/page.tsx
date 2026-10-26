@@ -37,7 +37,11 @@ const CANALES = [
   { id: 'local', label: 'Local' },
   { id: 'todo', label: 'Todo' },
 ] as const;
-const PAGO: Record<string, string> = { mercadopago: 'Mercado Pago', transferencia: 'Transferencia', gocuotas: 'GoCuotas', acordar: 'A acordar (local)', otro: 'Otro' };
+const PAGO: Record<string, string> = {
+  mercadopago: 'Mercado Pago', transferencia: 'Transferencia', gocuotas: 'GoCuotas', otro: 'Otro',
+  'local-tarjeta': 'Local · Tarjeta (MP)', 'local-transferencia': 'Local · Transferencia', 'local-efectivo': 'Local · Efectivo',
+  acordar: 'Local · sin medio anotado',
+};
 
 const fmt = (n: number) => (n < 0 ? '−$' : '$') + Math.abs(Math.round(n)).toLocaleString('es-AR');
 const fmt2 = (n: number) => (n < 0 ? '−$' : '$') + Math.abs(n).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -291,8 +295,8 @@ export default function RentabilidadTienda() {
 
   const cascada = t
     ? [
-        { nombre: 'Venta neta', valor: t.venta, total: true, nota: `Sin IVA lo facturado (Mercado Pago, GoCuotas, local); las transferencias no se facturan y van enteras${t.descuentos ? `. Ya con ${fmt(t.descuentos)} de descuentos` : ''}` },
-        { nombre: 'Comisión de cobro', valor: -t.comision, nota: 'Mercado Pago (con el costo de las cuotas sin interés), GoCuotas 7,9% + IVA y transferencias 3% de la financiera' },
+        { nombre: 'Venta neta', valor: t.venta, total: true, nota: `Sin IVA lo facturado (Mercado Pago, GoCuotas, tarjeta en el local y local sin medio anotado); transferencias y efectivo no se facturan y van enteros${t.descuentos ? `. Ya con ${fmt(t.descuentos)} de descuentos` : ''}` },
+        { nombre: 'Comisión de cobro', valor: -t.comision, nota: 'Mercado Pago (con el costo de las cuotas sin interés), GoCuotas 7,9% + IVA, transferencias 3% de la financiera y tarjeta en el local (promedio de Point de los últimos 30 días)' },
         { nombre: 'Envíos gratis', valor: -t.envio_tienda, nota: 'Lo que cobra OCA cuando el envío corre por cuenta de la tienda' },
         { nombre: 'IIBB (5%)', valor: -t.impuestos, nota: 'Sobre la venta sin IVA de lo facturado' },
         { nombre: 'Imp. débitos y créditos (1,2%)', valor: -t.deb_cred, nota: 'Sobre lo cobrado facturado (con IVA y envío)' },

@@ -15,6 +15,7 @@
 //   node scripts/tienda-rentabilidad.mjs               → 60 días a las 6 de la mañana, 10 días el resto de las horas
 //   node scripts/tienda-rentabilidad.mjs --dias 30
 //   node scripts/tienda-rentabilidad.mjs --cargar ordenes.json   → primero vuelca a emp_ventas órdenes crudas bajadas a mano
+//                                        (solo las que faltan; con --actualizar también reemplaza las que ya están)
 import { execFileSync } from 'child_process';
 import { readFileSync, rmSync, writeFileSync } from 'fs';
 import { homedir, tmpdir } from 'os';
@@ -29,8 +30,11 @@ const TAB_ADS = 'rentabilidad_tienda_ads';
 const IVA = 1.21;
 const IIBB = 0.05; // sobre la venta facturada sin IVA
 const DEB_CRED = 0.012; // impuesto a los débitos y créditos, sobre lo cobrado facturado
-// Lo que se factura. El local ("a acordar") se cuenta como facturado: Empretienda no dice si se cobró con MP o en efectivo.
-const FACTURADAS = new Set(['mercadopago', 'gocuotas', 'acordar']);
+// Lo que se factura. En el local ("a acordar") el medio sale de la nota que cargan las chicas desde el 26-oct-2026
+// (columna medio_local): tarjeta (Point/QR de MP) se factura; transferencia y efectivo no. Sin nota, se toma como
+// facturado (criterio pesimista de Juampi).
+const FACTURADAS = new Set(['mercadopago', 'gocuotas', 'local-tarjeta', 'acordar']);
+const NO_FACTURADAS_TRANSFERENCIA = new Set(['transferencia', 'local-transferencia']);
 const FINANCIERA_TASA = 0.03; // transferencias
 const GOCUOTAS_TASA = 0.079; // + IVA, sobre el total cobrado
 const PAGO = { 1: 'mercadopago', 3: 'acordar', 5: 'transferencia', 8: 'gocuotas' };
@@ -77,11 +81,16 @@ async function guardar(tab, encabezado, filasNuevas, desde, hasta, columnaFecha 
 if (arg('--cargar')) {
   // Solo agrega las órdenes que faltan: las que ya están las escribió la lectura automática y son más nuevas.
   const crudas = JSON.parse(readFileSync(arg('--cargar'), 'utf8'));
-  const prev = (await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'emp_ventas'!A2:Q`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
+  const prev = (await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'emp_ventas'!A2:R`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
+  // Con --actualizar, las del archivo reemplazan a las que ya están (para una bajada recién hecha).
+  const filas = crudas.map(filaVenta);
+  const delArchivo = new Set(filas.map((v) => String(v[0])));
+  const reemplazar = args.includes('--actualizar');
   const ya = new Set(prev.map((r) => String(r[0])));
-  const nuevas = crudas.map(filaVenta).filter((v) => !ya.has(String(v[0])));
-  const n = await guardar('emp_ventas', VENTAS_COLS, [...prev, ...nuevas], '0000', '9999', 2);
-  console.log(`emp_ventas: ${nuevas.length} órdenes agregadas, ${n} en total`);
+  const nuevas = reemplazar ? filas : filas.filter((v) => !ya.has(String(v[0])));
+  const quedan = reemplazar ? prev.filter((r) => !delArchivo.has(String(r[0]))) : prev;
+  const n = await guardar('emp_ventas', VENTAS_COLS, [...quedan, ...nuevas], '0000', '9999', 2);
+  console.log(`emp_ventas: ${nuevas.length} órdenes ${reemplazar ? 'cargadas o actualizadas' : 'agregadas'}, ${n} en total`);
 }
 
 // Costo por SKU: los mismos tres niveles que el CMV de /canales (scripts/cmv/README.md).
@@ -151,7 +160,7 @@ const d0 = new Date(`${hasta}T12:00:00Z`);
 d0.setUTCDate(d0.getUTCDate() - (DIAS - 1));
 let desde = d0.toISOString().slice(0, 10);
 
-const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'emp_ventas'!A1:Q`, valueRenderOption: 'UNFORMATTED_VALUE' });
+const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'emp_ventas'!A1:R`, valueRenderOption: 'UNFORMATTED_VALUE' });
 const [enc, ...crudas] = res.data.values ?? [];
 // emp_ventas guarda ~60 días: no recalcular (ni borrar de rentabilidad_tienda) días que ya no tiene.
 const primerDia = crudas.reduce((m, r) => (diaAR(r[2]) < m ? diaAR(r[2]) : m), '9999-12-31');
@@ -174,19 +183,46 @@ rmSync(archivoCostos, { force: true });
 
 const pagosMP = new Map(await enLotes(ventas.filter((v) => v.mp_pago_id), 10, async (v) => [String(v.order_id), await comisionMP(v.mp_pago_id)]));
 
+// Comisión promedio de los cobros con tarjeta en el local (Point y QR de MP), con IVA y cuotas: las ventas del local
+// no se pueden cruzar una por una con su pago de MP.
+async function tasaPoint(desde, hasta) {
+  let monto = 0;
+  let comision = 0;
+  for (const filtro of [{ operation_type: 'pos_payment' }, { 'point_of_interaction.type': 'INSTORE' }]) {
+    for (let offset = 0; offset < 5000; offset += 100) {
+      const fin = new Date(`${hasta}T12:00:00Z`);
+      fin.setUTCDate(fin.getUTCDate() + 1);
+      const q = new URLSearchParams({ range: 'date_created', begin_date: `${desde}T03:00:00.000Z`, end_date: `${fin.toISOString().slice(0, 10)}T03:00:00.000Z`, status: 'approved', limit: '100', offset: String(offset), ...filtro });
+      const j = await fetch(`https://api.mercadopago.com/v1/payments/search?${q}`, { headers: { Authorization: `Bearer ${MP}` } }).then((r) => r.json()).catch(() => null);
+      for (const p of j?.results ?? []) {
+        monto += p.transaction_amount || 0;
+        comision += (p.fee_details ?? []).reduce((t, f) => t + (f.amount || 0), 0);
+      }
+      if ((j?.results ?? []).length < 100) break; // MP a veces informa total 0 aunque trae resultados
+    }
+  }
+  return monto ? comision / monto : 0.04;
+}
+// Promedio de los últimos 30 días hasta el fin del rango: en un día o dos puede no haber cobros con tarjeta.
+const desdePoint = new Date(`${hasta}T12:00:00Z`);
+desdePoint.setUTCDate(desdePoint.getUTCDate() - 29);
+const TASA_POINT = ventas.some((v) => v.medio_local === 'tarjeta') ? await tasaPoint(desdePoint.toISOString().slice(0, 10), hasta) : 0;
+console.log(`Comisión promedio de Point/QR en el local: ${(TASA_POINT * 100).toFixed(2)}%`);
+
 const filas = ventas.map((v) => {
-  const metodo = PAGO[Number(v.pago_metodo)] ?? 'otro';
+  const metodo = Number(v.pago_metodo) === 3 && v.medio_local ? `local-${v.medio_local}` : PAGO[Number(v.pago_metodo)] ?? 'otro';
   const ventaIva = Number(v.subtotal) - Number(v.cupon) - Number(v.desc_pago);
   const mp = pagosMP.get(String(v.order_id));
   const cobrado = ventaIva + Number(v.envio_cobrado);
-  const comisionIva = metodo === 'mercadopago' ? (mp?.comision ?? 0) : metodo === 'gocuotas' ? cobrado * GOCUOTAS_TASA * IVA : 0;
+  const comisionIva =
+    metodo === 'mercadopago' ? (mp?.comision ?? 0) : metodo === 'gocuotas' ? cobrado * GOCUOTAS_TASA * IVA : metodo === 'local-tarjeta' ? cobrado * TASA_POINT : 0;
   const sinComision = metodo === 'mercadopago' && !mp ? 1 : 0;
   const c = cmv.get(String(v.order_id)) ?? { cmv: 0, empaque: 0, despacho: 0, sin_costo: 0, sin_regla: [] };
   const facturada = FACTURADAS.has(metodo);
   const neto = (x) => (facturada ? x / IVA : x);
   const ventaSinIva = neto(ventaIva);
   // La de la financiera no lleva IVA: se resta tal cual.
-  const comision = comisionIva / IVA + (metodo === 'transferencia' ? cobrado * FINANCIERA_TASA : 0);
+  const comision = comisionIva / IVA + (NO_FACTURADAS_TRANSFERENCIA.has(metodo) ? cobrado * FINANCIERA_TASA : 0);
   const envioTienda = Number(v.envio_gratis || 0) / IVA;
   const impuestos = facturada ? ventaSinIva * IIBB : 0;
   const debCred = facturada ? cobrado * DEB_CRED : 0;
