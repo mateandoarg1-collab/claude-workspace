@@ -55,7 +55,7 @@ export default function Canales() {
   const metaShop = useApi<{ spend: number | null; motivo?: string }>(`/api/meta?cuenta=shopify&periodo=${periodo}`);
   const metaMay = useApi<{ spend: number | null; motivo?: string }>(`/api/meta?cuenta=mayorista&periodo=${periodo}`);
   const gads = useApi<{ spend: number | null; motivo?: string }>(`/api/google-ads?periodo=${periodo}`);
-  const tiktok = useApi<{ spend: number | null; motivo?: string }>(`/api/tiktok?periodo=${periodo}`);
+  const tiktok = useApi<{ spend: number | null; motivo?: string; fuente?: string }>(`/api/tiktok?periodo=${periodo}`);
   const mayorista = useApi<Venta & { tab: string }>(`/api/mayorista?periodo=${periodo}`);
   // Ventas del local del mes por medio de pago (MP Point/QR, efectivo, transferencias): para el IVA del Local.
   const localMes = useApi<{ amount: number; mp: { amount: number } }>('/api/local');
@@ -93,7 +93,7 @@ export default function Canales() {
     { nombre: 'Meta Mayorista', canal: 'mayorista' as CanalId, detalle: 'Mayorista · cuenta MATEANDO-MANYCHAT (mensajes, +8% comisión)', ventas: monto('mayorista'), pauta: metaMay.data ? metaMay.data.spend : undefined, falta: metaMay.data?.motivo ?? '' },
     { nombre: 'Meta Ads', canal: 'online' as CanalId, detalle: 'Tienda Online (Empretienda) · 2 cuentas (MATEANDO2 +8% comisión)', ventas: monto('online'), pauta: meta.data ? meta.data.spend : undefined, falta: meta.data?.motivo ?? '' },
     { nombre: 'Google Ads', canal: 'online' as CanalId, detalle: 'Tienda Online (Empretienda) · cuenta 534-660-6046', ventas: monto('online'), pauta: gads.data ? gads.data.spend : undefined, falta: gads.data?.motivo ?? '' },
-    { nombre: 'TikTok Ads', canal: 'online' as CanalId, detalle: 'Tienda Online (Empretienda) · ANDOMAT 611 SRL', ventas: monto('online'), pauta: tiktok.data ? tiktok.data.spend : undefined, falta: tiktok.data?.motivo ?? '' },
+    { nombre: 'TikTok Ads', canal: 'online' as CanalId, detalle: `Tienda Online (Empretienda) · ANDOMAT 611 SRL${tiktok.data?.fuente ? ` · ${tiktok.data.fuente}` : ''}`, ventas: monto('online'), pauta: tiktok.data ? tiktok.data.spend : undefined, falta: tiktok.data?.motivo ?? '' },
   ];
   const pautaTotal = roas.reduce((s, r) => s + (r.pauta ?? 0), 0);
   // ventas de cada canal una sola vez (Meta y Google empujan las mismas ventas de la Tienda Online)
