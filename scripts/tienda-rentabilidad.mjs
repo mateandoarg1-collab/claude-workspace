@@ -1,13 +1,15 @@
 // Rentabilidad de la tienda de Empretienda por venta, como scripts/meli-rentabilidad.mjs para Mercado Libre.
 // Lee la pestaña emp_ventas (la llena scripts/empretienda-ordenes.mjs cada 30 min) y escribe rentabilidad_tienda
 // (una fila por venta) y rentabilidad_tienda_ads (pauta de Meta y Google por día) en MATEANDO MAYORISTA 2026.
-//   - Venta: subtotal − cupón − descuento por medio de pago, sin IVA. El envío que paga el comprador se lo lleva OCA.
+//   - Venta: subtotal − cupón − descuento por medio de pago. Se le saca el IVA solo a lo que se factura (Mercado Pago,
+//     GoCuotas y lo cobrado en el local); las transferencias no se facturan y entran enteras (Juampi, 25-oct-2026).
+//     El envío que paga el comprador se lo lleva OCA.
 //   - Envío de la tienda: lo que cuesta el envío gratis (Empretienda lo cotiza con la cuenta de OCA), sin IVA.
 //   - Comisión: Mercado Pago, la real de cada pago (comisión + costo de cuotas sin interés), sin IVA.
 //     GoCuotas: 7,9% + IVA sobre lo cobrado (con el envío), a 22 días hábiles (condiciones de la cuenta, 25-oct-2026).
 //     Transferencia: 3% de lo transferido, que cobra la financiera.
-//   - Impuestos: IIBB 5% de la venta sin IVA, solo en las ventas facturadas (Mercado Pago y GoCuotas). Las
-//     transferencias no se facturan: solo pagan el 3% de la financiera (Juampi, 25-oct-2026).
+//   - Impuestos de lo facturado: IIBB 5% de la venta sin IVA e impuesto a los débitos y créditos 1,2% de lo cobrado
+//     (con IVA y envío). Las transferencias no se facturan: solo pagan el 3% de la financiera (Juampi, 25-oct-2026).
 //   - Costo de producto y packaging: reglas de scripts/cmv (las mismas del CMV de /canales), venta por venta.
 // Solo cuentan las ventas pagadas. canal = local si se pagó "a acordar" (retiro en el local).
 //   node scripts/tienda-rentabilidad.mjs               → 60 días a las 6 de la mañana, 10 días el resto de las horas
@@ -26,7 +28,9 @@ const TAB = 'rentabilidad_tienda';
 const TAB_ADS = 'rentabilidad_tienda_ads';
 const IVA = 1.21;
 const IIBB = 0.05; // sobre la venta facturada sin IVA
-const FACTURADAS = new Set(['mercadopago', 'gocuotas', 'acordar']); // acordar (local): a confirmar
+const DEB_CRED = 0.012; // impuesto a los débitos y créditos, sobre lo cobrado facturado
+// Lo que se factura. El local ("a acordar") se cuenta como facturado: Empretienda no dice si se cobró con MP o en efectivo.
+const FACTURADAS = new Set(['mercadopago', 'gocuotas', 'acordar']);
 const FINANCIERA_TASA = 0.03; // transferencias
 const GOCUOTAS_TASA = 0.079; // + IVA, sobre el total cobrado
 const PAGO = { 1: 'mercadopago', 3: 'acordar', 5: 'transferencia', 8: 'gocuotas' };
@@ -71,11 +75,13 @@ async function guardar(tab, encabezado, filasNuevas, desde, hasta, columnaFecha 
 
 // --cargar: órdenes crudas del panel (lista de JSON) → emp_ventas, sin datos personales (mismo formato que el volcado).
 if (arg('--cargar')) {
+  // Solo agrega las órdenes que faltan: las que ya están las escribió la lectura automática y son más nuevas.
   const crudas = JSON.parse(readFileSync(arg('--cargar'), 'utf8'));
-  const nuevas = crudas.map(filaVenta);
-  const desde = diaAR(nuevas.reduce((m, v) => (v[2] < m ? v[2] : m), '9999'));
-  const n = await guardar('emp_ventas', VENTAS_COLS, nuevas, `${desde}T00`, '9999', 2);
-  console.log(`emp_ventas: ${nuevas.length} órdenes cargadas, ${n} en total`);
+  const prev = (await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'emp_ventas'!A2:Q`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
+  const ya = new Set(prev.map((r) => String(r[0])));
+  const nuevas = crudas.map(filaVenta).filter((v) => !ya.has(String(v[0])));
+  const n = await guardar('emp_ventas', VENTAS_COLS, [...prev, ...nuevas], '0000', '9999', 2);
+  console.log(`emp_ventas: ${nuevas.length} órdenes agregadas, ${n} en total`);
 }
 
 // Costo por SKU: los mismos tres niveles que el CMV de /canales (scripts/cmv/README.md).
@@ -176,23 +182,27 @@ const filas = ventas.map((v) => {
   const comisionIva = metodo === 'mercadopago' ? (mp?.comision ?? 0) : metodo === 'gocuotas' ? cobrado * GOCUOTAS_TASA * IVA : 0;
   const sinComision = metodo === 'mercadopago' && !mp ? 1 : 0;
   const c = cmv.get(String(v.order_id)) ?? { cmv: 0, empaque: 0, despacho: 0, sin_costo: 0, sin_regla: [] };
-  const ventaSinIva = ventaIva / IVA;
+  const facturada = FACTURADAS.has(metodo);
+  const neto = (x) => (facturada ? x / IVA : x);
+  const ventaSinIva = neto(ventaIva);
   // La de la financiera no lleva IVA: se resta tal cual.
   const comision = comisionIva / IVA + (metodo === 'transferencia' ? cobrado * FINANCIERA_TASA : 0);
   const envioTienda = Number(v.envio_gratis || 0) / IVA;
-  const impuestos = FACTURADAS.has(metodo) ? ventaSinIva * IIBB : 0;
+  const impuestos = facturada ? ventaSinIva * IIBB : 0;
+  const debCred = facturada ? cobrado * DEB_CRED : 0;
   const packaging = c.empaque + c.despacho;
   const productos = JSON.parse(v.productos || '[]');
   return [
     diaAR(v.fecha), String(v.order_id), String(v.numero), Number(v.pago_metodo) === 3 ? 'local' : 'online', metodo, String(v.envio),
     String(v.cp), String(v.provincia), String(v.ciudad), productos.reduce((s, p) => s + (p.q || 0), 0),
-    r2(ventaSinIva), r2((Number(v.cupon) + Number(v.desc_pago)) / IVA), r2(Number(v.envio_cobrado) / IVA), r2(comision), r2(envioTienda),
-    r2(impuestos), r2(c.cmv), r2(packaging), r2(ventaSinIva - comision - envioTienda - impuestos - c.cmv - packaging),
+    r2(ventaSinIva), r2(neto(Number(v.cupon) + Number(v.desc_pago))), r2(neto(Number(v.envio_cobrado))), r2(comision), r2(envioTienda),
+    r2(impuestos), r2(c.cmv), r2(packaging), r2(ventaSinIva - comision - envioTienda - impuestos - debCred - c.cmv - packaging),
     c.sin_costo, sinComision, mp?.cuotas ?? '', String(v.fecha), JSON.stringify(productos.map((p) => ({ id: p.id, n: p.n, v: p.v, q: p.q, p: p.p }))),
+    r2(debCred), facturada ? 1 : 0,
   ];
 });
 const COLS = ['fecha', 'order_id', 'numero', 'canal', 'pago', 'envio', 'cp', 'provincia', 'ciudad', 'unidades', 'venta', 'descuentos',
-  'envio_cobrado', 'comision', 'envio_tienda', 'impuestos', 'costo', 'packaging', 'neto', 'sin_costo', 'sin_comision', 'cuotas', 'creada', 'productos'];
+  'envio_cobrado', 'comision', 'envio_tienda', 'impuestos', 'costo', 'packaging', 'neto', 'sin_costo', 'sin_comision', 'cuotas', 'creada', 'productos', 'deb_cred', 'facturada'];
 
 const ads = await pautaPorDia(desde, hasta);
 const suma = (i) => Math.round(filas.reduce((s, f) => s + f[i], 0)).toLocaleString('es-AR');

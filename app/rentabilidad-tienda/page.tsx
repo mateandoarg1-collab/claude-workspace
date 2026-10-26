@@ -6,7 +6,7 @@ import { Tarjeta, nomDia, num, porc } from '../components/TarjetaKpi';
 
 type Totales = {
   ventas: number; unidades: number; venta: number; descuentos: number; comision: number; envio_tienda: number;
-  impuestos: number; costo: number; packaging: number; neto: number;
+  impuestos: number; deb_cred: number; costo: number; packaging: number; neto: number;
 };
 type Ind = { pauta: number; ganancia: number; margen: number | null; roas: number | null; cpa: number | null; tacos: number | null; ticket: number | null };
 type Total = Totales & Ind & { meta: number; google: number; sinCosto: number; sinComision: number };
@@ -17,6 +17,7 @@ type Venta = {
   fecha: string; order_id: string; numero: string; canal: string; pago: string; envio: string; cp: string; provincia: string; ciudad: string;
   unidades: number; venta: number; descuentos: number; envio_cobrado: number; comision: number; envio_tienda: number; impuestos: number;
   costo: number; packaging: number; neto: number; sin_costo: number; sin_comision: number; cuotas: number | null; creada: string;
+  deb_cred: number; facturada: boolean;
   productos: { id: string; n: string; v: string; q: number; p: number; foto: string | null }[];
 };
 type Data = {
@@ -91,7 +92,8 @@ function DetalleVenta({ v, onCerrar }: { v: Venta; onCerrar: () => void }) {
   const filas = [
     { nombre: `Comisión de cobro (${PAGO[v.pago] ?? v.pago}${v.cuotas && v.cuotas > 1 ? `, ${v.cuotas} cuotas` : ''})`, valor: -v.comision },
     { nombre: 'Envío gratis (lo paga la tienda)', valor: -v.envio_tienda },
-    { nombre: v.impuestos ? 'IIBB (5% de la venta sin IVA)' : 'IIBB (no se factura)', valor: -v.impuestos },
+    { nombre: v.facturada ? 'IIBB (5% de la venta sin IVA)' : 'IIBB (no se factura)', valor: -v.impuestos },
+    { nombre: v.facturada ? 'Imp. débitos y créditos (1,2%)' : 'Imp. débitos y créditos (no se factura)', valor: -v.deb_cred },
     { nombre: 'Costo de productos', valor: -v.costo },
     { nombre: 'Packaging', valor: -v.packaging },
   ];
@@ -106,7 +108,7 @@ function DetalleVenta({ v, onCerrar }: { v: Venta; onCerrar: () => void }) {
           <button onClick={onCerrar} className="text-slate-400 hover:text-slate-100 text-xl leading-none px-1" aria-label="Cerrar">×</button>
         </div>
         <div className="grid grid-cols-3 rounded-xl border border-slate-800 bg-slate-950/50 mt-4 divide-x divide-slate-800">
-          {[['Venta sin IVA', fmt2(v.venta)], ['Neto', fmt2(v.neto)], ['Margen neto', pct(v.neto, v.venta)]].map(([k, x]) => (
+          {[['Venta neta', fmt2(v.venta)], ['Neto', fmt2(v.neto)], ['Margen neto', pct(v.neto, v.venta)]].map(([k, x]) => (
             <div key={k} className="p-3 min-w-0">
               <p className="text-[11px] text-slate-400">{k}</p>
               <p className="text-sm sm:text-base font-semibold tabular-nums mt-0.5 truncate text-slate-50">{x}</p>
@@ -143,7 +145,7 @@ function DetalleVenta({ v, onCerrar }: { v: Venta; onCerrar: () => void }) {
           <tbody>
             <tr className="border-t border-slate-800/60 font-semibold">
               <td className="py-2">
-                Venta sin IVA
+                {v.facturada ? 'Venta sin IVA' : 'Venta (no se factura, sin IVA a descontar)'}
                 {v.descuentos > 0 && <span className="block text-[11px] font-normal text-slate-500">ya con {fmt2(v.descuentos)} de descuentos (cupón o pago)</span>}
               </td>
               <td className="py-2 text-right tabular-nums">{fmt2(v.venta)}</td>
@@ -289,10 +291,11 @@ export default function RentabilidadTienda() {
 
   const cascada = t
     ? [
-        { nombre: 'Venta sin IVA', valor: t.venta, total: true, nota: t.descuentos ? `Ya con ${fmt(t.descuentos)} de descuentos (cupones y 20% de transferencia)` : undefined },
+        { nombre: 'Venta neta', valor: t.venta, total: true, nota: `Sin IVA lo facturado (Mercado Pago, GoCuotas, local); las transferencias no se facturan y van enteras${t.descuentos ? `. Ya con ${fmt(t.descuentos)} de descuentos` : ''}` },
         { nombre: 'Comisión de cobro', valor: -t.comision, nota: 'Mercado Pago (con el costo de las cuotas sin interés), GoCuotas 7,9% + IVA y transferencias 3% de la financiera' },
         { nombre: 'Envíos gratis', valor: -t.envio_tienda, nota: 'Lo que cobra OCA cuando el envío corre por cuenta de la tienda' },
-        { nombre: 'IIBB (5%)', valor: -t.impuestos, nota: 'Sobre la venta sin IVA de las ventas facturadas (Mercado Pago y GoCuotas). Las transferencias no se facturan' },
+        { nombre: 'IIBB (5%)', valor: -t.impuestos, nota: 'Sobre la venta sin IVA de lo facturado' },
+        { nombre: 'Imp. débitos y créditos (1,2%)', valor: -t.deb_cred, nota: 'Sobre lo cobrado facturado (con IVA y envío)' },
         { nombre: 'Costo de producto', valor: -t.costo },
         { nombre: 'Packaging', valor: -t.packaging, nota: 'Packaging de mates y caja de despacho (bolsa en el local)' },
         { nombre: 'Neto antes de publicidad', valor: t.neto, total: true },
@@ -305,7 +308,7 @@ export default function RentabilidadTienda() {
 
   return (
     <div className="min-h-screen bg-slate-950">
-      <AppHeader title="Rentabilidad Tienda" subtitle="Empretienda: margen por venta · importes sin IVA" width="5xl" />
+      <AppHeader title="Rentabilidad Tienda" subtitle="Empretienda: margen por venta · neto de IVA lo facturado" width="5xl" />
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2 flex-wrap">
@@ -341,7 +344,7 @@ export default function RentabilidadTienda() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <Tarjeta titulo="Ventas" valor={t.ventas.toLocaleString('es-AR')} actual={t.ventas} anterior={a?.ventas}
                 detalle={`${t.unidades.toLocaleString('es-AR')} unidades · ticket ${t.ticket == null ? '–' : fmt(t.ticket)}`} puntos={serie((x) => x.ventas)} formato={(n) => n.toLocaleString('es-AR')} />
-              <Tarjeta titulo="Facturación sin IVA" valor={fmt(t.venta)} actual={t.venta} anterior={a?.venta} puntos={serie((x) => x.venta)} formato={fmt} />
+              <Tarjeta titulo="Facturación neta" valor={fmt(t.venta)} actual={t.venta} anterior={a?.venta} puntos={serie((x) => x.venta)} formato={fmt} />
               <Tarjeta titulo="Margen de ganancia" valor={t.margen == null ? '–' : porc(t.margen)} actual={t.margen} anterior={a?.margen} enPuntos
                 puntos={serie((x) => x.margen)} formato={porc} />
               <Tarjeta titulo="Ganancia" valor={fmt(t.ganancia)} actual={t.ganancia} anterior={a?.ganancia}

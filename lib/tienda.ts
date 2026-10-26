@@ -11,6 +11,7 @@ export type VentaTienda = {
   provincia: string; ciudad: string; unidades: number; venta: number; descuentos: number; envio_cobrado: number;
   comision: number; envio_tienda: number; impuestos: number; costo: number; packaging: number; neto: number;
   sin_costo: number; sin_comision: number; cuotas: number | null; creada: string; productos: ProductoVenta[];
+  deb_cred: number; facturada: boolean;
 };
 
 export async function getRentabilidadTienda() {
@@ -41,6 +42,7 @@ export async function getRentabilidadTienda() {
       comision: num(r, 'comision'), envio_tienda: num(r, 'envio_tienda'), impuestos: num(r, 'impuestos'), costo: num(r, 'costo'),
       packaging: num(r, 'packaging'), neto: num(r, 'neto'), sin_costo: num(r, 'sin_costo'), sin_comision: num(r, 'sin_comision'),
       cuotas: str(r, 'cuotas') ? num(r, 'cuotas') : null, creada: str(r, 'creada'), productos: productos(r),
+      deb_cred: num(r, 'deb_cred'), facturada: str(r, 'facturada') === '1',
     })),
     ads: (a?.values ?? []).slice(1).map((r) => ({ fecha: String(r[0]), meta: Number(r[1]) || 0, google: Number(r[2]) || 0, total: Number(r[3]) || 0 })),
     // Foto y link de cada producto de la tienda (pestaña emp_productos: id, nombre, link, desactivado, imagen).
