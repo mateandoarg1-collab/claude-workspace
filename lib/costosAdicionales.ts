@@ -1,6 +1,11 @@
-// Costos adicionales de Mercado Libre (fuera de la orden): tipos y cuentas que usan tanto el servidor como la página.
+// Costos adicionales (fuera de la venta) de Mercado Libre, la tienda online y el local: tipos y cuentas que usan tanto
+// el servidor como la página.
 export type BaseVariable = 'venta' | 'venta_con_iva_menos_ads' | 'pedido';
-export type CostoAdicional = { nombre: string; tipo: 'fijo' | 'variable'; monto: number; base: BaseVariable | ''; desde: string; hasta: string };
+export type Canal = 'meli' | 'tienda' | 'local';
+export const CANALES: Record<Canal, string> = { meli: 'Mercado Libre', tienda: 'Tienda online', local: 'Local' };
+export type CostoAdicional = {
+  nombre: string; tipo: 'fijo' | 'variable'; monto: number; base: BaseVariable | ''; desde: string; hasta: string; canal: Canal;
+};
 
 const IVA = 1.21;
 

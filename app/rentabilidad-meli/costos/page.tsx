@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import AppHeader from '../../components/AppHeader';
-import { BASES, describirAdicional, type CostoAdicional } from '@/lib/costosAdicionales';
+import { BASES, CANALES, describirAdicional, type Canal, type CostoAdicional } from '@/lib/costosAdicionales';
 
 type Publicacion = {
   item_id: string; variant_id: string | null; titulo: string; variante: string | null; foto: string | null;
@@ -90,7 +90,7 @@ function FilaCosto({ p, onGuardado }: { p: Publicacion; onGuardado: (costo: numb
   );
 }
 
-const VACIO: CostoAdicional = { nombre: '', tipo: 'fijo', monto: 0, base: '', desde: hoyAR(), hasta: '' };
+const VACIO: CostoAdicional = { nombre: '', tipo: 'fijo', monto: 0, base: '', desde: hoyAR(), hasta: '', canal: 'tienda' };
 
 function CostosAdicionales({ iniciales }: { iniciales: CostoAdicional[] }) {
   const [lista, setLista] = useState(iniciales);
@@ -117,11 +117,17 @@ function CostosAdicionales({ iniciales }: { iniciales: CostoAdicional[] }) {
     <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-5">
       <h2 className="text-sm font-semibold text-slate-200">Costos adicionales</h2>
       <p className="text-xs text-slate-500 mt-0.5 mb-4">
-        Costos fuera de la venta (sueldos, apps, agencia…). Restan en la ganancia final. Un fijo se reparte por día; para dar de baja uno, poné la fecha hasta.
+        Costos fuera de la venta (sueldos, alquiler, apps, agencia…) de cada canal: restan en su ganancia (en Mercado Libre, en la final).
+        Un fijo se reparte por día; para dar de baja uno, poné la fecha hasta.
       </p>
       <div className="space-y-3">
         {lista.map((c, i) => (
-          <div key={i} className="rounded-xl border border-slate-800 bg-slate-950/50 p-3 grid grid-cols-2 sm:grid-cols-6 gap-2 items-end">
+          <div key={i} className="rounded-xl border border-slate-800 bg-slate-950/50 p-3 grid grid-cols-2 sm:grid-cols-7 gap-2 items-end">
+            <label className="col-span-2 sm:col-span-1 text-[11px] text-slate-400">Canal
+              <select value={c.canal} onChange={(e) => editar(i, { canal: e.target.value as Canal })} className={`${entrada} w-full mt-1`}>
+                {Object.entries(CANALES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </label>
             <label className="col-span-2 text-[11px] text-slate-400">Nombre
               <input value={c.nombre} onChange={(e) => editar(i, { nombre: e.target.value })} className={`${entrada} w-full mt-1`} />
             </label>
@@ -143,13 +149,13 @@ function CostosAdicionales({ iniciales }: { iniciales: CostoAdicional[] }) {
               <input type="date" value={c.hasta} onChange={(e) => editar(i, { hasta: e.target.value })} className={`${entrada} w-full mt-1`} />
             </label>
             {c.tipo === 'variable' && (
-              <label className="col-span-2 sm:col-span-3 text-[11px] text-slate-400">Se calcula sobre
+              <label className="col-span-2 sm:col-span-4 text-[11px] text-slate-400">Se calcula sobre
                 <select value={c.base} onChange={(e) => editar(i, { base: e.target.value as CostoAdicional['base'] })} className={`${entrada} w-full mt-1`}>
                   {Object.entries(BASES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
               </label>
             )}
-            <div className={`${c.tipo === 'variable' ? 'col-span-2 sm:col-span-3' : 'col-span-2 sm:col-span-6'} flex items-center justify-between gap-2`}>
+            <div className={`${c.tipo === 'variable' ? 'col-span-2 sm:col-span-3' : 'col-span-2 sm:col-span-7'} flex items-center justify-between gap-2`}>
               <span className="text-[11px] text-slate-500">{c.nombre && describirAdicional(c)}</span>
               <button onClick={() => setLista((l) => l.filter((_, j) => j !== i))} className="text-[11px] text-slate-500 hover:text-rose-400">Borrar</button>
             </div>
@@ -200,7 +206,7 @@ export default function CostosMeli() {
 
   return (
     <div className="min-h-screen bg-slate-950">
-      <AppHeader title="Costos de Mercado Libre" subtitle="Costo de producto por publicación y costos adicionales" width="5xl" />
+      <AppHeader title="Costos" subtitle="Costo de producto de Mercado Libre y costos adicionales de cada canal" width="5xl" />
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-4">
         <Link href="/rentabilidad-meli" className="text-sm text-slate-400 hover:text-emerald-300">← Volver a la rentabilidad</Link>
         {err && <p className="text-sm text-rose-400">No se pudieron leer los costos: {err}</p>}

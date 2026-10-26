@@ -112,7 +112,7 @@ export async function GET(req: Request) {
     iniAnt.setUTCDate(iniAnt.getUTCDate() - (largo - 1));
     const [desdeAnt, hastaAnt] = [iniAnt.toISOString().slice(0, 10), finAnt.toISOString().slice(0, 10)];
 
-    const [{ actualizado, primerDia, ordenes, ads }, adicionales] = await Promise.all([getRentabilidadMeli(desdeAnt, hasta), getCostosAdicionales()]);
+    const [{ actualizado, primerDia, ordenes, ads }, adicionales] = await Promise.all([getRentabilidadMeli(desdeAnt, hasta), getCostosAdicionales().then((l) => l.filter((c) => c.canal === 'meli'))]);
     const actual = resumen(ordenes, ads, adicionales, desde, hasta);
     const anterior = desdeAnt >= primerDia ? resumen(ordenes, ads, adicionales, desdeAnt, hastaAnt).total : null;
 

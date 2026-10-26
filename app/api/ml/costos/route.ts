@@ -48,6 +48,7 @@ export async function PUT(req: Request) {
         base: c.tipo === 'variable' && ['venta', 'venta_con_iva_menos_ads', 'pedido'].includes(String(c.base)) ? c.base : c.tipo === 'variable' ? 'venta' : '',
         desde: FECHA.test(String(c.desde)) ? String(c.desde) : '',
         hasta: FECHA.test(String(c.hasta)) ? String(c.hasta) : '',
+        canal: ['tienda', 'local'].includes(String(c.canal)) ? c.canal : 'meli',
       }))
       .filter((c: CostoAdicional) => c.nombre);
     await setCostosAdicionales(lista);

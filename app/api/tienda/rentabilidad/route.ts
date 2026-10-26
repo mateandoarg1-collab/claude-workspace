@@ -1,4 +1,5 @@
 import { getRentabilidadTienda, getShopifyParaMachado, type VentaTienda } from '@/lib/tienda';
+import { adicionalDelDia, getCostosAdicionales, type CostoAdicional } from '@/lib/costosMeli';
 import { desdeAR, hastaAR } from '@/lib/periodo';
 
 export const maxDuration = 30;
@@ -38,11 +39,12 @@ const IVA = 1.21;
 const cobrado = (v: VentaTienda) => (v.facturada ? (v.venta + v.envio_cobrado) * IVA : v.venta + v.envio_cobrado);
 
 // ROAS = facturación ÷ inversión; CPA = inversión por venta; TACOS = inversión ÷ facturación (todo sin IVA).
-function indicadores(t: Totales, pauta: number, machado: number) {
-  const ganancia = t.neto - pauta - machado;
+function indicadores(t: Totales, pauta: number, machado: number, adicionales: number) {
+  const ganancia = t.neto - pauta - machado - adicionales;
   return {
     pauta,
     machado,
+    adicionales,
     ganancia,
     margen: t.venta ? ganancia / t.venta : null,
     roas: pauta ? t.venta / pauta : null,
@@ -52,20 +54,25 @@ function indicadores(t: Totales, pauta: number, machado: number) {
   };
 }
 
-function resumen(ventas: VentaTienda[], ads: { fecha: string; meta: number; google: number; total: number }[], desde: string, hasta: string, conPauta: boolean, machadoDia: Map<string, number>) {
+// Costos adicionales (sueldos, alquiler, apps…) cargados en la pantalla de costos para la tienda o el local.
+function resumen(ventas: VentaTienda[], ads: { fecha: string; meta: number; google: number; total: number }[], desde: string, hasta: string, conPauta: boolean, machadoDia: Map<string, number>, costos: CostoAdicional[]) {
   const vs = ventas.filter((v) => v.fecha >= desde && v.fecha <= hasta);
   const pautaDia = new Map(ads.map((a) => [a.fecha, conPauta ? a.total : 0]));
   const dias = listaDias(desde, hasta).map((fecha) => {
     const t = sumar(vs.filter((v) => v.fecha === fecha));
-    return { fecha, ...t, ...indicadores(t, pautaDia.get(fecha) ?? 0, conPauta ? machadoDia.get(fecha) ?? 0 : 0) };
+    const pauta = pautaDia.get(fecha) ?? 0;
+    const otros = costos.map((c) => adicionalDelDia(c, fecha, { venta: t.venta, pauta, ordenes: t.ventas }));
+    return { fecha, ...t, otros, ...indicadores(t, pauta, conPauta ? machadoDia.get(fecha) ?? 0 : 0, otros.reduce((a, b) => a + b, 0)) };
   });
   const t = sumar(vs);
   const pauta = dias.reduce((s, d) => s + d.pauta, 0);
   const machado = dias.reduce((s, d) => s + d.machado, 0);
+  const otros = costos.map((c, i) => ({ ...c, total: dias.reduce((s, d) => s + d.otros[i], 0) })).filter((c) => c.total);
+  const adicionales = otros.reduce((s, c) => s + c.total, 0);
   const enRango = ads.filter((a) => conPauta && a.fecha >= desde && a.fecha <= hasta);
   const meta = enRango.reduce((s, a) => s + a.meta, 0);
   const googleAds = enRango.reduce((s, a) => s + a.google, 0);
-  return { total: { ...t, ...indicadores(t, pauta, machado), meta, google: googleAds, sinCosto: vs.reduce((s, v) => s + v.sin_costo, 0), sinComision: vs.filter((v) => v.sin_comision).length }, dias, ventas: vs };
+  return { total: { ...t, ...indicadores(t, pauta, machado, adicionales), otros, meta, google: googleAds, sinCosto: vs.reduce((s, v) => s + v.sin_costo, 0), sinComision: vs.filter((v) => v.sin_comision).length }, dias, ventas: vs };
 }
 
 export async function GET(req: Request) {
@@ -81,7 +88,8 @@ export async function GET(req: Request) {
     iniAnt.setUTCDate(iniAnt.getUTCDate() - (largo - 1));
     const [desdeAnt, hastaAnt] = [iniAnt.toISOString().slice(0, 10), finAnt.toISOString().slice(0, 10)];
 
-    const { actualizado, ventas: todas, ads, fotos } = await getRentabilidadTienda();
+    const [{ actualizado, ventas: todas, ads, fotos }, adicionales] = await Promise.all([getRentabilidadTienda(), getCostosAdicionales()]);
+    const costos = adicionales.filter((c) => (canal === 'todo' ? c.canal !== 'meli' : c.canal === (canal === 'online' ? 'tienda' : 'local')));
     const ventas = canal === 'todo' ? todas : todas.filter((v) => v.canal === canal);
     const conPauta = canal !== 'local';
     const primerDia = todas.reduce((m, v) => (v.fecha < m ? v.fecha : m), '9999-12-31');
@@ -106,8 +114,8 @@ export async function GET(req: Request) {
         machadoInfo = { shopify: 0, metaShopify: 0, motivo: e instanceof Error ? e.message : String(e) };
       }
     }
-    const actual = resumen(ventas, ads, desde, hasta, conPauta, machadoDia);
-    const anterior = desdeAnt >= primerDia ? resumen(ventas, ads, desdeAnt, hastaAnt, conPauta, machadoDia).total : null;
+    const actual = resumen(ventas, ads, desde, hasta, conPauta, machadoDia, costos);
+    const anterior = desdeAnt >= primerDia ? resumen(ventas, ads, desdeAnt, hastaAnt, conPauta, machadoDia, costos).total : null;
 
     // Por producto: el costo y el neto de cada venta se reparten entre sus productos según el precio.
     const porProducto = new Map<string, { id: string; nombre: string; foto: string | null; link: string | null; unidades: number; venta: number; costo: number; neto: number; ventas: number }>();

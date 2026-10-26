@@ -2,15 +2,17 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import AppHeader from '../components/AppHeader';
+import Link from 'next/link';
 import { Tarjeta, nomDia, num, porc } from '../components/TarjetaKpi';
+import { CANALES as CANAL_COSTO, describirAdicional, type CostoAdicional } from '@/lib/costosAdicionales';
 
 type Totales = {
   ventas: number; unidades: number; venta: number; descuentos: number; comision: number; envio_tienda: number;
   impuestos: number; deb_cred: number; costo: number; packaging: number; neto: number;
 };
-type Ind = { pauta: number; machado: number; ganancia: number; margen: number | null; roas: number | null; cpa: number | null; tacos: number | null; ticket: number | null };
+type Ind = { pauta: number; machado: number; adicionales: number; ganancia: number; margen: number | null; roas: number | null; cpa: number | null; tacos: number | null; ticket: number | null };
 type Total = Totales & Ind & {
-  meta: number; google: number; sinCosto: number; sinComision: number;
+  meta: number; google: number; sinCosto: number; sinComision: number; otros: (CostoAdicional & { total: number })[];
   machadoShopify: number; machadoMetaShopify: number; machadoMotivo: string | null;
 };
 type Dia = Totales & Ind & { fecha: string };
@@ -315,8 +317,9 @@ export default function RentabilidadTienda() {
               ? `No se pudo calcular: ${t.machadoMotivo}`
               : `2% de (venta online con IVA + Shopify ${fmt(t.machadoShopify)} − pauta de Meta, Google y Meta Shopify ${fmt(t.machadoMetaShopify)}). Sin TikTok, email ni MP Ads`,
           },
-          { nombre: 'Ganancia', valor: t.ganancia, total: true },
         ] : []),
+        ...t.otros.map((c) => ({ nombre: c.nombre, valor: -c.total, total: false, nota: `${describirAdicional(c)} · ${CANAL_COSTO[c.canal]}` })),
+        { nombre: 'Ganancia', valor: t.ganancia, total: true },
       ]
     : [];
 
@@ -343,11 +346,16 @@ export default function RentabilidadTienda() {
               ))}
             </div>
           </div>
-          {d?.actualizado && (
-            <span className="text-xs text-slate-500">
-              Actualizado {new Date(d.actualizado).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-            </span>
-          )}
+          <div className="flex items-center gap-3">
+            {d?.actualizado && (
+              <span className="text-xs text-slate-500">
+                Actualizado {new Date(d.actualizado).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            <Link href="/rentabilidad-meli/costos" className="text-sm rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-slate-200 hover:border-emerald-600 hover:text-emerald-300">
+              Cargar costos
+            </Link>
+          </div>
         </div>
 
         {err && <p className="text-sm text-rose-400">No se pudo leer la rentabilidad: {err}</p>}
@@ -362,7 +370,7 @@ export default function RentabilidadTienda() {
               <Tarjeta titulo="Margen de ganancia" valor={t.margen == null ? '–' : porc(t.margen)} actual={t.margen} anterior={a?.margen} enPuntos
                 puntos={serie((x) => x.margen)} formato={porc} />
               <Tarjeta titulo="Ganancia" valor={fmt(t.ganancia)} actual={t.ganancia} anterior={a?.ganancia}
-                detalle={conPauta ? 'Después de publicidad y Machado' : 'El local no tiene publicidad asignada'} puntos={serie((x) => x.ganancia)} formato={fmt} />
+                detalle={t.otros.length ? 'Después de publicidad, Machado y costos fijos' : conPauta ? 'Después de publicidad y Machado' : 'Sin publicidad asignada'} puntos={serie((x) => x.ganancia)} formato={fmt} />
               {conPauta && (
                 <>
                   <Tarjeta titulo="Inversión publicitaria" valor={fmt(t.pauta)} actual={t.pauta} anterior={a?.pauta} mejorSiSube={false}

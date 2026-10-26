@@ -5,7 +5,7 @@
 import { google } from 'googleapis';
 import { getAuth } from './sheets';
 import { mlFetch, ML_USER_ID } from './ml';
-import type { BaseVariable, CostoAdicional } from './costosAdicionales';
+import type { BaseVariable, Canal, CostoAdicional } from './costosAdicionales';
 
 export { adicionalDelDia, type CostoAdicional } from './costosAdicionales';
 
@@ -17,14 +17,14 @@ const sheets = () => google.sheets({ version: 'v4', auth: getAuth() });
 
 // Los que estaban en Escalafy, para arrancar si la pestaña todavía no existe.
 const INICIALES: CostoAdicional[] = [
-  { nombre: 'Pichón', tipo: 'variable', monto: 2, base: 'venta_con_iva_menos_ads', desde: '2026-10-01', hasta: '' },
-  { nombre: 'Nubimetrics', tipo: 'fijo', monto: 101035, base: '', desde: '2025-09-01', hasta: '' },
+  { nombre: 'Pichón', tipo: 'variable', monto: 2, base: 'venta_con_iva_menos_ads', desde: '2026-10-01', hasta: '', canal: 'meli' },
+  { nombre: 'Nubimetrics', tipo: 'fijo', monto: 101035, base: '', desde: '2025-09-01', hasta: '', canal: 'meli' },
 ];
 const TAB_ADICIONALES = 'costos_adicionales';
 
 export async function getCostosAdicionales(): Promise<CostoAdicional[]> {
   const res = await sheets()
-    .spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${TAB_ADICIONALES}'!A2:F`, valueRenderOption: 'UNFORMATTED_VALUE' })
+    .spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${TAB_ADICIONALES}'!A2:G`, valueRenderOption: 'UNFORMATTED_VALUE' })
     .catch(() => null);
   if (!res) return INICIALES;
   return (res.data.values ?? [])
@@ -36,6 +36,8 @@ export async function getCostosAdicionales(): Promise<CostoAdicional[]> {
       base: (['venta', 'venta_con_iva_menos_ads', 'pedido'].includes(String(r[3])) ? r[3] : '') as BaseVariable | '',
       desde: String(r[4] ?? ''),
       hasta: String(r[5] ?? ''),
+      // Los que se cargaron antes de que hubiera canal son de Mercado Libre.
+      canal: (['tienda', 'local'].includes(String(r[6])) ? r[6] : 'meli') as Canal,
     }));
 }
 
@@ -46,16 +48,16 @@ export async function setCostosAdicionales(lista: CostoAdicional[]) {
   if (!hoja) {
     await s.spreadsheets.batchUpdate({ spreadsheetId: SPREADSHEET_ID, requestBody: { requests: [{ addSheet: { properties: { title: TAB_ADICIONALES } } }] } });
   }
-  const filas = lista.map((c) => [c.nombre, c.tipo, c.monto, c.tipo === 'variable' ? c.base : '', c.desde, c.hasta]);
+  const filas = lista.map((c) => [c.nombre, c.tipo, c.monto, c.tipo === 'variable' ? c.base : '', c.desde, c.hasta, c.canal]);
   await s.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
     range: `'${TAB_ADICIONALES}'!A1`,
     valueInputOption: 'RAW',
-    requestBody: { values: [['nombre', 'tipo', 'monto', 'base', 'desde', 'hasta', new Date().toISOString()], ...filas] },
+    requestBody: { values: [['nombre', 'tipo', 'monto', 'base', 'desde', 'hasta', 'canal', new Date().toISOString()], ...filas] },
   });
   const total = hoja?.properties?.gridProperties?.rowCount ?? 0;
   if (total > filas.length + 1) {
-    await s.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `'${TAB_ADICIONALES}'!A${filas.length + 2}:G${total}` });
+    await s.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `'${TAB_ADICIONALES}'!A${filas.length + 2}:H${total}` });
   }
 }
 
