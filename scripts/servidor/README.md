@@ -18,7 +18,10 @@ probó Hetzner manteniendo la sesión para que GitHub Actions leyera Métricas; 
   `pantalla`). Se turnan con el candado `/root/mateando/.navegador`. Clave de Google (cuenta de servicio) del lector:
   `/root/mateando/sa.json`.
 - `/etc/cron.d/mateando`: `auto.py` cada 5 min → `/var/log/tildador.log`; `leer-metricas.sh` a los 7 y 37 →
-  `/var/log/empretienda.log`.
+  `/var/log/empretienda.log`; `scripts/vencimientos.py` a las 10:20 y 15:20 → `/var/log/vencimientos.log`.
+- Vencimientos (/vencimientos): lee por IMAP solo los mails de franmateando@gmail.com («Mateando Datos») en
+  jpcipolletta@mateando.com, con la contraseña de aplicación de Google del mail de Stock Full
+  (`/root/mateando/vencimientos.json`, la copió Juampi) → pestaña `vencimientos` de la planilla Egresos MP.
 - Si se cambia el tildador en la Mac (`~/Downloads/tildar_comprobantes`), copiarlo con
   `rsync -az -e "ssh -i ~/.ssh/mateando_server -p 5175" --exclude config.json --exclude 'credentials*.json' --exclude 'token*.json' --exclude venv --exclude __pycache__ ./ root@201.32.131.251:/root/tildar_comprobantes/`.
 - El automático de la Mac quedó apagado (`~/Library/LaunchAgents/com.mateando.tildador.plist.desactivado`); la app

@@ -41,9 +41,11 @@ cat > /etc/cron.d/mateando <<'EOF'
 # Empretienda (/root/tildar_profile): se turnan con el candado /root/mateando/.navegador.
 */5 * * * * root cd /root/tildar_comprobantes && DISPLAY=:99 MATEANDO_SERVIDOR=1 flock -w 600 /root/mateando/.navegador venv/bin/python auto.py >> /var/log/tildador.log 2>&1
 7,37 * * * * root bash /root/claude-workspace/scripts/servidor/leer-metricas.sh >> /var/log/empretienda.log 2>&1
+# Vencimientos de los mails de «Mateando Datos» (llegan lunes y jueves a las 10) → planilla Egresos MP
+20 10,15 * * * root cd /root/claude-workspace && /root/tildar_comprobantes/venv/bin/python scripts/vencimientos.py >> /var/log/vencimientos.log 2>&1
 EOF
 cat > /etc/logrotate.d/mateando <<'EOF'
-/var/log/tildador.log /var/log/empretienda.log {
+/var/log/tildador.log /var/log/empretienda.log /var/log/vencimientos.log {
   weekly
   rotate 4
   compress
