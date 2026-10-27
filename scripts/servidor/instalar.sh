@@ -1,9 +1,10 @@
 #!/bin/bash
-# Arma el servidor que mantiene la sesión de Empretienda (Hetzner, Ubuntu 24.04) sobre el repo ya clonado en
-# /root/claude-workspace.
-# Se puede volver a correr. Ver README.md.
+# Arma el servidor de DonWeb (Ubuntu 24.04) que corre el tildador y el lector de Métricas, sobre el repo ya clonado en
+# /root/claude-workspace y el tildador copiado en /root/tildar_comprobantes (con su venv). Se puede volver a correr.
+# Ver README.md.
 set -e
 cd /root/claude-workspace
+mkdir -p /root/mateando /root/Downloads && chmod 700 /root/mateando
 
 # pantalla virtual donde corre el navegador; VNC y noVNC solo escuchan en el propio servidor (se entra por túnel SSH)
 cat > /etc/systemd/system/pantalla.service <<'EOF'
@@ -34,9 +35,15 @@ EOF
 systemctl daemon-reload
 systemctl enable --now pantalla.service
 
-echo '*/30 * * * * root bash /root/claude-workspace/scripts/servidor/mantener-sesion.sh >> /var/log/empretienda.log 2>&1' > /etc/cron.d/empretienda
-cat > /etc/logrotate.d/empretienda <<'EOF'
-/var/log/empretienda.log {
+# Tildador cada 5 min y Métricas a los 7 y 37: comparten el perfil de Empretienda y se turnan con el candado
+cat > /etc/cron.d/mateando <<'EOF'
+# Tildador de comprobantes (cada 5 min) y lectura de Métricas de Empretienda (cada 30 min). Comparten el perfil de
+# Empretienda (/root/tildar_profile): se turnan con el candado /root/mateando/.navegador.
+*/5 * * * * root cd /root/tildar_comprobantes && DISPLAY=:99 MATEANDO_SERVIDOR=1 flock -w 600 /root/mateando/.navegador venv/bin/python auto.py >> /var/log/tildador.log 2>&1
+7,37 * * * * root bash /root/claude-workspace/scripts/servidor/leer-metricas.sh >> /var/log/empretienda.log 2>&1
+EOF
+cat > /etc/logrotate.d/mateando <<'EOF'
+/var/log/tildador.log /var/log/empretienda.log {
   weekly
   rotate 4
   compress
@@ -44,8 +51,8 @@ cat > /etc/logrotate.d/empretienda <<'EOF'
 }
 EOF
 
-# solo SSH con clave
-ufw allow OpenSSH >/dev/null && ufw --force enable >/dev/null
+# solo SSH con clave, en el puerto que asignó DonWeb
+ufw allow 5175/tcp >/dev/null && ufw --force enable >/dev/null
 echo 'PasswordAuthentication no' > /etc/ssh/sshd_config.d/10-solo-clave.conf
 systemctl reload ssh
-echo "Listo. Falta /root/mateando/gh-token y el inicio de sesión a mano (README.md)."
+echo "Listo. Falta copiar las claves y el inicio de sesión a mano en Empretienda (README.md)."

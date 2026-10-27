@@ -1,11 +1,11 @@
-// Métricas de Empretienda (hoy / ayer / semana / mes) → planilla, sin la Mac: lo corre el servidor (scripts/servidor) y GitHub Actions
-// (.github/workflows/empretienda.yml) cada 30 min. Hace lo mismo que empretienda_metricas.py de
-// mateandobot: entra a panel.empretienda.com/metricas, lee total y "Acordar" (= Local) y escribe
+// Métricas de Empretienda (hoy / ayer / semana / mes) → planilla, sin la Mac: lo corre el servidor de DonWeb cada 30 min
+// (scripts/servidor). El modo GitHub Actions (.github/workflows/empretienda.yml, deshabilitado) queda de respaldo.
+// Hace lo mismo que empretienda_metricas.py de mateandobot: entra a panel.empretienda.com/metricas, lee total y "Acordar" (= Local) y escribe
 // dashboard_manual!A5:G8, que es lo que muestra /canales.
 //
 // Sesión: Empretienda pide un código por mail al entrar desde un navegador nuevo, así que se usa una
 // sesión ya iniciada. Hay dos fuentes y se usa la más nueva:
-//   - secreto EMPRETIENDA_STATE: lo sube el servidor cada 30 min (scripts/servidor) y mateandobot desde la Mac cada 2 h;
+//   - secreto EMPRETIENDA_STATE: lo subía mateandobot desde la Mac (ya no corre ahí);
 //   - .sesion.enc: la guarda este mismo script al terminar (cifrada con EMPRETIENDA_KEY) y el workflow
 //     la pasa de una corrida a la siguiente con actions/cache. Así la sesión se renueva sola sin la Mac.
 // La sesión vence a las ~10 h aunque se use. Entonces inicia sesión de nuevo con mail y clave: como la
