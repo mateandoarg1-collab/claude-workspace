@@ -1,11 +1,11 @@
-// Métricas de Empretienda (hoy / ayer / semana / mes) → planilla, sin la Mac: lo corre el servidor (scripts/servidor) y GitHub Actions
+// Métricas de Empretienda (hoy / ayer / semana / mes) → planilla, sin la Mac: lo corre GitHub Actions
 // (.github/workflows/empretienda.yml) cada 30 min. Hace lo mismo que empretienda_metricas.py de
 // mateandobot: entra a panel.empretienda.com/metricas, lee total y "Acordar" (= Local) y escribe
 // dashboard_manual!A5:G8, que es lo que muestra /canales.
 //
 // Sesión: Empretienda pide un código por mail al entrar desde un navegador nuevo, así que se usa una
 // sesión ya iniciada. Hay dos fuentes y se usa la más nueva:
-//   - secreto EMPRETIENDA_STATE: la sube mateandobot desde la Mac cada 6 h (respaldo);
+//   - secreto EMPRETIENDA_STATE: lo sube el servidor cada 30 min (scripts/servidor) y mateandobot desde la Mac cada 2 h;
 //   - .sesion.enc: la guarda este mismo script al terminar (cifrada con EMPRETIENDA_KEY) y el workflow
 //     la pasa de una corrida a la siguiente con actions/cache. Así la sesión se renueva sola sin la Mac.
 // La sesión vence a las ~10 h aunque se use. Entonces inicia sesión de nuevo con mail y clave: como la
@@ -75,7 +75,6 @@ function numero(texto, etiqueta) {
 }
 
 async function iniciarSesion(page) {
-  if (PERFIL) throw new Error('Se cerró la sesión de Empretienda del servidor: hay que iniciarla de nuevo a mano (scripts/servidor/README.md)');
   if (!process.env.EMPRETIENDA_EMAIL || !process.env.EMPRETIENDA_PASSWORD) {
     throw new Error('Sesión de Empretienda vencida y faltan EMPRETIENDA_EMAIL / EMPRETIENDA_PASSWORD');
   }
@@ -155,14 +154,13 @@ async function bajarListado(page, archivo) {
   }
 }
 
-// En el servidor (EMPRETIENDA_PERFIL, ver scripts/servidor): navegador con perfil propio, logueado una vez a mano; la
-// sesión se mantiene sola como en el bot de la Mac. En GitHub Actions: la sesión guardada (secreto / .sesion.enc).
-const PERFIL = process.env.EMPRETIENDA_PERFIL;
-const opciones = { acceptDownloads: true, viewport: { width: 1280, height: 800 }, timezoneId: 'America/Argentina/Buenos_Aires' };
-const browser = PERFIL ? null : await chromium.launch();
-const context = PERFIL
-  ? await chromium.launchPersistentContext(PERFIL, { ...opciones, headless: false })
-  : await browser.newContext({ ...opciones, storageState: sesionInicial() });
+const browser = await chromium.launch();
+const context = await browser.newContext({
+  acceptDownloads: true,
+  viewport: { width: 1280, height: 800 },
+  timezoneId: 'America/Argentina/Buenos_Aires',
+  storageState: sesionInicial(),
+});
 // Empretienda sumó grabación de sesión (Amplitude) y otros rastreadores que mandan pedidos sin parar: con ellos la
 // página nunca llega a "networkidle" y la lectura se corta por timeout (desde el 20-oct-2026). Se bloquean.
 await context.route(/amplitude\.com|braze\.com|d22fxaf9t8d39k\.cloudfront\.net|googletagmanager|google-analytics|analytics\.google|doubleclick|ccm\/collect/, (r) => r.abort());
@@ -324,14 +322,10 @@ try {
   console.log(`::warning::No pude guardar el histórico mensual: ${e.message.split('\n')[0]}`);
 }
 
-// Guardar la sesión renovada para la próxima corrida (cifrada: el cache de Actions no es secreto). Con perfil propio
-// la guarda el navegador.
-if (!PERFIL) {
-  const renovada = await context.storageState();
-  writeFileSync(SESION_ENC, cifrar({ ...renovada, _guardado: new Date().toISOString() }));
-}
-await context.close();
-await browser?.close();
+// Guardar la sesión renovada para la próxima corrida (cifrada: el cache de Actions no es secreto).
+const renovada = await context.storageState();
+writeFileSync(SESION_ENC, cifrar({ ...renovada, _guardado: new Date().toISOString() }));
+await browser.close();
 
 await sheets.spreadsheets.values.update({
   spreadsheetId: SPREADSHEET_ID,

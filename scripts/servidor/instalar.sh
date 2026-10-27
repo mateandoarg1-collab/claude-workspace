@@ -1,5 +1,6 @@
 #!/bin/bash
-# Arma el servidor del lector de Empretienda (Hetzner, Ubuntu 24.04) sobre el repo ya clonado en /root/claude-workspace.
+# Arma el servidor que mantiene la sesión de Empretienda (Hetzner, Ubuntu 24.04) sobre el repo ya clonado en
+# /root/claude-workspace.
 # Se puede volver a correr. Ver README.md.
 set -e
 cd /root/claude-workspace
@@ -33,7 +34,7 @@ EOF
 systemctl daemon-reload
 systemctl enable --now pantalla.service
 
-echo '*/30 * * * * root bash /root/claude-workspace/scripts/servidor/leer-metricas.sh >> /var/log/empretienda.log 2>&1' > /etc/cron.d/empretienda
+echo '*/30 * * * * root bash /root/claude-workspace/scripts/servidor/mantener-sesion.sh >> /var/log/empretienda.log 2>&1' > /etc/cron.d/empretienda
 cat > /etc/logrotate.d/empretienda <<'EOF'
 /var/log/empretienda.log {
   weekly
@@ -47,4 +48,4 @@ EOF
 ufw allow OpenSSH >/dev/null && ufw --force enable >/dev/null
 echo 'PasswordAuthentication no' > /etc/ssh/sshd_config.d/10-solo-clave.conf
 systemctl reload ssh
-echo "Listo. Falta /root/mateando/sa.json y el inicio de sesión a mano (README.md)."
+echo "Listo. Falta /root/mateando/gh-token y el inicio de sesión a mano (README.md)."

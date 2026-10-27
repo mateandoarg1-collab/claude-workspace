@@ -4,8 +4,10 @@ name: Métricas Empretienda
 # sin depender de la Mac. Ver scripts/empretienda-metricas.mjs.
 #
 # Los crons de GitHub son "a mejor esfuerzo" (llegaron a no correr en horas), así que el job queda en
-# un ciclo: lee cada 30 min durante ~5 h 40 min y al terminar se relanza solo (workflow_dispatch con
+# un ciclo: lee cada 30 min durante ~2 h 50 min y al terminar se relanza solo (workflow_dispatch con
 # GITHUB_TOKEN sí dispara corridas nuevas). El cron queda de red de seguridad por si se corta la cadena.
+# La sesión (secreto EMPRETIENDA_STATE) se lee solo al arrancar y una copia vence a las ~6 h: el servidor
+# (scripts/servidor) la renueva cada 30 min, así cada vuelta del ciclo arranca con una fresca.
 on:
   schedule:
     - cron: '7 */3 * * *'
@@ -43,9 +45,9 @@ jobs:
           key: empretienda-sesion-${{ github.run_id }}
           restore-keys: empretienda-sesion-
 
-      - name: Leer Métricas cada 30 min (~5 h 40 min)
+      - name: Leer Métricas cada 30 min (~2 h 50 min)
         run: |
-          fin=$(( $(date +%s) + 340 * 60 ))
+          fin=$(( $(date +%s) + 170 * 60 ))
           while :; do
             inicio=$(date +%s)
             node scripts/empretienda-metricas.mjs || echo "::warning::Falló esta lectura, sigo con la próxima"
