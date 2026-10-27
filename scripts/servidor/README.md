@@ -1,38 +1,48 @@
-# Servidor de la sesión de Empretienda
+# Servidores de Empretienda
 
-Mantiene viva la sesión de Empretienda las 24 h y se la pasa cada 30 min a GitHub Actions
-(`.github/workflows/empretienda.yml`), que es el que lee Métricas y actualiza /canales. Reemplaza a la Mac en ese papel:
-la Mac se duerme y la copia de la sesión que usa GitHub vence a las ~6 h.
+## DonWeb (principal, desde 27-oct-2026)
 
-El servidor no lee Métricas él mismo: el firewall de Ualá (Imperva, `dashboard.empretienda.ar.ua.la`) bloquea a
-Hetzner (también a Contabo y a Cloudflare WARP; probado 27-oct-2026). El panel y el login de Empretienda sí funcionan.
+Lee Métricas cada 30 min y corre el tildador de comprobantes (mateandobot) cada 5 min, sin depender de la Mac.
+Cloud Server de DonWeb (Rosario, 2 vCPU / 2 GB, Ubuntu 24.04, ID 6561125, ~$14.400/mes), IP `201.32.131.251`.
+El firewall de Ualá (Imperva) no lo bloquea, a diferencia de Hetzner.
 
-- Hetzner Cloud, proyecto "mateando", servidor `mateando-bot` (CPX12, Nuremberg, Ubuntu 24.04), IP `2.31.117.93`.
-- Entrar: `ssh -i ~/.ssh/mateando_server root@2.31.117.93` (la clave está en la Mac de Juampi).
-- Repo en `/root/claude-workspace`; antes de cada vuelta se pone igual a `origin/main`, así los cambios llegan solos.
-- Navegador con perfil propio en `/root/mateando/perfil`, en la pantalla virtual `:99` (servicio `pantalla`).
-  Empretienda pide captcha para iniciar sesión, así que se inicia a mano una vez; después el perfil la mantiene viva.
-- Token de GitHub de grano fino, solo para este repo, con permisos Secrets y Actions (lectura y escritura):
-  `/root/mateando/gh-token`, lo carga Juampi a mano.
-- `/etc/cron.d/empretienda` → `mantener-sesion.sh` cada 30 min: abre el panel, sube la sesión al secreto
-  `EMPRETIENDA_STATE` y relanza el lector de GitHub si se cortó su cadena. Log: `/var/log/empretienda.log`.
-- Armado desde cero: clonar el repo, `npm install`, `npm install --no-save playwright`,
-  `npx playwright install --with-deps chromium`, `apt install gh xvfb x11vnc novnc websockify`,
-  y `bash scripts/servidor/instalar.sh`.
+- Entrar: `ssh -i ~/.ssh/mateando_server -p 5175 root@201.32.131.251` (puerto 5175; solo con clave, sin contraseña).
+- Repo en `/root/claude-workspace` (se pone igual a `origin/main` antes de cada lectura).
+- Tildador en `/root/tildar_comprobantes` (copia del de la Mac, sin git) con su venv; claves `config.json`,
+  `credentials.json`, `token.json` copiadas por Juampi. `auto.py` con `MATEANDO_SERVIDOR=1` no lee Métricas (lo hace
+  el lector del panel) y deja las notificaciones en el log.
+- Un solo perfil de Empretienda para los dos: `/root/tildar_profile`, en la pantalla virtual `:99` (servicio
+  `pantalla`). Se turnan con el candado `/root/mateando/.navegador`. Clave de Google (cuenta de servicio) del lector:
+  `/root/mateando/sa.json`.
+- `/etc/cron.d/mateando`: `auto.py` cada 5 min → `/var/log/tildador.log`; `leer-metricas.sh` a los 7 y 37 →
+  `/var/log/empretienda.log`.
+- Si se cambia el tildador en la Mac (`~/Downloads/tildar_comprobantes`), copiarlo con
+  `rsync -az -e "ssh -i ~/.ssh/mateando_server -p 5175" --exclude config.json --exclude 'credentials*.json' --exclude 'token*.json' --exclude venv --exclude __pycache__ ./ root@201.32.131.251:/root/tildar_comprobantes/`.
+- El automático de la Mac quedó apagado (`~/Library/LaunchAgents/com.mateando.tildador.plist.desactivado`); la app
+  mateandobot para usar a mano sigue igual.
 
-## Iniciar sesión a mano (la primera vez, o si el log dice "Se cerró la sesión de Empretienda del servidor")
+## Hetzner (respaldo, a dar de baja)
 
-En el servidor:
+`mateando-bot` (CPX12, Nuremberg), IP `2.31.117.93`, `ssh -i ~/.ssh/mateando_server root@2.31.117.93`. Imperva lo
+bloquea para Métricas (`dashboard.empretienda.ar.ua.la` → 403; también Contabo y Cloudflare WARP), así que solo mantiene
+viva una sesión y cada 30 min la sube al secreto `EMPRETIENDA_STATE` para que GitHub Actions
+(`.github/workflows/empretienda.yml`) lea Métricas: `mantener-sesion.sh` con un token de GitHub de grano fino
+(`/root/mateando/gh-token`). Queda de respaldo hasta confirmar DonWeb; después: deshabilitar el workflow y borrar el
+servidor en la consola de Hetzner.
+
+## Iniciar sesión a mano en Empretienda (la primera vez, o si el log dice que se cerró la sesión)
+
+En el servidor (DonWeb: perfil `/root/tildar_profile`; Hetzner: `/root/mateando/perfil`):
 
 ```bash
 systemctl start vnc novnc
-cd /root/claude-workspace && DISPLAY=:99 EMPRETIENDA_PERFIL=/root/mateando/perfil flock /root/mateando/.navegador node scripts/servidor/login-empretienda.mjs
+cd /root/claude-workspace && DISPLAY=:99 EMPRETIENDA_PERFIL=/root/tildar_profile flock /root/mateando/.navegador node scripts/servidor/login-empretienda.mjs
 ```
 
-En la Mac, un túnel (noVNC solo escucha dentro del servidor):
+En la Mac, un túnel (noVNC solo escucha dentro del servidor; en DonWeb agregar `-p 5175`):
 
 ```bash
-ssh -i ~/.ssh/mateando_server -N -L 6080:127.0.0.1:6080 root@2.31.117.93
+ssh -i ~/.ssh/mateando_server -p 5175 -N -L 6080:127.0.0.1:6080 root@201.32.131.251
 ```
 
 Abrir http://localhost:6080/vnc.html?autoconnect=1&resize=scale e iniciar sesión en Empretienda en esa ventana (pide
