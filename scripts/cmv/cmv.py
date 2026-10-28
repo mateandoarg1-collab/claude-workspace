@@ -33,11 +33,20 @@ def calcular(costos, archivo):
     # (despacho, despacho_u) y el lector las pasa a una por pedido con la cantidad de ventas de Métricas.
     out = {'facturacion': 0, 'cmv': 0, 'packaging': 0, 'empaque': 0, 'despacho': 0, 'despacho_u': 0, 'unidades': 0,
            'sin_regla': {}, 'sin_costo': {}, 'skus': {}}  # skus: unidades por SKU (kits desarmados) para el % de falla
+    manuales = costos.get('_productos', {})  # costo a mano por producto (/rentabilidad-tienda/costos): gana a las reglas
     for fila in filas:
         p, _sku, var, q, vol = (list(fila) + [None] * 5)[:5]
         if not p or not q: continue
         nombre = re.sub(r'\s+', ' ', str(p).strip().upper())
         variante = str(var or '').upper()
+        if nombre in manuales:
+            out['facturacion'] += float(vol or 0)
+            out['unidades'] += q
+            out['cmv'] += manuales[nombre] * q
+            for s, c in despacho(nombre, []):
+                out['despacho_u'] += c * q
+                out['despacho'] += costos.get(s, 0) * c * q
+            continue
         base, estado = reglas.resolver(nombre, variante)
         comps = (base or []) + reglas.extras(nombre, variante)
         out['facturacion'] += float(vol or 0)

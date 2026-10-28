@@ -1,11 +1,13 @@
 """CMV y packaging por venta de Empretienda (para scripts/tienda-rentabilidad.mjs), con las mismas reglas que cmv.py.
 Uso: python3 cmv_orden.py costos.json < ventas.json
 ventas.json: [{"id": ..., "local": bool, "productos": [{"n": nombre, "v": "Opción: valor | ...", "q": cant}]}]
-Imprime [{"id", "cmv", "empaque", "despacho", "sin_costo": unidades, "sin_regla": [nombres]}].
+Imprime [{"id", "cmv", "empaque", "despacho", "sin_costo": unidades, "sin_regla": [nombres], "sin_costo_n": [nombres]}].
+Costos cargados a mano por producto (/rentabilidad-tienda/costos): costos["_productos"] = {NOMBRE: costo sin IVA}; ganan a las
+reglas y suman una caja de despacho simple.
 Packaging (README): online, cada mate sin caja de regalo lleva el packaging general y la venta lleva UNA caja de
 despacho (la más cara de las que pedirían sus productos); local (retiro), una bolsa por venta y sin caja.
 """
-import json, sys
+import json, re, sys
 import reglas
 from cmv import despacho
 
@@ -13,14 +15,22 @@ BOLSA_LOCAL = 'PACK-BOL-11001'
 
 
 def calcular(costos, v):
-    out = {'id': v['id'], 'cmv': 0, 'empaque': 0, 'despacho': 0, 'sin_costo': 0, 'sin_regla': []}
+    out = {'id': v['id'], 'cmv': 0, 'empaque': 0, 'despacho': 0, 'sin_costo': 0, 'sin_regla': [], 'sin_costo_n': []}
     cajas = []
+    manuales = costos.get('_productos', {})
     for p in v['productos']:
         nombre, variante, q = str(p['n'] or '').upper(), str(p['v'] or '').upper(), p['q'] or 0
+        manual = manuales.get(re.sub(r'\s+', ' ', nombre).strip())
+        if manual is not None:
+            out['cmv'] += manual * q
+            if not v['local']:
+                cajas.append('DESP-SIMPLE')
+            continue
         base, estado = reglas.resolver(nombre, variante)
         comps = (base or []) + reglas.extras(nombre, variante)
         if estado == 'nuevo' or base is None:
             out['sin_regla'].append(p['n'])
+            out['sin_costo_n'].append(p['n'])
             out['sin_costo'] += q
             continue
         for s, c in comps + ([] if v['local'] else despacho(nombre, comps)):
@@ -30,6 +40,8 @@ def calcular(costos, v):
                 continue
             if s not in costos:
                 out['sin_costo'] += c * q
+                if p['n'] not in out['sin_costo_n']:
+                    out['sin_costo_n'].append(p['n'])
                 continue
             out['empaque' if s == 'PACK-CUR-11018' else 'cmv'] += costos[s] * c * q
     if v['local']:

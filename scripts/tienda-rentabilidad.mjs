@@ -68,12 +68,12 @@ async function guardar(tab, encabezado, filasNuevas, desde, hasta, columnaFecha 
   const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
   const hoja = meta.data.sheets.find((s) => s.properties?.title === tab);
   if (!hoja) await sheets.spreadsheets.batchUpdate({ spreadsheetId: SPREADSHEET_ID, requestBody: { requests: [{ addSheet: { properties: { title: tab } } }] } });
-  const prev = (await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A2:Z`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
+  const prev = (await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A2:AZ`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
   const fecha = (r) => String(r[columnaFecha]);
   const filas = [...prev.filter((r) => fecha(r) < desde || fecha(r) > hasta), ...filasNuevas].sort((a, b) => fecha(b).localeCompare(fecha(a)));
   await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A1`, valueInputOption: 'RAW', requestBody: { values: [encabezado, ...filas] } });
   const total = hoja?.properties?.gridProperties?.rowCount ?? 0;
-  if (total > filas.length + 1) await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A${filas.length + 2}:Z${total}` });
+  if (total > filas.length + 1) await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A${filas.length + 2}:AZ${total}` });
   return filas.length;
 }
 
@@ -106,7 +106,14 @@ async function costosSku() {
   }
   const override = JSON.parse(readFileSync(new URL('./cmv/costos_override.json', import.meta.url), 'utf8'));
   for (const [k, v] of Object.entries(override)) if (!k.startsWith('_')) costos[k] = v;
+  costos._productos = await costosProducto();
   return costos;
+}
+
+// Costo cargado a mano por producto en /rentabilidad-tienda/costos (pestaña costos_tienda): gana a las reglas de scripts/cmv.
+async function costosProducto() {
+  const r = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'costos_tienda'!A2:B", valueRenderOption: 'UNFORMATTED_VALUE' }).catch(() => null);
+  return Object.fromEntries((r?.data.values ?? []).filter(([p, c]) => String(p ?? '').trim() && Number(c) >= 0).map(([p, c]) => [String(p).toUpperCase().replace(/\s+/g, ' ').trim(), Number(c)]));
 }
 
 // Comisión real de Mercado Pago de un pago: comisión + financiación de cuotas sin interés.
@@ -217,7 +224,7 @@ const filas = ventas.map((v) => {
   const comisionIva =
     metodo === 'mercadopago' ? (mp?.comision ?? 0) : metodo === 'gocuotas' ? cobrado * GOCUOTAS_TASA * IVA : metodo === 'local-tarjeta' ? cobrado * TASA_POINT : 0;
   const sinComision = metodo === 'mercadopago' && !mp ? 1 : 0;
-  const c = cmv.get(String(v.order_id)) ?? { cmv: 0, empaque: 0, despacho: 0, sin_costo: 0, sin_regla: [] };
+  const c = cmv.get(String(v.order_id)) ?? { cmv: 0, empaque: 0, despacho: 0, sin_costo: 0, sin_regla: [], sin_costo_n: [] };
   const facturada = FACTURADAS.has(metodo);
   const neto = (x) => (facturada ? x / IVA : x);
   const ventaSinIva = neto(ventaIva);
@@ -234,11 +241,12 @@ const filas = ventas.map((v) => {
     r2(ventaSinIva), r2(neto(Number(v.cupon) + Number(v.desc_pago))), r2(neto(Number(v.envio_cobrado))), r2(comision), r2(envioTienda),
     r2(impuestos), r2(c.cmv), r2(packaging), r2(ventaSinIva - comision - envioTienda - impuestos - debCred - c.cmv - packaging),
     c.sin_costo, sinComision, mp?.cuotas ?? '', String(v.fecha), JSON.stringify(productos.map((p) => ({ id: p.id, n: p.n, v: p.v, q: p.q, p: p.p }))),
-    r2(debCred), facturada ? 1 : 0,
+    r2(debCred), facturada ? 1 : 0, (c.sin_costo_n ?? []).join(' | '),
   ];
 });
 const COLS = ['fecha', 'order_id', 'numero', 'canal', 'pago', 'envio', 'cp', 'provincia', 'ciudad', 'unidades', 'venta', 'descuentos',
-  'envio_cobrado', 'comision', 'envio_tienda', 'impuestos', 'costo', 'packaging', 'neto', 'sin_costo', 'sin_comision', 'cuotas', 'creada', 'productos', 'deb_cred', 'facturada'];
+  'envio_cobrado', 'comision', 'envio_tienda', 'impuestos', 'costo', 'packaging', 'neto', 'sin_costo', 'sin_comision', 'cuotas', 'creada', 'productos', 'deb_cred', 'facturada',
+  'sin_costo_productos'];
 
 const ads = await pautaPorDia(desde, hasta);
 const suma = (i) => Math.round(filas.reduce((s, f) => s + f[i], 0)).toLocaleString('es-AR');

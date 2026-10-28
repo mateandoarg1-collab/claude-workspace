@@ -239,6 +239,9 @@ try {
   }
   const override = JSON.parse(readFileSync('scripts/cmv/costos_override.json', 'utf8'));
   for (const [k, v] of Object.entries(override)) if (!k.startsWith('_')) costos[k] = v;
+  // Costo cargado a mano por producto en /rentabilidad-tienda/costos (pestaña costos_tienda): gana a las reglas.
+  const manuales = (await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'costos_tienda'!A2:B", valueRenderOption: 'UNFORMATTED_VALUE' }).catch(() => null))?.data.values ?? [];
+  costos._productos = Object.fromEntries(manuales.filter(([p, c]) => String(p ?? '').trim() && Number(c) >= 0).map(([p, c]) => [String(p).toUpperCase().replace(/\s+/g, ' ').trim(), Number(c)]));
   writeFileSync('/tmp/costos.json', JSON.stringify(costos));
 
   const archivos = Object.values(listados).flatMap((l) => [l.total, l.acordar]).filter(Boolean);

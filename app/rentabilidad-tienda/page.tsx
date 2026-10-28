@@ -352,7 +352,7 @@ export default function RentabilidadTienda() {
                 Actualizado {new Date(d.actualizado).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
               </span>
             )}
-            <Link href="/rentabilidad-meli/costos" className="text-sm rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-slate-200 hover:border-emerald-600 hover:text-emerald-300">
+            <Link href="/rentabilidad-tienda/costos" className="text-sm rounded-lg border border-slate-800 bg-slate-900 px-3 py-1.5 text-slate-200 hover:border-emerald-600 hover:text-emerald-300">
               Cargar costos
             </Link>
           </div>
@@ -391,7 +391,12 @@ export default function RentabilidadTienda() {
 
             {(t.sinCosto > 0 || t.sinComision > 0) && (
               <div className="rounded-xl border border-amber-700/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200 space-y-1">
-                {t.sinCosto > 0 && <p>⚠️ {t.sinCosto} unidades sin costo (productos nuevos sin regla en scripts/cmv): cuentan $0.</p>}
+                {t.sinCosto > 0 && (
+                  <p>
+                    ⚠️ {t.sinCosto} unidades sin costo (productos nuevos): cuentan $0.{' '}
+                    <Link href="/rentabilidad-tienda/costos" className="underline hover:text-amber-100">Cargarles el costo</Link>
+                  </p>
+                )}
                 {t.sinComision > 0 && <p>⚠️ {t.sinComision} ventas de Mercado Pago sin el pago encontrado en MP: cuentan comisión $0.</p>}
               </div>
             )}
