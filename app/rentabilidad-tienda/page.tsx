@@ -12,7 +12,7 @@ type Totales = {
 };
 type Ind = { pauta: number; machado: number; adicionales: number; ganancia: number; margen: number | null; roas: number | null; cpa: number | null; tacos: number | null; ticket: number | null };
 type Total = Totales & Ind & {
-  meta: number; google: number; sinCosto: number; sinComision: number; otros: (CostoAdicional & { total: number })[];
+  meta: number; google: number; tiktok: number; sinCosto: number; sinComision: number; otros: (CostoAdicional & { total: number })[];
   machadoShopify: number; machadoMetaShopify: number; machadoMotivo: string | null;
 };
 type Dia = Totales & Ind & { fecha: string };
@@ -374,18 +374,19 @@ export default function RentabilidadTienda() {
               {conPauta && (
                 <>
                   <Tarjeta titulo="Inversión publicitaria" valor={fmt(t.pauta)} actual={t.pauta} anterior={a?.pauta} mejorSiSube={false}
-                    detalle={`Meta ${fmt(t.meta)} · Google ${fmt(t.google)}`} puntos={serie((x) => x.pauta)} formato={fmt} />
+                    detalle={`Meta ${fmt(t.meta)} · Google ${fmt(t.google)} · TikTok ${fmt(t.tiktok ?? 0)}`} puntos={serie((x) => x.pauta)} formato={fmt} />
                   <Tarjeta titulo="ROAS" valor={t.roas == null ? '–' : `${num(t.roas)}x`} actual={t.roas} anterior={a?.roas}
-                    detalle="Facturación ÷ inversión" puntos={serie((x) => x.roas)} formato={(n) => `${num(n)}x`} />
-                  <Tarjeta titulo="Costo por venta" valor={t.cpa == null ? '–' : fmt(t.cpa)} actual={t.cpa} anterior={a?.cpa} mejorSiSube={false}
+                    detalle="Facturación ÷ inversión (Meta, Google y TikTok)" puntos={serie((x) => x.roas)} formato={(n) => `${num(n)}x`} />
+                  <Tarjeta titulo="CPA" valor={t.cpa == null ? '–' : fmt(t.cpa)} actual={t.cpa} anterior={a?.cpa} mejorSiSube={false}
                     detalle="Inversión ÷ ventas" puntos={serie((x) => x.cpa)} formato={fmt} />
-                  <Tarjeta titulo="TACOS" valor={t.tacos == null ? '–' : porc(t.tacos)} actual={t.tacos} anterior={a?.tacos} enPuntos mejorSiSube={false}
-                    detalle="Inversión ÷ facturación" puntos={serie((x) => x.tacos)} formato={porc} />
                 </>
               )}
+              <Tarjeta titulo="CMV" valor={fmt(t.costo)} actual={t.costo} anterior={a?.costo} mejorSiSube={false}
+                detalle={`${t.venta ? porc(t.costo / t.venta) : '–'} de la venta neta · packaging ${fmt(t.packaging)} aparte`}
+                puntos={serie((x) => x.costo)} formato={fmt} />
             </div>
             <p className="text-[11px] text-slate-500 -mt-1">
-              {conPauta ? 'La publicidad es Meta (MATEANDO2 +8% y MATEANDO 3 MP) y Google Ads, contra las ventas online. ' : ''}
+              {conPauta ? 'La publicidad es Meta (MATEANDO2 +8% y MATEANDO 3 MP), Google Ads y TikTok (gasto de Escalafy), contra las ventas online. ' : ''}
               {d.anterior ? `Variación contra ${nomDia(d.anterior.desde)} – ${nomDia(d.anterior.hasta)}.` : 'Sin período anterior cargado para comparar.'}
             </p>
 

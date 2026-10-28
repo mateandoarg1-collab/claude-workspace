@@ -5,7 +5,7 @@ import { desdeAR, hastaAR } from '@/lib/periodo';
 export const maxDuration = 30;
 
 // Rentabilidad de la tienda de Empretienda (?periodo=hoy|ayer|semana|mes|mesant o ?desde&hasta, &canal=online|local|todo).
-// La pauta (Meta de la tienda + Google Ads) va solo contra la venta online, como en /canales.
+// La pauta (Meta de la tienda + Google Ads + TikTok) va solo contra la venta online, como en /canales.
 function rango(p: string | null): [string, string] {
   if (p === 'hoy' || p === 'ayer' || p === 'semana') return [desdeAR(p), hastaAR(p)];
   const inicio = desdeAR('mes');
@@ -33,7 +33,7 @@ function sumar(vs: VentaTienda[]): Totales {
 }
 
 // Honorario de Machado (ads manager): 2% de (venta online de Empretienda + venta de Shopify, con IVA, − toda la pauta).
-// Es la cuenta de su planilla. De la pauta se tiene Meta (tienda y Shopify) y Google; faltan TikTok, email y MP Ads.
+// Es la cuenta de su planilla. De la pauta se tiene Meta (tienda y Shopify), Google y TikTok; faltan email y MP Ads.
 const MACHADO_TASA = 0.02;
 const IVA = 1.21;
 const cobrado = (v: VentaTienda) => (v.facturada ? (v.venta + v.envio_cobrado) * IVA : v.venta + v.envio_cobrado);
@@ -55,7 +55,7 @@ function indicadores(t: Totales, pauta: number, machado: number, adicionales: nu
 }
 
 // Costos adicionales (sueldos, alquiler, apps…) cargados en la pantalla de costos para la tienda o el local.
-function resumen(ventas: VentaTienda[], ads: { fecha: string; meta: number; google: number; total: number }[], desde: string, hasta: string, conPauta: boolean, machadoDia: Map<string, number>, costos: CostoAdicional[]) {
+function resumen(ventas: VentaTienda[], ads: { fecha: string; meta: number; google: number; total: number; tiktok: number }[], desde: string, hasta: string, conPauta: boolean, machadoDia: Map<string, number>, costos: CostoAdicional[]) {
   const vs = ventas.filter((v) => v.fecha >= desde && v.fecha <= hasta);
   const pautaDia = new Map(ads.map((a) => [a.fecha, conPauta ? a.total : 0]));
   const dias = listaDias(desde, hasta).map((fecha) => {
@@ -72,7 +72,8 @@ function resumen(ventas: VentaTienda[], ads: { fecha: string; meta: number; goog
   const enRango = ads.filter((a) => conPauta && a.fecha >= desde && a.fecha <= hasta);
   const meta = enRango.reduce((s, a) => s + a.meta, 0);
   const googleAds = enRango.reduce((s, a) => s + a.google, 0);
-  return { total: { ...t, ...indicadores(t, pauta, machado, adicionales), otros, meta, google: googleAds, sinCosto: vs.reduce((s, v) => s + v.sin_costo, 0), sinComision: vs.filter((v) => v.sin_comision).length }, dias, ventas: vs };
+  const tiktok = enRango.reduce((s, a) => s + a.tiktok, 0);
+  return { total: { ...t, ...indicadores(t, pauta, machado, adicionales), otros, meta, google: googleAds, tiktok, sinCosto: vs.reduce((s, v) => s + v.sin_costo, 0), sinComision: vs.filter((v) => v.sin_comision).length }, dias, ventas: vs };
 }
 
 export async function GET(req: Request) {

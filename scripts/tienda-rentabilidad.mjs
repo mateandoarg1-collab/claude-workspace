@@ -131,10 +131,11 @@ async function comisionMP(id) {
   return null;
 }
 
-// Pauta por día de Meta (cuentas de la tienda online) y Google Ads.
+// Pauta por día de Meta (cuentas de la tienda online), Google Ads y TikTok (pestaña tiktok_gasto, la llena el gasto de
+// Escalafy mientras TikTok no apruebe la API; ver app/api/tiktok).
 async function pautaPorDia(desde, hasta) {
   const dias = new Map();
-  const sumar = (fecha, k, v) => dias.set(fecha, { meta: 0, google: 0, ...dias.get(fecha), [k]: (dias.get(fecha)?.[k] ?? 0) + v });
+  const sumar = (fecha, k, v) => dias.set(fecha, { meta: 0, google: 0, tiktok: 0, ...dias.get(fecha), [k]: (dias.get(fecha)?.[k] ?? 0) + v });
   const meta = leerEnv('.meta-ads');
   for (const cuenta of meta.META_AD_ACCOUNTS.split(',').map((c) => c.trim()).filter(Boolean)) {
     let url = `https://graph.facebook.com/v21.0/${cuenta}/insights?fields=spend&time_increment=1&limit=100&time_range=${encodeURIComponent(JSON.stringify({ since: desde, until: hasta }))}&access_token=${meta.META_ADS_TOKEN}`;
@@ -159,7 +160,10 @@ async function pautaPorDia(desde, hasta) {
   }).then((r) => r.json());
   if (g.error) throw new Error(`Google Ads: ${g.error.message}`);
   for (const f of g.results ?? []) sumar(f.segments.date, 'google', Number(f.metrics.costMicros || 0) / 1e6);
-  return [...dias.entries()].map(([fecha, v]) => [fecha, r2(v.meta), r2(v.google), r2(v.meta + v.google)]);
+  const tiktok = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'tiktok_gasto'!A2:B", valueRenderOption: 'UNFORMATTED_VALUE' }).catch(() => null);
+  for (const [fecha, gasto] of tiktok?.data.values ?? []) if (fecha >= desde && fecha <= hasta && Number(gasto)) sumar(String(fecha), 'tiktok', Number(gasto));
+  // tiktok va al final: las filas viejas (sin TikTok) quedan con la misma forma
+  return [...dias.entries()].map(([fecha, v]) => [fecha, r2(v.meta), r2(v.google), r2(v.meta + v.google + v.tiktok), r2(v.tiktok)]);
 }
 
 const hasta = diaAR(new Date().toISOString());
@@ -287,5 +291,5 @@ const suma = (i) => Math.round(filas.reduce((s, f) => s + f[i], 0)).toLocaleStri
 console.log(`${desde} a ${hasta}: ${filas.length} ventas · venta ${suma(10)} · neto ${suma(18)} · pauta ${Math.round(ads.reduce((s, a) => s + a[3], 0)).toLocaleString('es-AR')}`);
 if (args.includes('--dry')) process.exit(0);
 const n = await guardar(TAB, [...COLS, new Date().toISOString()], filas, desde, hasta);
-await guardar(TAB_ADS, ['fecha', 'meta', 'google', 'total', new Date().toISOString()], ads, desde, hasta);
+await guardar(TAB_ADS, ['fecha', 'meta', 'google', 'total', 'tiktok', new Date().toISOString()], ads, desde, hasta);
 console.log(`${TAB}: ${n} filas en total`);

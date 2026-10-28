@@ -18,7 +18,7 @@ export async function getRentabilidadTienda() {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
   const res = await sheets.spreadsheets.values.batchGet({
     spreadsheetId: SPREADSHEET_ID,
-    ranges: [`'rentabilidad_tienda'!A1:AZ`, `'rentabilidad_tienda_ads'!A1:E`, `'emp_productos'!A2:E`],
+    ranges: [`'rentabilidad_tienda'!A1:AZ`, `'rentabilidad_tienda_ads'!A1:F`, `'emp_productos'!A2:E`],
     valueRenderOption: 'UNFORMATTED_VALUE',
   });
   const [v, a, prods] = res.data.valueRanges ?? [];
@@ -45,7 +45,7 @@ export async function getRentabilidadTienda() {
       deb_cred: num(r, 'deb_cred'), facturada: str(r, 'facturada') === '1',
       sin_costo_productos: str(r, 'sin_costo_productos').split(' | ').filter(Boolean),
     })),
-    ads: (a?.values ?? []).slice(1).map((r) => ({ fecha: String(r[0]), meta: Number(r[1]) || 0, google: Number(r[2]) || 0, total: Number(r[3]) || 0 })),
+    ads: (a?.values ?? []).slice(1).map((r) => ({ fecha: String(r[0]), meta: Number(r[1]) || 0, google: Number(r[2]) || 0, total: Number(r[3]) || 0, tiktok: Number(r[4]) || 0 })),
     // Foto y link de cada producto de la tienda (pestaña emp_productos: id, nombre, link, desactivado, imagen).
     fotos: new Map((prods?.values ?? []).map((r) => [String(r[0]), { foto: String(r[4] ?? '') || null, link: String(r[2] ?? '') || null }])),
   };
