@@ -309,13 +309,13 @@ export default function RentabilidadTienda() {
         { nombre: 'Packaging', valor: -t.packaging, nota: 'Packaging de mates y caja de despacho (bolsa en el local)' },
         { nombre: 'Neto antes de publicidad', valor: t.neto, total: true },
         ...(conPauta ? [
-          { nombre: 'Publicidad', valor: -t.pauta, nota: `Meta ${fmt(t.meta)} · Google ${fmt(t.google)}` },
+          { nombre: 'Publicidad', valor: -t.pauta, nota: `Meta ${fmt(t.meta)} · Google ${fmt(t.google)} · TikTok ${fmt(t.tiktok ?? 0)}` },
           {
             nombre: 'Honorario Machado (2%)',
             valor: -t.machado,
             nota: t.machadoMotivo
               ? `No se pudo calcular: ${t.machadoMotivo}`
-              : `2% de (venta online con IVA + Shopify ${fmt(t.machadoShopify)} − pauta de Meta, Google y Meta Shopify ${fmt(t.machadoMetaShopify)}). Sin TikTok, email ni MP Ads`,
+              : `2% de (venta online con IVA + Shopify ${fmt(t.machadoShopify)} − pauta de Meta, Google, TikTok y Meta Shopify ${fmt(t.machadoMetaShopify)}). Sin email ni MP Ads`,
           },
         ] : []),
         ...t.otros.map((c) => ({ nombre: c.nombre, valor: -c.total, total: false, nota: `${describirAdicional(c)} · ${CANAL_COSTO[c.canal]}` })),
