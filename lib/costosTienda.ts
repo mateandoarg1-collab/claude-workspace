@@ -15,7 +15,9 @@ export type CostoProducto = { producto: string; costo: number; actualizado: stri
 // scripts/tienda-rentabilidad.mjs), el cargado a mano y lo vendido en ~60 días.
 export type ProductoTienda = {
   producto: string; foto: string | null; activo: boolean; reglaMin: number | null; reglaMax: number | null;
-  manual: number | null; unidades: number; ventas: number; ultima: string; sinCosto: boolean;
+  manual: number | null; unidades: number; ventas: number; ultima: string;
+  faltaCosto: boolean; // vendido en 60 días sin costo por regla (o alguna venta quedó sin costo)
+  sinCosto: boolean; // faltaCosto y sin costo a mano
 };
 
 export async function getCostosTienda(): Promise<CostoProducto[]> {
@@ -27,8 +29,7 @@ export async function getCostosTienda(): Promise<CostoProducto[]> {
     .map((f) => ({ producto: String(f[0]).trim(), costo: Number(f[1]) || 0, actualizado: String(f[2] ?? '') }));
 }
 
-// Catálogo con costo por regla + costo a mano + ventas de rentabilidad_tienda (~60 días). sinCosto = se vendió y alguna
-// venta quedó sin costo, y no tiene costo a mano.
+// Catálogo con costo por regla + costo a mano + ventas de los últimos 60 días (rentabilidad_tienda guarda más).
 export async function getProductosTienda(manuales: CostoProducto[]): Promise<ProductoTienda[]> {
   const [{ ventas, fotos }, reglas] = await Promise.all([
     getRentabilidadTienda(),
@@ -38,8 +39,9 @@ export async function getProductosTienda(manuales: CostoProducto[]): Promise<Pro
   const out = new Map<string, ProductoTienda>();
   const nuevo = (producto: string): ProductoTienda => ({
     producto, foto: null, activo: true, reglaMin: null, reglaMax: null, manual: manual.get(normalizar(producto)) ?? null,
-    unidades: 0, ventas: 0, ultima: '', sinCosto: false,
+    unidades: 0, ventas: 0, ultima: '', faltaCosto: false, sinCosto: false,
   });
+  const desde = new Date(Date.now() - 3 * 3600e3 - 59 * 864e5).toISOString().slice(0, 10);
   for (const [, producto, desactivado, foto, min, max] of reglas?.data.values ?? []) {
     const p = nuevo(String(producto ?? '').trim());
     if (!p.producto) continue;
@@ -47,6 +49,7 @@ export async function getProductosTienda(manuales: CostoProducto[]): Promise<Pro
     out.set(normalizar(p.producto), p);
   }
   for (const v of ventas) {
+    if (v.fecha < desde) continue;
     const faltan = new Set(v.sin_costo_productos.map(normalizar));
     for (const x of v.productos) {
       const k = normalizar(x.n ?? '');
@@ -56,9 +59,13 @@ export async function getProductosTienda(manuales: CostoProducto[]): Promise<Pro
       p.unidades += x.q || 0;
       p.ventas += 1;
       if (v.fecha > p.ultima) p.ultima = v.fecha;
-      if (faltan.has(k) && p.manual == null) p.sinCosto = true;
+      if (faltan.has(k)) p.faltaCosto = true;
       out.set(k, p);
     }
+  }
+  for (const p of out.values()) {
+    if (p.unidades > 0 && p.reglaMin == null) p.faltaCosto = true;
+    p.sinCosto = p.faltaCosto && p.manual == null;
   }
   return [...out.values()].sort((a, b) => b.unidades - a.unidades || a.producto.localeCompare(b.producto));
 }

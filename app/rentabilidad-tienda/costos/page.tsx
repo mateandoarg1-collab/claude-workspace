@@ -9,7 +9,7 @@ import type { CostoAdicional } from '@/lib/costosAdicionales';
 type CostoProducto = { producto: string; costo: number; actualizado: string };
 type Producto = {
   producto: string; foto: string | null; activo: boolean; reglaMin: number | null; reglaMax: number | null;
-  manual: number | null; unidades: number; ventas: number; ultima: string; sinCosto: boolean;
+  manual: number | null; unidades: number; ventas: number; ultima: string; faltaCosto: boolean; sinCosto: boolean;
 };
 type Data = { productos: Producto[]; adicionales: CostoAdicional[] };
 type Filtro = 'sinCosto' | 'vendidos' | 'todos';
@@ -103,7 +103,7 @@ export default function CostosTienda() {
       const m = new Map(manuales.map((x) => [normalizar(x.producto), x.costo]));
       return { ...d, productos: d.productos.map((p) => {
         const manual = m.get(normalizar(p.producto)) ?? null;
-        return { ...p, manual, sinCosto: manual == null && (p.sinCosto || (p.unidades > 0 && p.reglaMin == null)) };
+        return { ...p, manual, sinCosto: manual == null && p.faltaCosto };
       }) };
     });
 
