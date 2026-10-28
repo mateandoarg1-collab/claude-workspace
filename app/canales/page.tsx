@@ -54,7 +54,7 @@ export default function Canales() {
   const meta = useApi<{ spend: number | null; motivo?: string }>(`/api/meta?periodo=${periodo}`);
   const metaShop = useApi<{ spend: number | null; motivo?: string }>(`/api/meta?cuenta=shopify&periodo=${periodo}`);
   const metaMay = useApi<{ spend: number | null; motivo?: string }>(`/api/meta?cuenta=mayorista&periodo=${periodo}`);
-  const gads = useApi<{ spend: number | null; motivo?: string }>(`/api/google-ads?periodo=${periodo}`);
+  const gads = useApi<{ spend: number | null; conversiones?: number; valor?: number; motivo?: string }>(`/api/google-ads?periodo=${periodo}`);
   const tiktok = useApi<{ spend: number | null; motivo?: string; fuente?: string }>(`/api/tiktok?periodo=${periodo}`);
   const mayorista = useApi<Venta & { tab: string }>(`/api/mayorista?periodo=${periodo}`);
   // Ventas del local del mes por medio de pago (MP Point/QR, efectivo, transferencias): para el IVA del Local.
@@ -87,12 +87,19 @@ export default function Canales() {
 
   // ROAS: ML con su pauta propia (Product Ads); Meta (2 cuentas), Google Ads y TikTok son la pauta de la Tienda Online.
   const monto = (id: CanalId) => canales.find((c) => c.id === id)?.monto ?? 0;
+  // Google Ads: solo las ventas que Google se atribuye (sus conversiones), no toda la Tienda Online. Si la conversión no
+  // trae el monto de la venta (hoy vale 1 cada una), se valoriza con el ticket promedio de la Tienda Online.
+  const gConv = gads.data?.conversiones ?? 0;
+  const gValorReal = (gads.data?.valor ?? 0) > gConv * 2;
+  const ticketOnline = (canales.find((c) => c.id === 'online')?.cantidad ?? 0) ? monto('online') / (canales.find((c) => c.id === 'online')?.cantidad ?? 1) : 0;
+  const googleVentas = gValorReal ? gads.data?.valor ?? 0 : gConv * ticketOnline;
+  const googleDetalle = `${Math.round(gConv).toLocaleString('es-AR')} ventas atribuidas por Google${gValorReal ? '' : ` × ticket promedio ${fmt(ticketOnline)}`} · cuenta 534-660-6046`;
   const roas = [
     { nombre: 'Mercado Libre', canal: 'ml' as CanalId, detalle: 'Product Ads (API ML)', ventas: monto('ml'), pauta: ml.data ? ml.data.ads : undefined, falta: 'No se pudo leer la publicidad de ML' },
     { nombre: 'Meta Shopify', canal: 'shopify' as CanalId, detalle: 'Shopify (mateando.com) · cuenta MATEANDO - SHOPIFY (+8% comisión)', ventas: monto('shopify'), pauta: metaShop.data ? metaShop.data.spend : undefined, falta: metaShop.data?.motivo ?? '' },
     { nombre: 'Meta Mayorista', canal: 'mayorista' as CanalId, detalle: 'Mayorista · cuenta MATEANDO-MANYCHAT (mensajes, +8% comisión)', ventas: monto('mayorista'), pauta: metaMay.data ? metaMay.data.spend : undefined, falta: metaMay.data?.motivo ?? '' },
     { nombre: 'Meta Ads', canal: 'online' as CanalId, detalle: 'Tienda Online (Empretienda) · 2 cuentas (MATEANDO2 +8% comisión)', ventas: monto('online'), pauta: meta.data ? meta.data.spend : undefined, falta: meta.data?.motivo ?? '' },
-    { nombre: 'Google Ads', canal: 'online' as CanalId, detalle: 'Tienda Online (Empretienda) · cuenta 534-660-6046', ventas: monto('online'), pauta: gads.data ? gads.data.spend : undefined, falta: gads.data?.motivo ?? '' },
+    { nombre: 'Google Ads', canal: 'online' as CanalId, detalle: googleDetalle, ventas: googleVentas, pauta: gads.data ? gads.data.spend : undefined, falta: gads.data?.motivo ?? '' },
     { nombre: 'TikTok Ads', canal: 'online' as CanalId, detalle: `Tienda Online (Empretienda) · ANDOMAT 611 SRL${tiktok.data?.fuente ? ` · ${tiktok.data.fuente}` : ''}`, ventas: monto('online'), pauta: tiktok.data ? tiktok.data.spend : undefined, falta: tiktok.data?.motivo ?? '' },
   ];
   const pautaTotal = roas.reduce((s, r) => s + (r.pauta ?? 0), 0);
