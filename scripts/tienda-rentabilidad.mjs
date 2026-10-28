@@ -96,6 +96,8 @@ if (arg('--cargar')) {
 // Costo por SKU: los mismos tres niveles que el CMV de /canales (scripts/cmv/README.md).
 async function costosSku() {
   const costos = JSON.parse(readFileSync(new URL('./cmv/costos_base.json', import.meta.url), 'utf8'));
+  const override = JSON.parse(readFileSync(new URL('./cmv/costos_override.json', import.meta.url), 'utf8'));
+  for (const [k, v] of Object.entries(override)) if (!k.startsWith('_')) costos[k] = v;
   const hojas = (await sheets.spreadsheets.get({ spreadsheetId: COSTOS_JP })).data.sheets.map((h) => h.properties.title);
   for (const h of hojas.filter((h) => !['BASE scalify', 'Hoja 22'].includes(h))) {
     const filas = (await sheets.spreadsheets.values.get({ spreadsheetId: COSTOS_JP, range: `'${h}'!F2:G400` })).data.values ?? [];
@@ -104,8 +106,6 @@ async function costosSku() {
       if (sku?.trim() && c && n > 0) costos[sku.trim()] = n;
     }
   }
-  const override = JSON.parse(readFileSync(new URL('./cmv/costos_override.json', import.meta.url), 'utf8'));
-  for (const [k, v] of Object.entries(override)) if (!k.startsWith('_')) costos[k] = v;
   costos._productos = await costosProducto();
   return costos;
 }

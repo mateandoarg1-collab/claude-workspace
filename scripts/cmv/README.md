@@ -7,12 +7,13 @@ MAYORISTA 2026 (la lee /canales) y `cmv_revisar` (publicaciones nuevas sin regla
 
 Costos, de menor a mayor prioridad:
 1. `costos_base.json` (foto de oct-2026, por si falla la planilla)
-2. Planilla "Costos JP - meli" (`1VP12eqQsJpZdOA6crIUMZccqpPobVZzxc8jev2iUkF8`, col F SKU, col G costo neto)
-3. `costos_override.json`: productos del container (costo Escalafy sin los $500 de packaging de Meli), kits,
-   packaging y cajas de despacho Lumapack sin IVA + cinta (`DESP-*`).
+2. `costos_override.json`: lo que la planilla no tiene (cajas de despacho Lumapack sin IVA + cinta `DESP-*`,
+   discontinuados, kits, Mate Flow…). Desde el 28-oct-2026 NO le gana a la planilla (pedido de Juampi: su Excel manda).
+3. Planilla "Costos JP - meli" (`1VP12eqQsJpZdOA6crIUMZccqpPobVZzxc8jev2iUkF8`, col F SKU, col G costo neto): manda.
 4. Por producto, cargado a mano en /rentabilidad-tienda/costos (pestaña `costos_tienda`: nombre de Empretienda → costo
-   sin IVA). Gana a las reglas, para productos nuevos que todavía no tienen; suma una caja de despacho simple. Llega a
-   `cmv.py` y `cmv_orden.py` como `costos["_productos"]`.
+   sin IVA). Reemplaza el costo de los SKUs del producto (sirve para productos nuevos sin regla); se le siguen sumando lo
+   que agrega la variante (bombilla, caja o bolsa de regalo) y el packaging. Llega a `cmv.py` y `cmv_orden.py` como
+   `costos["_productos"]`.
 
 Packaging (definido por JP, oct-2026):
 - Tienda Online: cada mate sin "Caja de regalo: SI" lleva `PACK-CUR-11018` (packaging general); con caja de regalo

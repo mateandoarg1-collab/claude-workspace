@@ -224,11 +224,14 @@ await sheets.spreadsheets.values.update({
 });
 
 // CMV de Tienda Online y Local (pestaña cmv_empretienda, la lee /canales). Costos: scripts/cmv/costos_base.json, encima
-// la planilla "Costos JP - meli" (col F SKU, col G costo neto) y encima costos_override.json. Local = Acordar:
+// costos_override.json (lo que la planilla no tiene) y encima la planilla "Costos JP - meli" (col F SKU, col G costo neto),
+// que manda. Local = Acordar:
 // sin despacho, 1 bolsa por pedido. Online = total − Acordar.
 try {
   const COSTOS_JP = '1VP12eqQsJpZdOA6crIUMZccqpPobVZzxc8jev2iUkF8';
   const costos = JSON.parse(readFileSync('scripts/cmv/costos_base.json', 'utf8'));
+  const override = JSON.parse(readFileSync('scripts/cmv/costos_override.json', 'utf8'));
+  for (const [k, v] of Object.entries(override)) if (!k.startsWith('_')) costos[k] = v;
   const hojas = (await sheets.spreadsheets.get({ spreadsheetId: COSTOS_JP })).data.sheets.map((h) => h.properties.title);
   for (const h of hojas.filter((h) => !['BASE scalify', 'Hoja 22'].includes(h))) {
     const filas = (await sheets.spreadsheets.values.get({ spreadsheetId: COSTOS_JP, range: `'${h}'!F2:G400` })).data.values ?? [];
@@ -237,8 +240,6 @@ try {
       if (sku?.trim() && c && n > 0) costos[sku.trim()] = n;
     }
   }
-  const override = JSON.parse(readFileSync('scripts/cmv/costos_override.json', 'utf8'));
-  for (const [k, v] of Object.entries(override)) if (!k.startsWith('_')) costos[k] = v;
   // Costo cargado a mano por producto en /rentabilidad-tienda/costos (pestaña costos_tienda): gana a las reglas.
   const manuales = (await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'costos_tienda'!A2:B", valueRenderOption: 'UNFORMATTED_VALUE' }).catch(() => null))?.data.values ?? [];
   costos._productos = Object.fromEntries(manuales.filter(([p, c]) => String(p ?? '').trim() && Number(c) >= 0).map(([p, c]) => [String(p).toUpperCase().replace(/\s+/g, ' ').trim(), Number(c)]));
