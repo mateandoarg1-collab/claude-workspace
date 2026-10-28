@@ -466,6 +466,7 @@ function kgPerCarton(s) { return Math.max(s.kgPerCarton || 0, s.m3PerCarton * VO
 
 const FAMILY_COLORS = {
   autocebante:   '#5a8a00',
+  automate750:   '#2e7d32',
   termo1000:     '#c04a00',
   termo750:      '#1565c0',
   boxkit:        '#7b1fa2',
@@ -527,6 +528,21 @@ const PRODUCT_GROUPS = [
       { id: 'auto_rose',  label: 'Rose Quartz', color: 'rose',  default: 0 },
       { id: 'auto_beige', label: 'Beige',        color: 'beige', default: 0 },
       { id: 'auto_blanco',label: 'Blanco',       color: 'blanco',default: 0 },
+    ]
+  },
+  {
+    id: 'automate750',
+    name: 'AUTOMATE Grande 750ml',
+    fobUnit: 0,
+    m3PerCarton: 0.0851,
+    kgPerCarton: 17,
+    unitsPerCarton: 25,
+    dims: '450×450×420mm',
+    variants: [
+      { id: 'auto750_negro', label: 'Negro',       color: 'negro', default: 0 },
+      { id: 'auto750_rose',  label: 'Rose Quartz', color: 'rose',  default: 0 },
+      { id: 'auto750_beige', label: 'Beige',       color: 'beige', default: 0 },
+      { id: 'auto750_blanco',label: 'Blanco',      color: 'blanco',default: 0 },
     ]
   },
   {
