@@ -1,13 +1,13 @@
 import { getCostosAdicionales } from '@/lib/costosMeli';
-import { getCostosTienda, getSinCostoTienda, setCostoTienda } from '@/lib/costosTienda';
+import { getCostosTienda, getProductosTienda, setCostoTienda } from '@/lib/costosTienda';
 
 export const maxDuration = 30;
 
-// Costos de la tienda para /rentabilidad-tienda/costos: productos sin costo, costos cargados a mano y costos adicionales.
+// Costos de la tienda para /rentabilidad-tienda/costos: productos (costo por regla, a mano y vendido) y costos adicionales.
 export async function GET() {
   try {
     const [manuales, adicionales] = await Promise.all([getCostosTienda(), getCostosAdicionales()]);
-    return Response.json({ sinCosto: await getSinCostoTienda(manuales), manuales, adicionales });
+    return Response.json({ productos: await getProductosTienda(manuales), adicionales });
   } catch (e: unknown) {
     return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }

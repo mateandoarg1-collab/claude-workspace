@@ -11,7 +11,12 @@ const sheets = () => google.sheets({ version: 'v4', auth: getAuth() });
 export const normalizar = (p: string) => p.toUpperCase().replace(/\s+/g, ' ').trim();
 
 export type CostoProducto = { producto: string; costo: number; actualizado: string };
-export type SinCosto = { producto: string; ventas: number; unidades: number; ultima: string; foto: string | null };
+// Un producto del catálogo (o vendido) con su costo por regla (pestaña tienda_costos_producto, la llena
+// scripts/tienda-rentabilidad.mjs), el cargado a mano y lo vendido en ~60 días.
+export type ProductoTienda = {
+  producto: string; foto: string | null; activo: boolean; reglaMin: number | null; reglaMax: number | null;
+  manual: number | null; unidades: number; ventas: number; ultima: string; sinCosto: boolean;
+};
 
 export async function getCostosTienda(): Promise<CostoProducto[]> {
   const r = await sheets()
@@ -22,24 +27,40 @@ export async function getCostosTienda(): Promise<CostoProducto[]> {
     .map((f) => ({ producto: String(f[0]).trim(), costo: Number(f[1]) || 0, actualizado: String(f[2] ?? '') }));
 }
 
-// Productos vendidos en los últimos ~60 días (lo que guarda rentabilidad_tienda) que quedaron sin costo, sin los que ya
-// tienen costo a mano.
-export async function getSinCostoTienda(manuales: CostoProducto[]): Promise<SinCosto[]> {
-  const { ventas, fotos } = await getRentabilidadTienda();
-  const ya = new Set(manuales.map((m) => normalizar(m.producto)));
-  const out = new Map<string, SinCosto>();
+// Catálogo con costo por regla + costo a mano + ventas de rentabilidad_tienda (~60 días). sinCosto = se vendió y alguna
+// venta quedó sin costo, y no tiene costo a mano.
+export async function getProductosTienda(manuales: CostoProducto[]): Promise<ProductoTienda[]> {
+  const [{ ventas, fotos }, reglas] = await Promise.all([
+    getRentabilidadTienda(),
+    sheets().spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'tienda_costos_producto'!A2:G", valueRenderOption: 'UNFORMATTED_VALUE' }).catch(() => null),
+  ]);
+  const manual = new Map(manuales.map((m) => [normalizar(m.producto), m.costo]));
+  const out = new Map<string, ProductoTienda>();
+  const nuevo = (producto: string): ProductoTienda => ({
+    producto, foto: null, activo: true, reglaMin: null, reglaMax: null, manual: manual.get(normalizar(producto)) ?? null,
+    unidades: 0, ventas: 0, ultima: '', sinCosto: false,
+  });
+  for (const [, producto, desactivado, foto, min, max] of reglas?.data.values ?? []) {
+    const p = nuevo(String(producto ?? '').trim());
+    if (!p.producto) continue;
+    Object.assign(p, { foto: String(foto ?? '') || null, activo: !Number(desactivado), reglaMin: min === '' ? null : Number(min), reglaMax: max === '' ? null : Number(max) });
+    out.set(normalizar(p.producto), p);
+  }
   for (const v of ventas) {
-    for (const nombre of v.sin_costo_productos) {
-      if (ya.has(normalizar(nombre))) continue;
-      const p = v.productos.find((x) => x.n === nombre);
-      const x = out.get(nombre) ?? { producto: nombre, ventas: 0, unidades: 0, ultima: '', foto: (p && fotos.get(String(p.id))?.foto) || null };
-      x.ventas += 1;
-      x.unidades += p?.q ?? 0;
-      if (v.fecha > x.ultima) x.ultima = v.fecha;
-      out.set(nombre, x);
+    const faltan = new Set(v.sin_costo_productos.map(normalizar));
+    for (const x of v.productos) {
+      const k = normalizar(x.n ?? '');
+      if (!k) continue;
+      const p = out.get(k) ?? nuevo(x.n);
+      p.foto ??= fotos.get(String(x.id))?.foto ?? null;
+      p.unidades += x.q || 0;
+      p.ventas += 1;
+      if (v.fecha > p.ultima) p.ultima = v.fecha;
+      if (faltan.has(k) && p.manual == null) p.sinCosto = true;
+      out.set(k, p);
     }
   }
-  return [...out.values()].sort((a, b) => b.unidades - a.unidades || b.ultima.localeCompare(a.ultima));
+  return [...out.values()].sort((a, b) => b.unidades - a.unidades || a.producto.localeCompare(b.producto));
 }
 
 // costo null = borrar el costo a mano (vuelve a las reglas).

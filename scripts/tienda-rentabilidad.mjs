@@ -186,6 +186,40 @@ const cmv = new Map(
   JSON.parse(execFileSync('python3', [new URL('./cmv/cmv_orden.py', import.meta.url).pathname, archivoCostos], { input: JSON.stringify(entrada), encoding: 'utf8', maxBuffer: 64 << 20 }))
     .map((c) => [c.id, c]),
 );
+
+// Costo por regla de cada producto del catálogo, con las variantes vendidas en emp_ventas (~60 días), para
+// /rentabilidad-tienda/costos → pestaña tienda_costos_producto. Si falla, la rentabilidad sigue.
+try {
+  const catalogo = (await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'emp_productos'!A2:E", valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
+  const variantes = new Map(catalogo.map((r) => [String(r[1] ?? '').trim(), new Set()]));
+  for (const r of crudas) {
+    for (const p of JSON.parse(r[col.productos] || '[]')) {
+      const n = String(p.n ?? '').trim();
+      if (!variantes.has(n)) variantes.set(n, new Set());
+      variantes.get(n).add(String(p.v ?? ''));
+    }
+  }
+  const lista = [...variantes].filter(([n]) => n).map(([n, vs]) => ({ n, variantes: vs.size ? [...vs] : [''] }));
+  const porRegla = JSON.parse(execFileSync('python3', [new URL('./cmv/costo_productos.py', import.meta.url).pathname, archivoCostos], { input: JSON.stringify(lista), encoding: 'utf8', maxBuffer: 64 << 20 }));
+  const datos = new Map(catalogo.map((r) => [String(r[1] ?? '').trim(), r]));
+  const filasProd = porRegla.map(({ n, costos: cs }) => {
+    const valores = Object.values(cs).filter((c) => c != null);
+    const r = datos.get(n);
+    return [r ? String(r[0]) : '', n, r ? Number(r[3]) || 0 : 1, r ? String(r[4] ?? '') : '', valores.length ? Math.min(...valores) : '',
+      valores.length ? Math.max(...valores) : '', Object.values(cs).filter((c) => c == null).length];
+  });
+  const TAB_PROD = 'tienda_costos_producto';
+  const hojas = (await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID })).data.sheets.map((h) => h.properties.title);
+  if (!hojas.includes(TAB_PROD)) await sheets.spreadsheets.batchUpdate({ spreadsheetId: SPREADSHEET_ID, requestBody: { requests: [{ addSheet: { properties: { title: TAB_PROD } } }] } });
+  await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `'${TAB_PROD}'!A:H` });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID, range: `'${TAB_PROD}'!A1`, valueInputOption: 'RAW',
+    requestBody: { values: [['id', 'producto', 'desactivado', 'foto', 'costo_min', 'costo_max', 'variantes_sin_costo', new Date().toISOString()], ...filasProd] },
+  });
+  console.log(`${TAB_PROD}: ${filasProd.length} productos (${filasProd.filter((f) => f[4] === '').length} sin costo por regla)`);
+} catch (e) {
+  console.log(`No pude calcular el costo por producto: ${String(e?.message ?? e).split('\n')[0]}`);
+}
 rmSync(archivoCostos, { force: true });
 
 const pagosMP = new Map(await enLotes(ventas.filter((v) => v.mp_pago_id), 10, async (v) => [String(v.order_id), await comisionMP(v.mp_pago_id)]));
