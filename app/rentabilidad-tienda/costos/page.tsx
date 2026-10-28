@@ -61,7 +61,7 @@ function FilaProducto({ p, onGuardado }: { p: Producto; onGuardado: (manuales: C
           {!p.activo && <span className="ml-2 text-[11px] text-slate-500">desactivado</span>}
         </div>
         <div className={`text-xs truncate ${p.sinCosto ? 'text-amber-300' : 'text-slate-500'}`}>
-          {p.manual != null ? `A mano (${regla(p).toLowerCase()})` : regla(p)} · {vendidas}
+          {p.manual != null ? `A mano ${pesos(p.manual)} + regalo o bombilla si la variante los lleva (${regla(p).toLowerCase()})` : regla(p)} · {vendidas}
         </div>
       </div>
       <span className="text-slate-500 text-sm">$</span>
@@ -134,8 +134,9 @@ export default function CostosTienda() {
             <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-5">
               <h2 className="text-sm font-semibold text-slate-200">Costo de producto de la tienda</h2>
               <p className="text-xs text-slate-500 mt-0.5 mb-3">
-                Costo por unidad sin IVA, sin la caja de despacho (esa se suma sola). «Por regla» es el que sale de la planilla de costos
-                por SKU; si ponés uno a mano, gana a la regla (borralo para volver). Las ventas nuevas ya salen con el costo nuevo; las de
+                Costo por unidad sin IVA del producto solo. «Por regla» es el que sale de la planilla de costos por SKU; si ponés uno a
+                mano, reemplaza al de la regla (borralo para volver) y vale para todas las variantes: la caja o bolsa de regalo, la
+                bombilla y el packaging se le siguen sumando solos según cada venta. Las ventas nuevas ya salen con el costo nuevo; las de
                 días anteriores se recalculan a la mañana.
               </p>
               <div className="flex flex-col sm:flex-row gap-2 mb-3">

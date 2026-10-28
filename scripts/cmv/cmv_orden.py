@@ -2,8 +2,9 @@
 Uso: python3 cmv_orden.py costos.json < ventas.json
 ventas.json: [{"id": ..., "local": bool, "productos": [{"n": nombre, "v": "Opción: valor | ...", "q": cant}]}]
 Imprime [{"id", "cmv", "empaque", "despacho", "sin_costo": unidades, "sin_regla": [nombres], "sin_costo_n": [nombres]}].
-Costos cargados a mano por producto (/rentabilidad-tienda/costos): costos["_productos"] = {NOMBRE: costo sin IVA}; ganan a las
-reglas y suman una caja de despacho simple.
+Costos cargados a mano por producto (/rentabilidad-tienda/costos): costos["_productos"] = {NOMBRE: costo sin IVA}. Reemplazan
+el costo de los SKUs del producto, pero se siguen sumando lo que agrega la variante (bombilla, caja o bolsa de regalo) y el
+packaging (con los componentes de la regla si la hay; si no, una caja de despacho simple).
 Packaging (README): online, cada mate sin caja de regalo lleva el packaging general y la venta lleva UNA caja de
 despacho (la más cara de las que pedirían sus productos); local (retiro), una bolsa por venta y sin caja.
 """
@@ -21,13 +22,22 @@ def calcular(costos, v):
     for p in v['productos']:
         nombre, variante, q = str(p['n'] or '').upper(), str(p['v'] or '').upper(), p['q'] or 0
         manual = manuales.get(re.sub(r'\s+', ' ', nombre).strip())
+        try:
+            base, estado = reglas.resolver(nombre, variante)
+        except (TypeError, ValueError):  # regla que necesita el color y la variante no lo dice
+            base, estado = None, 'FALTA'
+        extras = reglas.extras(nombre, variante)
+        comps = (base or []) + extras
         if manual is not None:
             out['cmv'] += manual * q
-            if not v['local']:
-                cajas.append('DESP-SIMPLE')
+            pack = despacho(nombre, comps) if base else [('DESP-SIMPLE', 1)]
+            for s, c in extras + ([] if v['local'] else pack):
+                s = reglas.ALIAS.get(s, s)
+                if s.startswith('DESP-'):
+                    cajas.append(s)
+                elif s in costos:
+                    out['empaque' if s == 'PACK-CUR-11018' else 'cmv'] += costos[s] * c * q
             continue
-        base, estado = reglas.resolver(nombre, variante)
-        comps = (base or []) + reglas.extras(nombre, variante)
         if estado == 'nuevo' or base is None:
             out['sin_regla'].append(p['n'])
             out['sin_costo_n'].append(p['n'])
