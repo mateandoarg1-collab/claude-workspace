@@ -30,7 +30,7 @@ probó Hetzner manteniendo la sesión para que GitHub Actions leyera Métricas; 
   `npx playwright install --with-deps chromium`, `apt install python3-venv xvfb x11vnc novnc websockify ufw`, copiar el
   tildador y armar su venv, y `bash scripts/servidor/instalar.sh`.
 
-## Iniciar sesión a mano en Empretienda (la primera vez, o si llega un mail del tildador con FALLÓ por sesión)
+## Iniciar sesión a mano en Empretienda (la primera vez, o cuando llega el mail «se cerró la sesión de Empretienda»)
 
 En el servidor:
 

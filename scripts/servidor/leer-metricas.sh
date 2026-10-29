@@ -8,4 +8,11 @@ git fetch -q && git reset -q --hard origin/main || echo "No pude actualizar el r
 export DISPLAY=:99 EMPRETIENDA_PERFIL=/root/tildar_profile
 GOOGLE_SERVICE_ACCOUNT_KEY="$(cat /root/mateando/sa.json)" || exit 1
 export GOOGLE_SERVICE_ACCOUNT_KEY
-exec flock -w 900 /root/mateando/.navegador timeout 25m node scripts/empretienda-metricas.mjs
+salida=$(flock -w 900 /root/mateando/.navegador timeout 25m node scripts/empretienda-metricas.mjs 2>&1); codigo=$?
+echo "$salida"
+# si se cerró la sesión, avisar por mail (como mucho cada 12 h): hay que iniciarla de nuevo a mano por el captcha
+if echo "$salida" | grep -q "Se cerró la sesión de Empretienda"; then
+  python3 scripts/servidor/avisar.py sesion "Panel: se cerró la sesión de Empretienda del servidor" \
+    "El servidor no puede leer Métricas ni tildar comprobantes hasta que se inicie sesión de nuevo en Empretienda (captcha). Pedile a Claude que abra la ventana del servidor." || true
+fi
+exit $codigo
