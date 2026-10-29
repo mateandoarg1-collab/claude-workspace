@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import AppHeader from '../components/AppHeader';
+import AvisoTildador from '../components/AvisoTildador';
 import CanalMarca, { type CanalId } from '../components/CanalMarca';
 import CanalDailyChart from '../components/CanalDailyChart';
 import HistoricoMensual from '../components/HistoricoMensual';
@@ -171,6 +172,7 @@ export default function Canales() {
             <span className="text-slate-500">{dolar.err ? 'No se pudo leer la cotización' : 'Cargando…'}</span>
           )}
         </div>
+        <AvisoTildador />
         <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-6">
           <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
             <h2 className="text-lg font-semibold">{PERIODOS.find((p) => p.id === periodo)?.titulo}</h2>
