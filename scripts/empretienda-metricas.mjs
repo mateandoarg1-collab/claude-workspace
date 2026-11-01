@@ -115,6 +115,16 @@ async function leer(page, url, esMes) {
       continue;
     }
     if (esMes || page.url().includes('from=')) break;
+    // Día 1 del mes: "del 1 al 1" es la vista por defecto y Empretienda saca las fechas de la dirección. Si la
+    // pantalla dice "Ventas de hoy" (o la del mes, que el día 1 es lo mismo), el número es el pedido.
+    {
+      const pedido = new URL(url).searchParams;
+      const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
+      const mes = new Date().toLocaleDateString('es-AR', { month: 'long', timeZone: 'America/Argentina/Buenos_Aires' });
+      const t = (await page.innerText('body')).toLowerCase();
+      const pantallaHoy = t.includes('ventas de hoy') || (hoy.endsWith('-01') && t.includes(`ventas de ${mes}`));
+      if (pedido.get('from') === hoy && pedido.get('until') === hoy && pantallaHoy) break;
+    }
     if (i === 2) throw new Error(`Empretienda no aplicó el filtro: ${url}`);
   }
   await page.getByText('Volumen de ventas').first().waitFor({ timeout: 30000 });
