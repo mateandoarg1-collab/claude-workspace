@@ -132,7 +132,9 @@ async function leer(page, url, esMes) {
     // Mes en curso: vista por defecto ("Ventas de Octubre"). Con fechas explícitas, Empretienda corta en 1.500 ventas.
     const mes = new Date().toLocaleDateString('es-AR', { month: 'long', timeZone: 'America/Argentina/Buenos_Aires' });
     const t = await page.innerText('body');
-    if (!t.toLowerCase().includes(`ventas de ${mes}`)) throw new Error(`Métricas no muestra "Ventas de ${mes}": ${url}`);
+    const dia1 = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).endsWith('-01');
+    const ok = t.toLowerCase().includes(`ventas de ${mes}`) || (dia1 && t.toLowerCase().includes('ventas de hoy'));
+    if (!ok) throw new Error(`Métricas no muestra "Ventas de ${mes}": ${url}`);
   }
   // Empretienda va completando los números mientras carga (trae las ventas de a 750): leer hasta que el número se
   // quede quieto. Si la cantidad es múltiplo de 750 puede estar esperando la próxima tanda: ahí se espera más.
