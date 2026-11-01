@@ -7,11 +7,16 @@ const SPREADSHEET_ID = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
 
 const MESES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
 
+// Pestaña del mes en hora argentina (Vercel corre en UTC: a las 21 h AR del último día ya sería el mes siguiente).
 function currentTabName(now = new Date()): string {
-  const mes = MESES[now.getMonth()];
-  const yy = String(now.getFullYear()).slice(-2);
+  const ar = new Date(now.getTime() - 3 * 3600 * 1000);
+  const mes = MESES[ar.getUTCMonth()];
+  const yy = String(ar.getUTCFullYear()).slice(-2);
   return `${mes} ${yy}`;
 }
+
+// Si la pestaña del mes todavía no existe (primer día del mes), 0 en vez de error.
+const sinPestana = (e: unknown) => /Unable to parse range/i.test(e instanceof Error ? e.message : String(e));
 
 function parseMonto(raw: string | undefined): number {
   if (!raw) return 0;
@@ -29,12 +34,13 @@ export async function getMayoristaSummary() {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
   const tab = currentTabName();
 
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: `'${tab}'!A2:M2`,
-  });
-
-  const row = res.data.values?.[0] ?? [];
+  let row: string[] = [];
+  try {
+    const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A2:M2` });
+    row = res.data.values?.[0] ?? [];
+  } catch (e) {
+    if (!sinPestana(e)) throw e;
+  }
   const orders = Number(row[0]) || 0;
   const amount = parseMonto(row[12]); // columna M: MONTO TOTAL
 
@@ -53,9 +59,15 @@ export async function getMayoristaPeriodo(periodo: Periodo) {
   let amount = 0;
   for (const tab of tabs) {
     const anio = 2000 + Number(tab.slice(-2));
-    const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A3:M` });
+    let values: string[][] = [];
+    try {
+      const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A3:M` });
+      values = res.data.values ?? [];
+    } catch (e) {
+      if (!sinPestana(e)) throw e;
+    }
     let dia = '';
-    for (const r of res.data.values ?? []) {
+    for (const r of values) {
       const m = String(r[0] ?? '').trim().match(/^(\d{1,2})\/(\d{1,2})$/);
       if (m) {
         dia = `${anio}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
