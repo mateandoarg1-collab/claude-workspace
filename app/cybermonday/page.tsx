@@ -103,8 +103,22 @@ function EnCriollo({ d, dia, ahora, total }: { d: Data; dia: number; ahora: numb
   const ganador = pct(ml.hoy.monto, ml.antes.monto) > pct(emp.hoy.monto, emp.antes.monto) ? 'Mercado Libre' : 'la tienda';
   const pp = pct(hoy.pedidos, antes.pedidos);
   const pt = pct(hoy.ticket, antes.ticket);
+  // Tendencia: últimas 3 h contra las mismas 3 h de 2025, y si eso es mejor o peor que lo que venimos en el día.
+  const v3 = Math.max(ini, ahora - 180);
+  const u3 = r('total', 'actual', v3, ahora).monto;
+  const a3 = r('total', 'anterior', v3, ahora).monto;
+  const p3 = pct(u3, a3);
+  const u1 = r('total', 'actual', Math.max(ini, ahora - 60), ahora).monto;
+  const a1 = r('total', 'anterior', Math.max(ini, ahora - 60), ahora).monto;
+  const tendencia =
+    ahora - ini < 120
+      ? 'Tendencia: todavía es temprano para leerla.'
+      : `Tendencia: en las últimas ${Math.round((ahora - v3) / 60)} h hicimos ${mm(u3)} contra ${mm(a3)} del año pasado (${p3 >= 0 ? '+' : ''}${Math.round(p3 * 100)}%), ` +
+        (p3 > p + 0.05 ? 'o sea que venimos acelerando 📈' : p3 < p - 0.05 ? 'o sea que venimos frenando 📉' : 'mismo ritmo que en el resto del día ➡️') +
+        `. Última hora: ${mm(u1)} (2025: ${mm(a1)}).`;
   const lineas = [
     `Hoy llevamos ${mm(hoy.monto)}: vamos ${masMenos(p)} año pasado a esta misma hora (${mm(antes.monto)}).`,
+    tendencia,
     frase('Mercado Libre', ml),
     frase('Tienda online', emp),
     `El que más empuja contra 2025 es ${ganador}.`,
@@ -123,6 +137,34 @@ function EnCriollo({ d, dia, ahora, total }: { d: Data; dia: number; ahora: numb
         {lineas.map((l) => <li key={l}>{l}</li>)}
       </ul>
       <p className="text-xs text-slate-500 mt-2">La proyección supone que lo que falta va igual que el año pasado, escalado por cómo venimos.</p>
+    </section>
+  );
+}
+
+// Facturado por hora del día en curso, 2026 contra el mismo día de 2025.
+function PorHora({ d, dia, ahora }: { d: Data; dia: number; ahora: number }) {
+  const ini = dia * 1440;
+  const h = (cual: 'anterior' | 'actual') => Array.from({ length: 24 }, (_, i) => resumen(ventas(d, cual, 'total'), ini + i * 60, ini + (i + 1) * 60).monto);
+  const a = h('anterior');
+  const b = h('actual');
+  const max = Math.max(1, ...a, ...b);
+  const horaAhora = Math.floor((ahora - ini) / 60);
+  return (
+    <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-5">
+      <h2 className="text-sm font-semibold text-slate-200 mb-3">Tendencia hora por hora (hoy vs día {dia + 1} de 2025)</h2>
+      <div className="flex items-end gap-0.5 h-36">
+        {a.map((va, i) => (
+          <div key={i} className="flex-1 h-full flex items-end gap-px" title={`${String(i).padStart(2, '0')} h · 2026: ${i <= horaAhora ? fmt(b[i]) : '—'} · 2025: ${fmt(va)}`}>
+            <div className="flex-1 rounded-t bg-slate-600" style={{ height: `${(va / max) * 100}%` }} />
+            <div className={`flex-1 rounded-t ${i === horaAhora ? 'bg-emerald-300' : 'bg-emerald-500'}`} style={{ height: `${i <= horaAhora ? (b[i] / max) * 100 : 0}%` }} />
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-between text-[11px] text-slate-500 mt-1"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>23 h</span></div>
+      <div className="flex gap-4 text-xs text-slate-400 mt-2">
+        <span><span className="inline-block w-2.5 h-2.5 bg-emerald-500 rounded-sm align-middle mr-1" />2026 (la hora en curso va incompleta)</span>
+        <span><span className="inline-block w-2.5 h-2.5 bg-slate-600 rounded-sm align-middle mr-1" />2025</span>
+      </div>
     </section>
   );
 }
@@ -190,6 +232,8 @@ export default function CyberMonday() {
                 </div>
               </section>
             ))}
+
+            {empezo && ahora < total && <PorHora d={d} dia={dia} ahora={ahora} />}
 
             <section className="bg-slate-900 rounded-2xl border border-slate-800 p-4 sm:p-5">
               <h2 className="text-sm font-semibold text-slate-200 mb-3">Facturado acumulado (Total)</h2>
