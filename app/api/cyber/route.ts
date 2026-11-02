@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 // con el export del panel de Empretienda y la API de Meli). Cada venta va como [minutos desde el inicio, monto].
 const INICIO_2026 = new Date('2026-11-02T03:00:00Z');
 const DIAS = 3;
+const TRANSFERENCIA = '5';
 const EMP = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
 
 type Venta = [number, number];
@@ -18,6 +19,7 @@ const minutos = (fecha: string | number) => Math.floor((new Date(fecha).getTime(
 const enEvento = (m: number) => m >= 0 && m < DIAS * 1440;
 
 // Tienda Online (sin "a acordar" = local, igual que el export de 2025): pagadas, subtotal − cupón − desc. por pago.
+// Las transferencias pendientes también cuentan: en el Cyber se tildan todas y se controlan después con Aginco.
 async function empretienda(): Promise<{ ventas: Venta[]; actualizado: string | null }> {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
   const r = await sheets.spreadsheets.values.get({ spreadsheetId: EMP, range: "'emp_ventas'!A2:I", valueRenderOption: 'UNFORMATTED_VALUE' });
@@ -26,7 +28,7 @@ async function empretienda(): Promise<{ ventas: Venta[]; actualizado: string | n
   for (const x of r.data.values ?? []) {
     const m = minutos(x[2]);
     if (String(x[2]) > ultima) ultima = String(x[2]);
-    if (!enEvento(m) || String(x[4]) !== PAGO.pagada || String(x[3]) === ACORDAR) continue;
+    if (!enEvento(m) || !(String(x[4]) === PAGO.pagada || (String(x[4]) === PAGO.pendiente && String(x[3]) === TRANSFERENCIA)) || String(x[3]) === ACORDAR) continue;
     ventas.push([m, Math.round(Number(x[6]) - Number(x[7] || 0) - Number(x[8] || 0))]);
   }
   return { ventas, actualizado: ultima || null };
