@@ -75,6 +75,58 @@ function Grafico({ antes, hoy, ahora, total }: { antes: Venta[]; hoy: Venta[]; a
   );
 }
 
+const pct = (a: number, b: number) => (b ? a / b - 1 : 0);
+const mm = (n: number) => `$${(n / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 })} M`;
+const masMenos = (p: number) => (Math.abs(p) < 0.03 ? 'parejo con el' : `${Math.round(Math.abs(p) * 100)}% ${p > 0 ? 'arriba del' : 'abajo del'}`);
+
+// Lectura en criollo: cómo venimos, quién empuja, pedidos vs ticket y a cuánto cerraríamos el día y el Cyber al ritmo
+// de 2025 (lo que falta del día se supone igual que el año pasado, escalado por cómo venimos).
+function EnCriollo({ d, dia, ahora, total }: { d: Data; dia: number; ahora: number; total: number }) {
+  const r = (c: Canal | 'total', cual: 'anterior' | 'actual', desde: number, hasta: number) => resumen(ventas(d, cual, c), desde, hasta);
+  const ini = dia * 1440;
+  const hoy = r('total', 'actual', ini, ahora);
+  const antes = r('total', 'anterior', ini, ahora);
+  const p = pct(hoy.monto, antes.monto);
+  const canal = (c: Canal) => ({ hoy: r(c, 'actual', ini, ahora), antes: r(c, 'anterior', ini, ahora) });
+  const emp = canal('empretienda');
+  const ml = canal('meli');
+  const ritmo = antes.monto ? hoy.monto / antes.monto : 1;
+  const diaAntes = r('total', 'anterior', ini, ini + 1440).monto;
+  const restoDia = diaAntes - antes.monto;
+  const cyberAntes = r('total', 'anterior', 0, total).monto;
+  const acumHoy = r('total', 'actual', 0, ahora).monto;
+  const acumAntes = r('total', 'anterior', 0, ahora).monto;
+  const ritmoAcum = acumAntes ? acumHoy / acumAntes : 1;
+  const proyCyber = acumHoy + (cyberAntes - acumAntes) * ritmoAcum;
+  const frase = (n: string, x: { hoy: ReturnType<typeof resumen>; antes: ReturnType<typeof resumen> }) =>
+    `${n}: ${mm(x.hoy.monto)}, ${masMenos(pct(x.hoy.monto, x.antes.monto))} año pasado (${x.hoy.pedidos} pedidos contra ${x.antes.pedidos}).`;
+  const ganador = pct(ml.hoy.monto, ml.antes.monto) > pct(emp.hoy.monto, emp.antes.monto) ? 'Mercado Libre' : 'la tienda';
+  const pp = pct(hoy.pedidos, antes.pedidos);
+  const pt = pct(hoy.ticket, antes.ticket);
+  const lineas = [
+    `Hoy llevamos ${mm(hoy.monto)}: vamos ${masMenos(p)} año pasado a esta misma hora (${mm(antes.monto)}).`,
+    frase('Mercado Libre', ml),
+    frase('Tienda online', emp),
+    `El que más empuja contra 2025 es ${ganador}.`,
+    pp < 0 && pt > 0
+      ? `Entran menos pedidos (${Math.round(pp * 100)}%) pero cada uno es más grande: el ticket subió ${Math.round(pt * 100)}% (${fmt(hoy.ticket)} contra ${fmt(antes.ticket)}).`
+      : pp > 0 && pt < 0
+        ? `Entran más pedidos (+${Math.round(pp * 100)}%) pero más chicos: el ticket bajó ${Math.round(-pt * 100)}% (${fmt(hoy.ticket)} contra ${fmt(antes.ticket)}).`
+        : `Pedidos ${pp >= 0 ? '+' : ''}${Math.round(pp * 100)}% y ticket ${pt >= 0 ? '+' : ''}${Math.round(pt * 100)}% contra el año pasado.`,
+    `Si seguimos a este ritmo, el día cierra en unos ${mm(hoy.monto + restoDia * ritmo)} (el día ${dia + 1} de 2025 cerró en ${mm(diaAntes)}).`,
+    `Y el Cyber completo terminaría en unos ${mm(proyCyber)} contra ${mm(cyberAntes)} de 2025 (${masMenos(pct(proyCyber, cyberAntes)).replace(/ del$| con el$/, '')}).`,
+  ];
+  return (
+    <section className="bg-emerald-950/30 rounded-2xl border border-emerald-800 p-4 sm:p-5">
+      <h2 className="text-sm font-semibold text-emerald-300 mb-2">En criollo (Meli + tienda)</h2>
+      <ul className="space-y-1.5 text-sm text-slate-200 list-disc pl-5">
+        {lineas.map((l) => <li key={l}>{l}</li>)}
+      </ul>
+      <p className="text-xs text-slate-500 mt-2">La proyección supone que lo que falta va igual que el año pasado, escalado por cómo venimos.</p>
+    </section>
+  );
+}
+
 export default function CyberMonday() {
   const [d, setD] = useState<Data | null>(null);
   const [err, setErr] = useState('');
@@ -107,6 +159,8 @@ export default function CyberMonday() {
               {!empezo ? 'Todavía no empezó el Cyber 2026.' : ahora >= total ? 'Cyber terminado.' : <>Día {dia + 1} · {hhmm(ahora % 1440)} h — comparado con el día {dia + 1} de 2025 a la misma hora. Se actualiza cada 2 min.</>}
               {Object.entries(d.errores).filter(([, e]) => e).map(([c, e]) => <div key={c} className="text-red-400">{c}: {e}</div>)}
             </div>
+
+            {empezo && ahora < total && <EnCriollo d={d} dia={dia} ahora={ahora} total={total} />}
 
             {[
               { titulo: `Hoy (día ${dia + 1}) hasta las ${hhmm(ahora % 1440)}`, desde: dia * 1440, hasta: ahora },
