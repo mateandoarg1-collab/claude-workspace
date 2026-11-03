@@ -7,12 +7,12 @@ IA arrastra la conversación anterior (conversation_id). Si un cliente vuelve a 
 habla de la orden vieja (2-nov-2026: pasó varias veces en recompras, Juampi lo pidió).
 
 Cada hora (launchd com.mateando.manychat-reset): a los contactos cuya última orden en la planilla de comprobantes
-quedó paga ("ok") hace más de 24 h y no tienen nada más nuevo, se les borran conversation_id, notif_orden,
+quedó paga ("ok") hace más de 15 días (Juampi: 24 h era poco) y no tienen nada más nuevo, se les borran conversation_id, notif_orden,
 notif_valor y em_orden, y se les saca la etiqueta "Notificación Transferencia". Se acuerda a quién limpió (y por
 qué orden) en ~/.claude/manychat-reset-state.json para no repetir.
 
 Token: MANYCHAT_COMP_TOKEN en ~/.claude/.manychat. Planilla: service account ~/.claude/.mateando-credentials.json.
-Flags: --dry (no toca nada), --dias N (ventana de órdenes a mirar, default 10).
+Flags: --dry (no toca nada), --dias N (ventana de órdenes a mirar, default 60), --espera N (días después del pago, default 15).
 """
 
 import json
@@ -33,7 +33,8 @@ TAG_NOTIF = 69078159  # "Notificación Transferencia"
 STATE = Path.home() / ".claude/manychat-reset-state.json"
 
 DRY = "--dry" in sys.argv
-DIAS = int(sys.argv[sys.argv.index("--dias") + 1]) if "--dias" in sys.argv else 10
+DIAS = int(sys.argv[sys.argv.index("--dias") + 1]) if "--dias" in sys.argv else 60
+ESPERA = int(sys.argv[sys.argv.index("--espera") + 1]) if "--espera" in sys.argv else 15
 
 
 def token() -> str:
@@ -86,7 +87,7 @@ def main():
 
     estado = json.loads(STATE.read_text()) if STATE.exists() else {}
     pendientes = [(sid, orden) for sid, (d, orden, pagada) in ultima.items()
-                  if pagada and d <= hoy - timedelta(days=1) and estado.get(sid) != orden]
+                  if pagada and d <= hoy - timedelta(days=ESPERA) and estado.get(sid) != orden]
     print(time.strftime("%Y-%m-%d %H:%M"), f"{len(pendientes)} contactos para limpiar" + (" (prueba, no se toca nada)" if DRY else ""),
           flush=True)
     if DRY:
