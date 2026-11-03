@@ -273,7 +273,7 @@ export default function CyberMonday() {
             </section>
 
             <p className="text-xs text-slate-500">
-              Empretienda: ventas online pagadas más transferencias pendientes (se tildan y se controlan después con Aginco), sin local «a acordar», subtotal menos descuentos, sin envío; se lee cada 30 min
+              Empretienda: solo ventas concretadas (pagadas / transferencias tildadas), sin local «a acordar», subtotal menos descuentos, sin envío; se lee cada 30 min
               {d.empretiendaActualizado && <> (última orden leída: {new Date(d.empretiendaActualizado).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' })})</>}.
               2025 sale del export del panel. Meli: órdenes pagadas por API, agrupadas por carrito.
             </p>
