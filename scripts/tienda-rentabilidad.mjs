@@ -272,23 +272,24 @@ const pagosMP = new Map(await enLotes(ventas.filter((v) => v.mp_pago_id), 10, as
 async function tasaPoint(desde, hasta) {
   let monto = 0;
   let comision = 0;
+  // De a un día: la segunda página (offset 100) de MP vuelve vacía, y a veces una consulta trae menos cobros que su
+  // paging.total (sobre todo después de los miles de pedidos de comisionMP). Se reintenta hasta que cierre; con cobros
+  // de menos el promedio daba 3% en vez de ~12%.
   for (const filtro of [{ operation_type: 'pos_payment' }, { 'point_of_interaction.type': 'INSTORE' }]) {
-    for (let offset = 0; offset < 5000; offset += 100) {
-      const fin = new Date(`${hasta}T12:00:00Z`);
+    for (let d = new Date(`${desde}T12:00:00Z`); d.toISOString().slice(0, 10) <= hasta; d.setUTCDate(d.getUTCDate() + 1)) {
+      const fin = new Date(d);
       fin.setUTCDate(fin.getUTCDate() + 1);
-      const q = new URLSearchParams({ range: 'date_created', begin_date: `${desde}T03:00:00.000Z`, end_date: `${fin.toISOString().slice(0, 10)}T03:00:00.000Z`, status: 'approved', limit: '100', offset: String(offset), ...filtro });
-      // si una página falla no cortar ahí: el promedio quedaría con pocos cobros (un día dio 3% en vez de ~12%)
+      const q = new URLSearchParams({ range: 'date_created', begin_date: `${d.toISOString().slice(0, 10)}T03:00:00.000Z`, end_date: `${fin.toISOString().slice(0, 10)}T03:00:00.000Z`, status: 'approved', limit: '100', ...filtro });
       let j = null;
-      for (let i = 0; i < 4 && !Array.isArray(j?.results); i++) {
-        if (i) await new Promise((ok) => setTimeout(ok, 2000 * i));
+      for (let i = 0; i < 5 && !(Array.isArray(j?.results) && j.results.length >= Math.min(100, j.paging?.total ?? 0)); i++) {
+        if (i) await new Promise((ok) => setTimeout(ok, 3000 * i));
         j = await fetch(`https://api.mercadopago.com/v1/payments/search?${q}`, { headers: { Authorization: `Bearer ${MP}` } }).then((r) => r.json()).catch(() => null);
       }
       if (!Array.isArray(j?.results)) throw new Error('Mercado Pago no devolvió los cobros del local (Point/QR)');
-      for (const p of j?.results ?? []) {
+      for (const p of j.results) {
         monto += p.transaction_amount || 0;
         comision += (p.fee_details ?? []).filter((f) => f.fee_payer !== 'payer').reduce((t, f) => t + (f.amount || 0), 0);
       }
-      if ((j?.results ?? []).length < 100) break; // MP a veces informa total 0 aunque trae resultados
     }
   }
   return monto ? comision / monto : 0.04;
