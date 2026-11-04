@@ -2,16 +2,21 @@
 // en business-api.tiktok.com/portal) por el access token de largo plazo (no vence) y lo guarda en
 // ~/.claude/.tiktok (fuera del repo). El auth_code vence a la hora y se usa una sola vez.
 //
-// Uso: node scripts/tiktok-auth.mjs <app_id> <secret> <auth_code o el link entero del redirect>
+// Uso: node scripts/tiktok-auth.mjs <app_id> '<auth_code o el link entero del redirect>'
+// El secret lo pide por teclado (así no queda en el historial de la terminal).
 
 import { writeFileSync } from 'fs';
 import { homedir } from 'os';
+import { createInterface } from 'readline/promises';
 
-const [appId, secret, codeOLink] = process.argv.slice(2);
-if (!appId || !secret || !codeOLink) {
-  console.log('Uso: node scripts/tiktok-auth.mjs <app_id> <secret> <auth_code o link>');
+const [appId, codeOLink] = process.argv.slice(2);
+if (!appId || !codeOLink) {
+  console.log("Uso: node scripts/tiktok-auth.mjs <app_id> '<auth_code o link>'");
   process.exit(1);
 }
+const rl = createInterface({ input: process.stdin, output: process.stdout });
+const secret = (await rl.question('Pegá el Secret de la app y apretá Enter: ')).trim();
+rl.close();
 const authCode = codeOLink.includes('auth_code=') ? new URL(codeOLink).searchParams.get('auth_code') : codeOLink;
 
 const res = await fetch('https://business-api.tiktok.com/open_api/v1.3/oauth2/access_token/', {
