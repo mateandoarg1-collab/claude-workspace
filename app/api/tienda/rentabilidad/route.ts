@@ -54,8 +54,13 @@ function indicadores(t: Totales, pauta: number, machado: number, adicionales: nu
   };
 }
 
+// Costos fijos que Juampi quiere ver aparte, después de la ganancia (no cuentan en la ganancia ni en el margen).
+const APARTE = /titanpush/i;
+
 // Costos adicionales (sueldos, alquiler, apps…) cargados en la pantalla de costos para la tienda o el local.
-function resumen(ventas: VentaTienda[], ads: { fecha: string; meta: number; google: number; total: number; tiktok: number }[], desde: string, hasta: string, conPauta: boolean, machadoDia: Map<string, number>, costos: CostoAdicional[]) {
+function resumen(ventas: VentaTienda[], ads: { fecha: string; meta: number; google: number; total: number; tiktok: number }[], desde: string, hasta: string, conPauta: boolean, machadoDia: Map<string, number>, todos: CostoAdicional[]) {
+  const costos = todos.filter((c) => !APARTE.test(c.nombre));
+  const aparteCostos = todos.filter((c) => APARTE.test(c.nombre));
   const vs = ventas.filter((v) => v.fecha >= desde && v.fecha <= hasta);
   const pautaDia = new Map(ads.map((a) => [a.fecha, conPauta ? a.total : 0]));
   const dias = listaDias(desde, hasta).map((fecha) => {
@@ -69,11 +74,20 @@ function resumen(ventas: VentaTienda[], ads: { fecha: string; meta: number; goog
   const machado = dias.reduce((s, d) => s + d.machado, 0);
   const otros = costos.map((c, i) => ({ ...c, total: dias.reduce((s, d) => s + d.otros[i], 0) })).filter((c) => c.total);
   const adicionales = otros.reduce((s, c) => s + c.total, 0);
+  // los que van aparte, sumados por nombre (Titanpush tiene una fila por cada precio)
+  const porNombre = new Map<string, number>();
+  for (const c of aparteCostos) {
+    const total = dias.reduce((s, d) => s + adicionalDelDia(c, d.fecha, { venta: d.venta, pauta: d.pauta, ordenes: d.ventas }), 0);
+    if (total) porNombre.set(c.nombre, (porNombre.get(c.nombre) ?? 0) + total);
+  }
+  const aparte = [...porNombre].map(([nombre, total]) => ({ nombre, total }));
   const enRango = ads.filter((a) => conPauta && a.fecha >= desde && a.fecha <= hasta);
   const meta = enRango.reduce((s, a) => s + a.meta, 0);
   const googleAds = enRango.reduce((s, a) => s + a.google, 0);
   const tiktok = enRango.reduce((s, a) => s + a.tiktok, 0);
-  return { total: { ...t, ...indicadores(t, pauta, machado, adicionales), otros, meta, google: googleAds, tiktok, sinCosto: vs.reduce((s, v) => s + v.sin_costo, 0), sinComision: vs.filter((v) => v.sin_comision).length }, dias, ventas: vs };
+  const ind = indicadores(t, pauta, machado, adicionales);
+  const resultado = ind.ganancia - aparte.reduce((s, c) => s + c.total, 0);
+  return { total: { ...t, ...ind, otros, aparte, resultado, meta, google: googleAds, tiktok, sinCosto: vs.reduce((s, v) => s + v.sin_costo, 0), sinComision: vs.filter((v) => v.sin_comision).length }, dias, ventas: vs };
 }
 
 export async function GET(req: Request) {
