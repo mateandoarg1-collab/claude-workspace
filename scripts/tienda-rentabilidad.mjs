@@ -135,6 +135,40 @@ async function comisionMP(id) {
   return null;
 }
 
+// Gasto diario de TikTok Ads (app propia «Mateando Dashboard», token en .tiktok; la cuenta ANDOMAT 611 SRL gasta en
+// USD) en pesos al dólar blue venta de cada día (como lo pasaba Escalafy) → pestaña tiktok_gasto, que también lee
+// /api/tiktok. Reemplaza los días del rango y deja los demás. Sin .tiktok no hace nada.
+async function tiktokAPlanilla(desde, hasta) {
+  let tk;
+  try { tk = leerEnv('.tiktok'); } catch { return; }
+  // TikTok da como mucho 30 días por consulta
+  const lista = [];
+  for (let d0 = new Date(`${desde}T12:00:00Z`); d0.toISOString().slice(0, 10) <= hasta; d0.setUTCDate(d0.getUTCDate() + 30)) {
+    const fin = new Date(d0);
+    fin.setUTCDate(fin.getUTCDate() + 29);
+    const q = new URLSearchParams({
+      advertiser_id: tk.TIKTOK_ADVERTISER_ID, report_type: 'BASIC', data_level: 'AUCTION_ADVERTISER', dimensions: '["stat_time_day"]',
+      metrics: '["spend"]', start_date: d0.toISOString().slice(0, 10), end_date: [fin.toISOString().slice(0, 10), hasta].sort()[0], page_size: '100',
+    });
+    const j = await fetch(`https://business-api.tiktok.com/open_api/v1.3/report/integrated/get/?${q}`, { headers: { 'Access-Token': tk.TIKTOK_ACCESS_TOKEN } }).then((r) => r.json());
+    if (j.code !== 0) throw new Error(j.message);
+    lista.push(...(j.data?.list ?? []));
+  }
+  const blue = new Map((await fetch('https://api.argentinadatos.com/v1/cotizaciones/dolares/blue').then((r) => r.json())).map((c) => [c.fecha, c.venta]));
+  const ultimo = [...blue.values()].at(-1);
+  const dias = lista.map((d) => {
+    const fecha = d.dimensions.stat_time_day.slice(0, 10);
+    return [fecha, Math.round(Number(d.metrics.spend || 0) * (blue.get(fecha) ?? ultimo))];
+  });
+  const nuevos = new Set(dias.map((d) => d[0]));
+  const previas = ((await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'tiktok_gasto'!A2:C", valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? []).filter((r) => !nuevos.has(String(r[0])));
+  const ahora = new Date().toISOString();
+  const todas = [...previas, ...dias.map(([f, g]) => [f, g, ahora])].sort((x, y) => String(x[0]).localeCompare(String(y[0])));
+  await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: "'tiktok_gasto'!A:C" });
+  await sheets.spreadsheets.values.update({ spreadsheetId: SPREADSHEET_ID, range: "'tiktok_gasto'!A1", valueInputOption: 'RAW', requestBody: { values: [['fecha', 'gasto', 'actualizado'], ...todas] } });
+  console.log(`TikTok: ${dias.length} días, $${dias.reduce((t, d) => t + d[1], 0).toLocaleString('es-AR')}`);
+}
+
 // Pauta por día de Meta (cuentas de la tienda online), Google Ads y TikTok (pestaña tiktok_gasto, la llena el gasto de
 // Escalafy mientras TikTok no apruebe la API; ver app/api/tiktok).
 async function pautaPorDia(desde, hasta) {
@@ -164,6 +198,7 @@ async function pautaPorDia(desde, hasta) {
   }).then((r) => r.json());
   if (g.error) throw new Error(`Google Ads: ${g.error.message}`);
   for (const f of g.results ?? []) sumar(f.segments.date, 'google', Number(f.metrics.costMicros || 0) / 1e6);
+  await tiktokAPlanilla(desde, hasta).catch((e) => console.log(`No pude leer TikTok: ${e.message}`));
   const tiktok = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'tiktok_gasto'!A2:B", valueRenderOption: 'UNFORMATTED_VALUE' }).catch(() => null);
   for (const [fecha, gasto] of tiktok?.data.values ?? []) if (fecha >= desde && fecha <= hasta && Number(gasto)) sumar(String(fecha), 'tiktok', Number(gasto));
   // tiktok va al final: las filas viejas (sin TikTok) quedan con la misma forma

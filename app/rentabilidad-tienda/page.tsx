@@ -386,7 +386,7 @@ export default function RentabilidadTienda() {
                 puntos={serie((x) => x.costo)} formato={fmt} />
             </div>
             <p className="text-[11px] text-slate-500 -mt-1">
-              {conPauta ? 'La publicidad es Meta (MATEANDO2 +8% y MATEANDO 3 MP), Google Ads y TikTok (gasto de Escalafy), contra las ventas online. ' : ''}
+              {conPauta ? 'La publicidad es Meta (MATEANDO2 +8% y MATEANDO 3 MP), Google Ads y TikTok (en USD, al dólar blue de cada día), contra las ventas online. ' : ''}
               {d.anterior ? `Variación contra ${nomDia(d.anterior.desde)} – ${nomDia(d.anterior.hasta)}.` : 'Sin período anterior cargado para comparar.'}
             </p>
 
