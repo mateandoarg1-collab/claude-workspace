@@ -277,7 +277,13 @@ async function tasaPoint(desde, hasta) {
       const fin = new Date(`${hasta}T12:00:00Z`);
       fin.setUTCDate(fin.getUTCDate() + 1);
       const q = new URLSearchParams({ range: 'date_created', begin_date: `${desde}T03:00:00.000Z`, end_date: `${fin.toISOString().slice(0, 10)}T03:00:00.000Z`, status: 'approved', limit: '100', offset: String(offset), ...filtro });
-      const j = await fetch(`https://api.mercadopago.com/v1/payments/search?${q}`, { headers: { Authorization: `Bearer ${MP}` } }).then((r) => r.json()).catch(() => null);
+      // si una página falla no cortar ahí: el promedio quedaría con pocos cobros (un día dio 3% en vez de ~12%)
+      let j = null;
+      for (let i = 0; i < 4 && !Array.isArray(j?.results); i++) {
+        if (i) await new Promise((ok) => setTimeout(ok, 2000 * i));
+        j = await fetch(`https://api.mercadopago.com/v1/payments/search?${q}`, { headers: { Authorization: `Bearer ${MP}` } }).then((r) => r.json()).catch(() => null);
+      }
+      if (!Array.isArray(j?.results)) throw new Error('Mercado Pago no devolvió los cobros del local (Point/QR)');
       for (const p of j?.results ?? []) {
         monto += p.transaction_amount || 0;
         comision += (p.fee_details ?? []).filter((f) => f.fee_payer !== 'payer').reduce((t, f) => t + (f.amount || 0), 0);
