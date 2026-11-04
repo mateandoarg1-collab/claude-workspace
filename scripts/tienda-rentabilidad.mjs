@@ -123,7 +123,9 @@ async function comisionMP(id) {
     const r = await fetch(`https://api.mercadopago.com/v1/payments/${id}`, { headers: { Authorization: `Bearer ${MP}` } }).catch(() => null);
     if (r?.ok) {
       const p = await r.json();
-      return { comision: (p.fee_details ?? []).reduce((s, f) => s + (f.amount || 0), 0), cuotas: p.installments ?? 1 };
+      // solo lo que paga la tienda: en cuotas con interés la financiación la paga el cliente (fee_payer 'payer')
+      const comision = (p.fee_details ?? []).filter((f) => f.fee_payer !== 'payer').reduce((s, f) => s + (f.amount || 0), 0);
+      return { comision, cuotas: p.installments ?? 1 };
     }
     if (r && r.status === 404) return null;
     await new Promise((ok) => setTimeout(ok, 1500 * (i + 1)));
@@ -241,7 +243,7 @@ async function tasaPoint(desde, hasta) {
       const j = await fetch(`https://api.mercadopago.com/v1/payments/search?${q}`, { headers: { Authorization: `Bearer ${MP}` } }).then((r) => r.json()).catch(() => null);
       for (const p of j?.results ?? []) {
         monto += p.transaction_amount || 0;
-        comision += (p.fee_details ?? []).reduce((t, f) => t + (f.amount || 0), 0);
+        comision += (p.fee_details ?? []).filter((f) => f.fee_payer !== 'payer').reduce((t, f) => t + (f.amount || 0), 0);
       }
       if ((j?.results ?? []).length < 100) break; // MP a veces informa total 0 aunque trae resultados
     }
