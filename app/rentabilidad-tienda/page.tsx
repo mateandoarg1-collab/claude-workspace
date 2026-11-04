@@ -319,7 +319,7 @@ export default function RentabilidadTienda() {
           },
         ] : []),
         ...t.otros.map((c) => ({ nombre: c.nombre, valor: -c.total, total: false, nota: `${describirAdicional(c)} · ${CANAL_COSTO[c.canal]}` })),
-        { nombre: 'Ganancia', valor: t.ganancia, total: true, nota: 'Ganancia variable del canal. Los costos fijos (sueldos, alquileres, apps, envíos manuales de OCA…) van en la cuenta general de la empresa' },
+        { nombre: 'Ganancia', valor: t.ganancia, total: true, nota: 'Ganancia variable del canal. Los costos fijos (sueldos, alquileres, apps…) van en la cuenta general de la empresa' },
       ]
     : [];
 
