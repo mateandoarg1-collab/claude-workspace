@@ -54,9 +54,9 @@ function indicadores(t: Totales, pauta: number, machado: number, adicionales: nu
   };
 }
 
-// Análisis variable, como en /rentabilidad-meli: la Ganancia resta solo lo que se mueve con la venta (pauta, Machado y
-// adicionales variables). Los costos fijos (Doppler, Manychat, Empretienda, Titanpush, envíos manuales de OCA…) van
-// aparte, después: Ganancia final.
+// Análisis variable por canal: la Ganancia resta solo lo que se mueve con la venta (pauta, Machado y adicionales
+// variables). Los costos fijos (Doppler, Manychat, Empretienda, Titanpush, envíos manuales de OCA, sueldos, alquiler…)
+// no entran: van a la cuenta general de la empresa. Igual se devuelven aparte (`aparte`, `resultado`).
 const esFijo = (c: CostoAdicional) => c.tipo === 'fijo';
 
 // Costos adicionales (sueldos, alquiler, apps…) cargados en la pantalla de costos para la tienda o el local.

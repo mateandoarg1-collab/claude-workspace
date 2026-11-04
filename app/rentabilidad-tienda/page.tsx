@@ -12,7 +12,7 @@ type Totales = {
 };
 type Ind = { pauta: number; machado: number; adicionales: number; ganancia: number; margen: number | null; roas: number | null; cpa: number | null; tacos: number | null; ticket: number | null };
 type Total = Totales & Ind & {
-  meta: number; google: number; tiktok: number; sinCosto: number; sinComision: number; otros: (CostoAdicional & { total: number })[]; aparte?: { nombre: string; total: number }[]; resultado?: number;
+  meta: number; google: number; tiktok: number; sinCosto: number; sinComision: number; otros: (CostoAdicional & { total: number })[];
   machadoShopify: number; machadoMetaShopify: number; machadoMotivo: string | null;
 };
 type Dia = Totales & Ind & { fecha: string };
@@ -319,13 +319,7 @@ export default function RentabilidadTienda() {
           },
         ] : []),
         ...t.otros.map((c) => ({ nombre: c.nombre, valor: -c.total, total: false, nota: `${describirAdicional(c)} · ${CANAL_COSTO[c.canal]}` })),
-        { nombre: 'Ganancia', valor: t.ganancia, total: true, nota: 'Ganancia variable: antes de los costos fijos' },
-        ...(t.aparte?.length
-          ? [
-              ...t.aparte.map((c) => ({ nombre: c.nombre, valor: -c.total, total: false, nota: 'Costo fijo · no entra en la Ganancia ni en el margen (análisis variable)' })),
-              { nombre: 'Ganancia final', valor: t.resultado ?? t.ganancia, total: true, nota: 'Después de los costos fijos' },
-            ]
-          : []),
+        { nombre: 'Ganancia', valor: t.ganancia, total: true, nota: 'Ganancia variable del canal. Los costos fijos (sueldos, alquileres, apps, envíos manuales de OCA…) van en la cuenta general de la empresa' },
       ]
     : [];
 
