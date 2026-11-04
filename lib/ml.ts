@@ -196,7 +196,15 @@ export async function fetchOrdersInRange(from: Date, to: Date): Promise<MLOrder[
     const pages = await Promise.all(offsets.slice(i, i + 8).map(page));
     for (const p of pages) out.push(...p.results);
   }
-  return out;
+  // ML corre el `to` una hora (lo toma en su horario, -04:00): «ayer» traía las ventas de 00:00 a 00:59 de hoy, que
+  // también entraban en «hoy». Se recorta acá al rango pedido, y se sacan las repetidas por el corrimiento de páginas.
+  const vistos = new Set<number>();
+  return out.filter((o) => {
+    const t = new Date(o.date_created).getTime();
+    if (t < from.getTime() || t >= to.getTime() || vistos.has(o.id)) return false;
+    vistos.add(o.id);
+    return true;
+  });
 }
 
 // Gasto de Product Ads (publicidad ML) entre dos días AR inclusive (YYYY-MM-DD).
