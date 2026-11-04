@@ -46,11 +46,13 @@ const args = process.argv.slice(2);
 const arg = (k) => (args.includes(k) ? args[args.indexOf(k) + 1] : undefined);
 const horaAR = new Date(Date.now() - 3 * 3600e3).getUTCHours();
 const DIAS = Number(arg('--dias') ?? (horaAR === 6 ? 60 : 10));
+// Claves: ~/.claude en la Mac; en el servidor de DonWeb, MATEANDO_CLAVES=/root/mateando/claves (ver scripts/servidor)
+const CLAVES = process.env.MATEANDO_CLAVES ?? join(homedir(), '.claude');
 const leerEnv = (archivo) =>
-  Object.fromEntries(readFileSync(join(homedir(), '.claude', archivo), 'utf8').split('\n').filter((l) => /^\w+=/.test(l)).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim()]));
+  Object.fromEntries(readFileSync(join(CLAVES, archivo), 'utf8').split('\n').filter((l) => /^\w+=/.test(l)).map((l) => [l.slice(0, l.indexOf('=')), l.slice(l.indexOf('=') + 1).trim()]));
 
 const auth = new google.auth.GoogleAuth({
-  keyFile: `${homedir()}/.claude/.mateando-credentials.json`,
+  keyFile: join(CLAVES, '.mateando-credentials.json'),
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 const sheets = google.sheets({ version: 'v4', auth });
@@ -148,8 +150,8 @@ async function pautaPorDia(desde, hasta) {
       url = j.paging?.next ?? null;
     }
   }
-  const oauth = JSON.parse(readFileSync(join(homedir(), '.claude', '.mateando-oauth.json'), 'utf8')).installed;
-  const refresh = JSON.parse(readFileSync(join(homedir(), '.claude', '.mateando-gads-token.json'), 'utf8')).refresh_token;
+  const oauth = JSON.parse(readFileSync(join(CLAVES, '.mateando-oauth.json'), 'utf8')).installed;
+  const refresh = JSON.parse(readFileSync(join(CLAVES, '.mateando-gads-token.json'), 'utf8')).refresh_token;
   const tok = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
