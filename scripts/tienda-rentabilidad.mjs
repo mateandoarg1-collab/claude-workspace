@@ -35,7 +35,7 @@ const DEB_CRED = 0.012; // impuesto a los débitos y créditos, sobre lo cobrado
 // facturado (criterio pesimista de Juampi).
 const FACTURADAS = new Set(['mercadopago', 'gocuotas', 'local-tarjeta', 'acordar']);
 const NO_FACTURADAS_TRANSFERENCIA = new Set(['transferencia', 'local-transferencia']);
-const FINANCIERA_TASA = 0.03; // transferencias
+const FINANCIERA_TASA = 0.0325; // transferencias (lo que cobra la financiera)
 const GOCUOTAS_TASA = 0.079; // + IVA, sobre el total cobrado
 const PAGO = { 1: 'mercadopago', 3: 'acordar', 5: 'transferencia', 8: 'gocuotas' };
 // Pauta que va contra la tienda online (ver /canales): Meta MATEANDO2 (+8% de comisiones) y MATEANDO 3 MP, y Google Ads.

@@ -301,7 +301,7 @@ export default function RentabilidadTienda() {
   const cascada = t
     ? [
         { nombre: 'Venta neta', valor: t.venta, total: true, nota: `Sin IVA lo facturado (Mercado Pago, GoCuotas, tarjeta en el local y local sin medio anotado); transferencias y efectivo no se facturan y van enteros${t.descuentos ? `. Ya con ${fmt(t.descuentos)} de descuentos` : ''}` },
-        { nombre: 'Comisión de cobro', valor: -t.comision, nota: 'Mercado Pago (con el costo de las cuotas sin interés), GoCuotas 7,9% + IVA, transferencias 3% de la financiera y tarjeta en el local (promedio de Point de los últimos 30 días)' },
+        { nombre: 'Comisión de cobro', valor: -t.comision, nota: 'Mercado Pago (con el costo de las cuotas sin interés), GoCuotas 7,9% + IVA, transferencias 3,25% de la financiera y tarjeta en el local (promedio de Point de los últimos 30 días)' },
         { nombre: 'Envíos gratis', valor: -t.envio_tienda, nota: 'Lo que cobra OCA cuando el envío corre por cuenta de la tienda' },
         { nombre: 'IIBB (5%)', valor: -t.impuestos, nota: 'Sobre la venta sin IVA de lo facturado' },
         { nombre: 'Imp. débitos y créditos (1,2%)', valor: -t.deb_cred, nota: 'Sobre lo cobrado facturado (con IVA y envío)' },
