@@ -319,11 +319,11 @@ export default function RentabilidadTienda() {
           },
         ] : []),
         ...t.otros.map((c) => ({ nombre: c.nombre, valor: -c.total, total: false, nota: `${describirAdicional(c)} · ${CANAL_COSTO[c.canal]}` })),
-        { nombre: 'Ganancia', valor: t.ganancia, total: true },
+        { nombre: 'Ganancia', valor: t.ganancia, total: true, nota: 'Ganancia variable: antes de los costos fijos' },
         ...(t.aparte?.length
           ? [
-              ...t.aparte.map((c) => ({ nombre: c.nombre, valor: -c.total, total: false, nota: 'Costo fijo aparte: no entra en la ganancia ni en el margen' })),
-              { nombre: `Resultado después de ${t.aparte.map((c) => c.nombre).join(' y ')}`, valor: t.resultado ?? t.ganancia, total: true },
+              ...t.aparte.map((c) => ({ nombre: c.nombre, valor: -c.total, total: false, nota: 'Costo fijo · no entra en la Ganancia ni en el margen (análisis variable)' })),
+              { nombre: 'Ganancia final', valor: t.resultado ?? t.ganancia, total: true, nota: 'Después de los costos fijos' },
             ]
           : []),
       ]
@@ -376,7 +376,7 @@ export default function RentabilidadTienda() {
               <Tarjeta titulo="Margen de ganancia" valor={t.margen == null ? '–' : porc(t.margen)} actual={t.margen} anterior={a?.margen} enPuntos
                 puntos={serie((x) => x.margen)} formato={porc} />
               <Tarjeta titulo="Ganancia" valor={fmt(t.ganancia)} actual={t.ganancia} anterior={a?.ganancia}
-                detalle={t.otros.length ? 'Después de publicidad, Machado y costos fijos' : conPauta ? 'Después de publicidad y Machado' : 'Sin publicidad asignada'} puntos={serie((x) => x.ganancia)} formato={fmt} />
+                detalle={conPauta ? 'Variable: después de publicidad y Machado, antes de costos fijos' : 'Variable: antes de costos fijos'} puntos={serie((x) => x.ganancia)} formato={fmt} />
               {conPauta && (
                 <>
                   <Tarjeta titulo="Inversión publicitaria" valor={fmt(t.pauta)} actual={t.pauta} anterior={a?.pauta} mejorSiSube={false}

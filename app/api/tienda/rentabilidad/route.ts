@@ -54,13 +54,15 @@ function indicadores(t: Totales, pauta: number, machado: number, adicionales: nu
   };
 }
 
-// Costos fijos que Juampi quiere ver aparte, después de la ganancia (no cuentan en la ganancia ni en el margen).
-const APARTE = /titanpush/i;
+// Análisis variable, como en /rentabilidad-meli: la Ganancia resta solo lo que se mueve con la venta (pauta, Machado y
+// adicionales variables). Los costos fijos (Doppler, Manychat, Empretienda, Titanpush, envíos manuales de OCA…) van
+// aparte, después: Ganancia final.
+const esFijo = (c: CostoAdicional) => c.tipo === 'fijo';
 
 // Costos adicionales (sueldos, alquiler, apps…) cargados en la pantalla de costos para la tienda o el local.
 function resumen(ventas: VentaTienda[], ads: { fecha: string; meta: number; google: number; total: number; tiktok: number }[], desde: string, hasta: string, conPauta: boolean, machadoDia: Map<string, number>, todos: CostoAdicional[]) {
-  const costos = todos.filter((c) => !APARTE.test(c.nombre));
-  const aparteCostos = todos.filter((c) => APARTE.test(c.nombre));
+  const costos = todos.filter((c) => !esFijo(c));
+  const aparteCostos = todos.filter(esFijo);
   const vs = ventas.filter((v) => v.fecha >= desde && v.fecha <= hasta);
   const pautaDia = new Map(ads.map((a) => [a.fecha, conPauta ? a.total : 0]));
   const dias = listaDias(desde, hasta).map((fecha) => {
@@ -74,7 +76,7 @@ function resumen(ventas: VentaTienda[], ads: { fecha: string; meta: number; goog
   const machado = dias.reduce((s, d) => s + d.machado, 0);
   const otros = costos.map((c, i) => ({ ...c, total: dias.reduce((s, d) => s + d.otros[i], 0) })).filter((c) => c.total);
   const adicionales = otros.reduce((s, c) => s + c.total, 0);
-  // los que van aparte, sumados por nombre (Titanpush tiene una fila por cada precio)
+  // los fijos, sumados por nombre (Titanpush tiene una fila por cada precio)
   const porNombre = new Map<string, number>();
   for (const c of aparteCostos) {
     const total = dias.reduce((s, d) => s + adicionalDelDia(c, d.fecha, { venta: d.venta, pauta: d.pauta, ordenes: d.ventas }), 0);
