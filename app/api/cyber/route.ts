@@ -17,17 +17,18 @@ type Venta = [number, number];
 const minutos = (fecha: string | number) => Math.floor((new Date(fecha).getTime() - INICIO_2026.getTime()) / 60000);
 const enEvento = (m: number) => m >= 0 && m < DIAS * 1440;
 
-// Tienda Online (sin "a acordar" = local, igual que el export de 2025): pagadas, subtotal − cupón − desc. por pago.
+// Tienda Online (sin "a acordar" = local, igual que el export de 2025): pagadas, bruto con envío (subtotal − cupón −
+// desc. por pago + envío que paga el cliente), como /canales.
 async function empretienda(): Promise<{ ventas: Venta[]; actualizado: string | null }> {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
-  const r = await sheets.spreadsheets.values.get({ spreadsheetId: EMP, range: "'emp_ventas'!A2:I", valueRenderOption: 'UNFORMATTED_VALUE' });
+  const r = await sheets.spreadsheets.values.get({ spreadsheetId: EMP, range: "'emp_ventas'!A2:J", valueRenderOption: 'UNFORMATTED_VALUE' });
   const ventas: Venta[] = [];
   let ultima = '';
   for (const x of r.data.values ?? []) {
     const m = minutos(x[2]);
     if (String(x[2]) > ultima) ultima = String(x[2]);
     if (!enEvento(m) || String(x[4]) !== PAGO.pagada || String(x[3]) === ACORDAR) continue;
-    ventas.push([m, Math.round(Number(x[6]) - Number(x[7] || 0) - Number(x[8] || 0))]);
+    ventas.push([m, Math.round(Number(x[6]) - Number(x[7] || 0) - Number(x[8] || 0) + Number(x[9] || 0))]);
   }
   return { ventas, actualizado: ultima || null };
 }
