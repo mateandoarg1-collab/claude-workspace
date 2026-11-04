@@ -43,9 +43,11 @@ cat > /etc/cron.d/mateando <<'EOF'
 7,37 * * * * root bash /root/claude-workspace/scripts/servidor/leer-metricas.sh >> /var/log/empretienda.log 2>&1
 # Vencimientos de los mails de «Mateando Datos» (llegan lunes y jueves a las 10) → planilla Egresos MP
 20 10,15 * * * root cd /root/claude-workspace && /root/tildar_comprobantes/venv/bin/python scripts/vencimientos.py >> /var/log/vencimientos.log 2>&1
+# Rentabilidad Tienda (y gasto de TikTok) cada hora; a las 6 recalcula 60 días
+22 * * * * root bash /root/claude-workspace/scripts/servidor/tienda-rentabilidad.sh >> /var/log/tienda-rentabilidad.log 2>&1
 EOF
 cat > /etc/logrotate.d/mateando <<'EOF'
-/var/log/tildador.log /var/log/empretienda.log /var/log/vencimientos.log {
+/var/log/tildador.log /var/log/empretienda.log /var/log/vencimientos.log /var/log/tienda-rentabilidad.log {
   weekly
   rotate 4
   compress
