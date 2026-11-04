@@ -30,12 +30,13 @@ function sumar(filas: FilaRentaMeli[]): Totales {
   return t;
 }
 
-// Pauta y costos adicionales de un día (pestaña costos_adicionales, se cargan en /rentabilidad-meli/costos).
-// `ganancia` es la de Escalafy (neto − ML Ads): ahí los costos adicionales no restan en el canal. `gananciaFinal` sí.
+// Pauta y costos adicionales variables de un día (pestaña costos_adicionales, se cargan en /rentabilidad-meli/costos).
+// Análisis variable por canal: `ganancia` = neto − ML Ads − adicionales variables (Pichón). Los fijos (Nubimetrics,
+// sueldos…) no entran: van a la cuenta general de la empresa. `gananciaFinal` queda igual a `ganancia`.
 function debajo(t: Totales, fecha: string, pauta: number, adicionales: CostoAdicional[]) {
   const otros = adicionales.map((c) => adicionalDelDia(c, fecha, { venta: t.venta, pauta, ordenes: t.ordenes }));
   const sumaOtros = otros.reduce((s, x) => s + x, 0);
-  return { pauta, otros, adicionales: sumaOtros, ganancia: t.neto - pauta, gananciaFinal: t.neto - pauta - sumaOtros };
+  return { pauta, otros, adicionales: sumaOtros, ganancia: t.neto - pauta - sumaOtros, gananciaFinal: t.neto - pauta - sumaOtros };
 }
 
 function listaDias(desde: string, hasta: string) {
@@ -60,7 +61,8 @@ function ratios(venta: number, ganancia: number, pauta: number, atribuidas: numb
   };
 }
 
-function resumen(ordenes: FilaRentaMeli[], ads: { fecha: string; gasto: number; atribuidas: number; organicas: number }[], adicionales: CostoAdicional[], desde: string, hasta: string) {
+function resumen(ordenes: FilaRentaMeli[], ads: { fecha: string; gasto: number; atribuidas: number; organicas: number }[], todos: CostoAdicional[], desde: string, hasta: string) {
+  const adicionales = todos.filter((c) => c.tipo !== 'fijo');
   const fechas = listaDias(desde, hasta);
   const enRango = (f: string) => f >= desde && f <= hasta;
   const os = ordenes.filter((o) => enRango(o.fecha));
@@ -79,7 +81,7 @@ function resumen(ordenes: FilaRentaMeli[], ads: { fecha: string; gasto: number; 
   // Cada costo adicional se calcula por día (tienen fechas de inicio y fin) y se suma.
   const otros = adicionales.map((c, i) => ({ ...c, total: dias.reduce((s, d) => s + d.otros[i], 0) }));
   const sumaOtros = otros.reduce((s, c) => s + c.total, 0);
-  const ganancia = t.neto - pauta;
+  const ganancia = t.neto - pauta - sumaOtros;
   return {
     total: {
       ...t,
@@ -88,7 +90,7 @@ function resumen(ordenes: FilaRentaMeli[], ads: { fecha: string; gasto: number; 
       otros: otros.filter((c) => c.total),
       adicionales: sumaOtros,
       ganancia,
-      gananciaFinal: ganancia - sumaOtros,
+      gananciaFinal: ganancia,
       ...ratios(t.venta, ganancia, pauta, atribuidas, organicas),
       sinCosto: os.reduce((s, o) => s + o.sin_costo, 0),
       flexEstimados: os.filter((o) => o.flex_estimado).length,

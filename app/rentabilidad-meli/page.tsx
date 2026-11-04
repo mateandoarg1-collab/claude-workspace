@@ -84,9 +84,8 @@ export default function RentabilidadMeli() {
         { nombre: 'Costo de producto', valor: -t.costo },
         { nombre: 'Neto antes de publicidad', valor: t.neto, total: true },
         { nombre: 'Publicidad ML Ads', valor: -t.pauta },
-        { nombre: 'Ganancia', valor: t.ganancia, total: true, nota: 'La misma cuenta que la Ganancia de Mercado Libre en Escalafy' },
         ...t.otros.map((c) => ({ nombre: c.nombre, valor: -c.total, nota: describirAdicional(c), total: false })),
-        { nombre: 'Ganancia final', valor: t.gananciaFinal, total: true, nota: 'Después de los costos adicionales (Escalafy los resta solo en el total de la empresa)' },
+        { nombre: 'Ganancia', valor: t.ganancia, total: true, nota: 'Ganancia variable del canal. Los costos fijos (sueldos, alquileres, Nubimetrics…) van en la cuenta general de la empresa' },
       ]
     : [];
 
@@ -128,7 +127,7 @@ export default function RentabilidadMeli() {
               <Tarjeta titulo="Margen de ganancia" valor={t.margen == null ? '–' : porc(t.margen)} actual={t.margen} anterior={a?.margen} enPuntos
                 puntos={serie((x) => x.margen)} formato={porc} />
               <Tarjeta titulo="Ganancia" valor={fmt(t.ganancia)} actual={t.ganancia} anterior={a?.ganancia}
-                detalle={`Final ${fmt(t.gananciaFinal)} (con costos adicionales)`} puntos={serie((x) => x.ganancia)} formato={fmt} />
+                detalle="Variable: después de ML Ads y Pichón, antes de costos fijos" puntos={serie((x) => x.ganancia)} formato={fmt} />
               <Tarjeta titulo="Inversión publicitaria" valor={fmt(t.pauta)} actual={t.pauta} anterior={a?.pauta} mejorSiSube={false}
                 detalle="ML Ads" puntos={serie((x) => x.pauta)} formato={fmt} />
               <Tarjeta titulo="ROAS" valor={t.roasMl == null ? '–' : `${num(t.roasMl)}x`} actual={t.roasMl} anterior={a?.roasMl}
