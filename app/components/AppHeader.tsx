@@ -10,6 +10,7 @@ const NAV: Array<{ href: string; label: string; badge?: boolean }> = [
   { href: '/canales', label: 'Canales' },
   { href: '/cybermonday', label: 'CYBERMONDAY' },
   { href: '/estadisticas', label: 'Estadísticas' },
+  { href: '/anuncios', label: 'Carga Anuncios' },
   { href: '/vencimientos', label: 'Vencimientos' },
   { href: '/mercadolibre', label: 'Mercado Libre' },
   { href: '/rentabilidad-meli', label: 'Rentabilidad ML' },
