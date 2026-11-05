@@ -7,7 +7,7 @@ import { Tarjeta, nomDia, num, porc } from '../components/TarjetaKpi';
 import { CANALES as CANAL_COSTO, describirAdicional, type CostoAdicional } from '@/lib/costosAdicionales';
 
 type Totales = {
-  ventas: number; unidades: number; venta: number; descuentos: number; comision: number; envio_tienda: number;
+  ventas: number; unidades: number; venta: number; descuentos: number; envio_cobrado: number; comision: number; envio_tienda: number;
   impuestos: number; deb_cred: number; costo: number; packaging: number; neto: number;
 };
 type Ind = { pauta: number; machado: number; adicionales: number; ganancia: number; margen: number | null; roas: number | null; cpa: number | null; tacos: number | null; ticket: number | null };
@@ -99,9 +99,10 @@ function DetalleVenta({ v, onCerrar }: { v: Venta; onCerrar: () => void }) {
     return () => window.removeEventListener('keydown', cerrar);
   }, [onCerrar]);
   const filas = [
+    ...(v.envio_cobrado ? [{ nombre: 'Envío que pagó el cliente', valor: v.envio_cobrado }] : []),
     { nombre: `Comisión de cobro (${PAGO[v.pago] ?? v.pago}${v.cuotas && v.cuotas > 1 ? `, ${v.cuotas} cuotas` : ''})`, valor: -v.comision },
-    { nombre: 'Envío gratis (lo paga la tienda)', valor: -v.envio_tienda },
-    { nombre: v.facturada ? 'IIBB (5% de la venta sin IVA)' : 'IIBB (no se factura)', valor: -v.impuestos },
+    { nombre: 'Envío (lo que cobra OCA)', valor: -v.envio_tienda },
+    { nombre: v.facturada ? 'IIBB (5% de venta y envío sin IVA)' : 'IIBB (no se factura)', valor: -v.impuestos },
     { nombre: v.facturada ? 'Imp. débitos y créditos (1,2%)' : 'Imp. débitos y créditos (no se factura)', valor: -v.deb_cred },
     { nombre: 'Costo de productos', valor: -v.costo },
     { nombre: 'Packaging', valor: -v.packaging },
@@ -171,7 +172,6 @@ function DetalleVenta({ v, onCerrar }: { v: Venta; onCerrar: () => void }) {
             </tr>
           </tbody>
         </table>
-        {v.envio_cobrado > 0 && <p className="text-[11px] text-slate-500 mt-2">El comprador pagó {fmt2(v.envio_cobrado)} de envío (sin IVA), que va a OCA: no suma ni resta.</p>}
         <div className="mt-2 space-y-1 text-xs">
           {v.sin_costo > 0 && <p className="text-amber-300">⚠️ Hay productos sin costo o sin regla de costo: cuentan $0.</p>}
           {v.sin_comision > 0 && <p className="text-amber-300">⚠️ Falta la comisión de este medio de pago.</p>}
@@ -301,9 +301,10 @@ export default function RentabilidadTienda() {
   const cascada = t
     ? [
         { nombre: 'Venta neta', valor: t.venta, total: true, nota: `Sin IVA lo facturado (Mercado Pago, GoCuotas, tarjeta en el local y local sin medio anotado); transferencias y efectivo no se facturan y van enteros${t.descuentos ? `. Ya con ${fmt(t.descuentos)} de descuentos` : ''}` },
+        { nombre: 'Envío que pagó el cliente', valor: t.envio_cobrado, nota: 'Entra a la tienda: sobre eso se pagan comisión, cuotas, IIBB y débitos y créditos (sin IVA lo facturado)' },
         { nombre: 'Comisión de cobro', valor: -t.comision, nota: 'Mercado Pago (con el costo de las cuotas sin interés), GoCuotas 7,9% + IVA, transferencias 3,25% de la financiera y tarjeta en el local (promedio de Point de los últimos 30 días)' },
-        { nombre: 'Envíos gratis', valor: -t.envio_tienda, nota: 'Lo que cobra OCA cuando el envío corre por cuenta de la tienda' },
-        { nombre: 'IIBB (5%)', valor: -t.impuestos, nota: 'Sobre la venta sin IVA de lo facturado' },
+        { nombre: 'Envíos (lo que cobra OCA)', valor: -t.envio_tienda, nota: 'Todos los envíos por OCA, gratis y pagados por el cliente, sin IVA (el IVA se recupera)' },
+        { nombre: 'IIBB (5%)', valor: -t.impuestos, nota: 'Sobre la venta y el envío sin IVA de lo facturado' },
         { nombre: 'Imp. débitos y créditos (1,2%)', valor: -t.deb_cred, nota: 'Sobre lo cobrado facturado (con IVA y envío)' },
         { nombre: 'Costo de producto', valor: -t.costo },
         { nombre: 'Packaging', valor: -t.packaging, nota: 'Packaging de mates y caja de despacho (bolsa en el local)' },

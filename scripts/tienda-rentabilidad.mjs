@@ -314,16 +314,20 @@ const filas = ventas.map((v) => {
   const ventaSinIva = neto(ventaIva);
   // La de la financiera no lleva IVA: se resta tal cual.
   const comision = comisionIva / IVA + (NO_FACTURADAS_TRANSFERENCIA.has(metodo) ? cobrado * FINANCIERA_TASA : 0);
-  const envioTienda = Number(v.envio_gratis || 0) / IVA;
-  const impuestos = facturada ? ventaSinIva * IIBB : 0;
+  // Envío (criterio de Ariel): lo que paga el cliente entra a la tienda (ingreso, sin IVA si se factura) y sobre eso se
+  // pagan comisión, cuotas, IIBB y débitos y créditos; OCA cobra todos los envíos, gratis o no (costo sin IVA: el IVA se
+  // recupera). Lo cobrado al cliente coincide con lo que factura OCA (factura de oct-2026), así que se toma igual.
+  const envioCobrado = neto(Number(v.envio_cobrado || 0));
+  const envioTienda = (Number(v.envio_cobrado || 0) + Number(v.envio_gratis || 0)) / IVA;
+  const impuestos = facturada ? (ventaSinIva + envioCobrado) * IIBB : 0;
   const debCred = facturada ? cobrado * DEB_CRED : 0;
   const packaging = c.empaque + c.despacho;
   const productos = JSON.parse(v.productos || '[]');
   return [
     diaAR(v.fecha), String(v.order_id), String(v.numero), Number(v.pago_metodo) === 3 ? 'local' : 'online', metodo, String(v.envio),
     String(v.cp), String(v.provincia), String(v.ciudad), productos.reduce((s, p) => s + (p.q || 0), 0),
-    r2(ventaSinIva), r2(neto(Number(v.cupon) + Number(v.desc_pago))), r2(neto(Number(v.envio_cobrado))), r2(comision), r2(envioTienda),
-    r2(impuestos), r2(c.cmv), r2(packaging), r2(ventaSinIva - comision - envioTienda - impuestos - debCred - c.cmv - packaging),
+    r2(ventaSinIva), r2(neto(Number(v.cupon) + Number(v.desc_pago))), r2(envioCobrado), r2(comision), r2(envioTienda),
+    r2(impuestos), r2(c.cmv), r2(packaging), r2(ventaSinIva + envioCobrado - comision - envioTienda - impuestos - debCred - c.cmv - packaging),
     c.sin_costo, sinComision, mp?.cuotas ?? '', String(v.fecha), JSON.stringify(productos.map((p) => ({ id: p.id, n: p.n, v: p.v, q: p.q, p: p.p }))),
     r2(debCred), facturada ? 1 : 0, (c.sin_costo_n ?? []).join(' | '),
   ];

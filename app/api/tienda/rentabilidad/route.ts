@@ -21,7 +21,7 @@ function listaDias(desde: string, hasta: string) {
   return out;
 }
 
-const CAMPOS = ['venta', 'descuentos', 'comision', 'envio_tienda', 'impuestos', 'deb_cred', 'costo', 'packaging', 'neto'] as const;
+const CAMPOS = ['venta', 'descuentos', 'envio_cobrado', 'comision', 'envio_tienda', 'impuestos', 'deb_cred', 'costo', 'packaging', 'neto'] as const;
 type Totales = Record<(typeof CAMPOS)[number], number> & { ventas: number; unidades: number };
 
 function sumar(vs: VentaTienda[]): Totales {
