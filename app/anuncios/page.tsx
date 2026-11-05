@@ -20,6 +20,24 @@ const nuevoConjunto = (i: number, tipo: 'imagen' | 'video' = 'imagen'): Conjunto
   nombre: `Conjunto ${i}`, tipo, ads: [0, 1, 2].map(() => ({ archivo: '', texto: '', titulo: '' })),
 });
 
+// Arma solo los conjuntos: de a 3 imágenes y de a 3 videos, sin mezclar.
+// Lo que sobra (1 o 2 archivos de un tipo) queda afuera y se avisa.
+const POR_CONJUNTO = 3;
+function armarConjuntos(archivos: Archivo[]): Conjunto[] {
+  const out: Conjunto[] = [];
+  for (const tipo of ['imagen', 'video'] as const) {
+    const pool = archivos.filter((a) => a.tipo === tipo);
+    for (let i = 0; i + POR_CONJUNTO <= pool.length; i += POR_CONJUNTO) {
+      out.push({
+        nombre: `Conjunto ${out.length + 1} - ${tipo === 'imagen' ? 'Imágenes' : 'Videos'}`,
+        tipo,
+        ads: pool.slice(i, i + POR_CONJUNTO).map((a) => ({ archivo: a.id, texto: '', titulo: '' })),
+      });
+    }
+  }
+  return out.length ? out : [nuevoConjunto(1)];
+}
+
 async function post(url: string, body: unknown) {
   const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
   const j = await r.json();
@@ -64,6 +82,7 @@ export default function AnunciosPage() {
       const j = await r.json();
       if (j.error) throw new Error(j.error);
       setArchivos(j.archivos);
+      setConjuntos(armarConjuntos(j.archivos));
       if (!campana) setCampana(`CBO ${new Date().toLocaleDateString('es-AR')}`);
     } catch (e) { setErrDrive(e instanceof Error ? e.message : String(e)); }
     setCargandoDrive(false);
@@ -109,7 +128,7 @@ export default function AnunciosPage() {
     const arch = archivos.find((x) => x.id === a.archivo);
     if (!arch) problemas.push(`${c.nombre} · anuncio ${ai + 1}: falta archivo`);
     else if (arch.tipo !== c.tipo) problemas.push(`${c.nombre}: no se mezclan imágenes y videos`);
-    if (!a.texto.trim()) problemas.push(`${c.nombre} · anuncio ${ai + 1}: falta copy`);
+    if (!a.texto.trim() && !idea.trim()) problemas.push('Escribí la idea del copy (paso 3)');
     void ci;
   }));
 
@@ -119,11 +138,28 @@ export default function AnunciosPage() {
     const L = (s: string) => setLog((l) => [...l, s]);
     setLog([]);
     try {
+      // Si faltan copys, se generan solos con la idea antes de publicar.
+      let cs = conjuntos;
+      const faltan = cs.reduce((s, c) => s + c.ads.filter((a) => !a.texto.trim()).length, 0);
+      if (faltan) {
+        L(`Generando ${faltan} copys con la idea…`);
+        const { copys } = await post('/api/anuncios/copys', { idea, cantidad: faltan });
+        let k = 0;
+        cs = cs.map((c) => ({
+          ...c, ads: c.ads.map((a) => {
+            if (a.texto.trim()) return a;
+            const cp = copys[k++ % copys.length];
+            return { ...a, texto: cp.texto, titulo: cp.titulo };
+          }),
+        }));
+        setConjuntos(cs);
+        L('✓ Copys listos');
+      }
       L('Creando campaña CBO…');
       const { id: campId } = await post('/api/anuncios/paso', { accion: 'campana', cuenta, nombre: campana, presupuesto });
       L(`✓ Campaña ${campId}`);
       const subidos: Record<string, { hash?: string; videoId?: string; miniatura?: string }> = {};
-      for (const c of conjuntos) {
+      for (const c of cs) {
         L(`Creando ${c.nombre}…`);
         const { id: setId } = await post('/api/anuncios/paso', { accion: 'conjunto', cuenta, campana: campId, nombre: c.nombre, pixel });
         L(`✓ ${c.nombre} (${setId})`);
@@ -169,7 +205,16 @@ export default function AnunciosPage() {
             <>
               <p className="text-xs text-slate-400 mt-3">
                 {archivos.filter((a) => a.tipo === 'imagen').length} imágenes · {archivos.filter((a) => a.tipo === 'video').length} videos
+                {' → '}<span className="text-emerald-300">{conjuntos.length} conjuntos de 3 armados solos</span>
               </p>
+              {(['imagen', 'video'] as const).map((t) => {
+                const sobran = archivos.filter((a) => a.tipo === t).length % POR_CONJUNTO;
+                return sobran ? (
+                  <p key={t} className="text-xs text-amber-400 mt-1">
+                    Quedan {sobran} {t === 'imagen' ? 'imagen(es)' : 'video(s)'} sin usar: hacen falta 3 para armar otro conjunto.
+                  </p>
+                ) : null;
+              })}
               <div className="mt-2 grid grid-cols-3 sm:grid-cols-6 gap-2">
                 {archivos.map((a) => (
                   <div key={a.id} className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950">
@@ -214,8 +259,9 @@ export default function AnunciosPage() {
         <section className={card}>
           <h2 className="font-semibold mb-3">3 · Idea del copy</h2>
           <textarea className={`${input} min-h-24`} placeholder="Ej: termo Stanley-style a mitad de precio, 3 cuotas sin interés, envío gratis a todo el país…" value={idea} onChange={(e) => setIdea(e.target.value)} />
-          <button className={`${btn} mt-2 bg-emerald-600 hover:bg-emerald-500 text-white`} disabled={!idea.trim() || generando} onClick={generarCopys}>
-            {generando ? 'Generando…' : '✨ Generar variantes para todos los anuncios'}
+          <p className="text-xs text-slate-500 mt-1">Al publicar, los copys se generan solos con esta idea. Si querés verlos antes, tocá el botón.</p>
+          <button className={`${btn} mt-2 bg-slate-800 hover:bg-slate-700`} disabled={!idea.trim() || generando} onClick={generarCopys}>
+            {generando ? 'Generando…' : '✨ Ver copys antes de publicar'}
           </button>
         </section>
 
@@ -276,7 +322,7 @@ export default function AnunciosPage() {
             </ul>
           )}
           <button className={`${btn} w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-base`} disabled={problemas.length > 0 || creando} onClick={crear}>
-            {creando ? 'Creando en Meta…' : 'Crear campaña en Meta (pausada)'}
+            {creando ? 'Publicando en Meta…' : 'Publicar en Meta (queda pausada)'}
           </button>
           {log.length > 0 && (
             <pre className="mt-3 text-xs bg-slate-950 rounded-lg p-3 whitespace-pre-wrap text-slate-300">{log.join('\n')}</pre>
