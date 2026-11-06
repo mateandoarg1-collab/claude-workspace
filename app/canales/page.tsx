@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import AppHeader from '../components/AppHeader';
 import AvisoTildador from '../components/AvisoTildador';
+import VentasVivo from '../components/VentasVivo';
 import CanalMarca, { type CanalId } from '../components/CanalMarca';
 import CanalDailyChart from '../components/CanalDailyChart';
 import HistoricoMensual from '../components/HistoricoMensual';
@@ -158,6 +159,7 @@ export default function Canales() {
       <AppHeader title="Ventas por canal" width="5xl" />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <VentasVivo />
         <div className="flex items-center gap-x-4 gap-y-1 flex-wrap rounded-xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm">
           <span className="font-semibold text-emerald-300">💵 Dólar blue</span>
           {dolar.data ? (
