@@ -21,9 +21,14 @@ export async function GET(req: Request) {
 
 // POST { cuenta, cpaMax } — cpaMax vacío/0 = desactivar el apagado automático en esa cuenta.
 export async function POST(req: Request) {
-  const { cuenta, cpaMax } = (await req.json()) as { cuenta: string; cpaMax: number | null };
+  const { cuenta, cpaMax, apagarAhora } = (await req.json()) as { cuenta: string; cpaMax: number | null; apagarAhora?: boolean };
   if (!cuenta || !tokenPara(cuenta)) return Response.json({ error: 'Elegí una cuenta' }, { status: 400 });
   try {
+    // { apagarAhora: true } → corre el control ya mismo en esta cuenta (botón "APAGAR AHORA" de Machado).
+    if (apagarAhora) {
+      const r = await controlar(cuenta, false);
+      return Response.json({ ok: true, apagados: r.apagados });
+    }
     const valor = cpaMax ? Math.round(Number(cpaMax)) : null;
     await guardarCpaMax(cuenta, valor);
     // (Meta tarda unos segundos en reflejar las etiquetas: se devuelve lo guardado, no lo releído)

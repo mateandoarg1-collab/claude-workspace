@@ -46,6 +46,20 @@ export default function CpaMax({ cuenta, nombreCuenta }: { cuenta: string; nombr
     setRecarga((n) => n + 1);
   }
 
+  async function apagarAhora() {
+    const n = est?.seApagarian.length ?? 0;
+    if (!confirm(`¿Apagar ahora ${n} anuncio(s) de ${nombreCuenta} que superan el CPA máximo?`)) return;
+    setGuardando(true);
+    const r = await fetch('/api/anuncios/cpa-max', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cuenta, apagarAhora: true }),
+    }).then((x) => x.json()).catch((e) => ({ error: String(e) }));
+    await new Promise((res) => setTimeout(res, 4000)); // Meta tarda unos segundos en reflejar los cambios
+    setGuardando(false);
+    if (r.error) alert(`Error: ${r.error}`);
+    else alert(`Listo: se apagaron ${r.apagados?.length ?? 0} anuncio(s).`);
+    setRecarga((k) => k + 1);
+  }
+
   const activo = !!est?.cpaMax;
   return (
     <section className="rounded-xl border border-slate-800 bg-slate-900 p-4 space-y-3">
@@ -75,7 +89,13 @@ export default function CpaMax({ cuenta, nombreCuenta }: { cuenta: string; nombr
 
       {!cargando && activo && est!.seApagarian.length > 0 && (
         <div>
-          <p className="text-xs text-amber-400 mb-1">En el próximo control se apagan {est!.seApagarian.length}:</p>
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <p className="text-xs text-amber-400">En el próximo control se apagan {est!.seApagarian.length}:</p>
+            <button className="rounded-lg px-3 py-1.5 text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white disabled:opacity-40"
+              disabled={guardando} onClick={apagarAhora}>
+              {guardando ? 'Apagando…' : 'APAGAR AHORA'}
+            </button>
+          </div>
           <ul className="text-xs text-slate-300 space-y-0.5">
             {est!.seApagarian.slice(0, 10).map((d) => <li key={d.id}>• {d.nombre} — {d.motivo}</li>)}
           </ul>
