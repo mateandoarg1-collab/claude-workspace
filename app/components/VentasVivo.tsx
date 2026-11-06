@@ -18,7 +18,7 @@ function isoHoy(hhmm: string) {
 export default function VentasVivo() {
   const [abierto, setAbierto] = useState(true);
   const [inicio, setInicio] = useState('20:36');
-  const [fin, setFin] = useState('21:38'); // vacío = sigue en vivo
+  const [fin, setFin] = useState("21:39"); // vacío = sigue en vivo
   const [d, setD] = useState<D | null>(null);
   const [err, setErr] = useState('');
 
@@ -29,7 +29,7 @@ export default function VentasVivo() {
     try { localStorage.setItem(KEY, inicio); } catch {}
     let vivo = true;
     const cargar = () =>
-      fetch(`/api/vivo?desde=${encodeURIComponent(isoHoy(inicio))}${/^\d\d:\d\d$/.test(fin) ? `&hasta=${encodeURIComponent(isoHoy(fin))}:59` : ''}`, { cache: 'no-store' })
+      fetch(`/api/vivo?desde=${encodeURIComponent(isoHoy(inicio))}${/^\d\d:\d\d$/.test(fin) ? `&hasta=${encodeURIComponent(isoHoy(fin))}` : ''}`, { cache: 'no-store' })
         .then((r) => r.json())
         .then((x) => { if (vivo) { if (x.error) setErr(x.error); else { setD(x); setErr(''); } } })
         .catch((e) => vivo && setErr(String(e)));
