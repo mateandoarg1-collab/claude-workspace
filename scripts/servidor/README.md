@@ -28,6 +28,8 @@ probó Hetzner manteniendo la sesión para que GitHub Actions leyera Métricas; 
   Antes corría en launchd de la Mac (`com.mateando.tienda-rentabilidad`, ahora desactivado).
 - CPA máximo de Meta (`/anuncios/rendimiento`): a los 12 y 42 hace POST a `/api/anuncios/cpa-max/control`, que pausa
   los anuncios con CPA mayor al máximo de su cuenta (o que gastaron más que eso sin ventas) → `/var/log/cpa-max.log`.
+- Presupuesto por ROAS (`/anuncios/presupuesto`): a las 10:00 hace POST a `/api/anuncios/presupuesto/control`, que sube o baja
+  el presupuesto diario de las campañas activas según el ROAS de ayer (Empretienda ÷ Meta) → `/var/log/presupuesto-roas.log`.
 - Si se cambia el tildador en la Mac (`~/Downloads/tildar_comprobantes`), copiarlo con
   `rsync -az -e "ssh -i ~/.ssh/mateando_server -p 5175" --exclude config.json --exclude 'credentials*.json' --exclude 'token*.json' --exclude venv --exclude __pycache__ ./ root@201.32.131.251:/root/tildar_comprobantes/`.
 - El automático de la Mac quedó apagado (`~/Library/LaunchAgents/com.mateando.tildador.plist.desactivado`); la app

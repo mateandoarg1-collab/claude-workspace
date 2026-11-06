@@ -47,9 +47,11 @@ cat > /etc/cron.d/mateando <<'EOF'
 22 * * * * root bash /root/claude-workspace/scripts/servidor/tienda-rentabilidad.sh >> /var/log/tienda-rentabilidad.log 2>&1
 # Apagado automático de anuncios de Meta por CPA máximo (configurado en /anuncios/rendimiento) cada 30 min
 12,42 * * * * root curl -s -m 110 -X POST https://claude-workspace-virid.vercel.app/api/anuncios/cpa-max/control >> /var/log/cpa-max.log 2>&1; echo >> /var/log/cpa-max.log
+# Ajuste diario de presupuesto de Meta por ROAS de ayer (configurado en /anuncios/presupuesto)
+0 10 * * * root curl -s -m 115 -X POST https://claude-workspace-virid.vercel.app/api/anuncios/presupuesto/control >> /var/log/presupuesto-roas.log 2>&1; echo >> /var/log/presupuesto-roas.log
 EOF
 cat > /etc/logrotate.d/mateando <<'EOF'
-/var/log/tildador.log /var/log/empretienda.log /var/log/vencimientos.log /var/log/tienda-rentabilidad.log /var/log/cpa-max.log {
+/var/log/tildador.log /var/log/empretienda.log /var/log/vencimientos.log /var/log/tienda-rentabilidad.log /var/log/cpa-max.log /var/log/presupuesto-roas.log {
   weekly
   rotate 4
   compress
