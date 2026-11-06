@@ -18,6 +18,7 @@ function isoHoy(hhmm: string) {
 export default function VentasVivo() {
   const [abierto, setAbierto] = useState(true);
   const [inicio, setInicio] = useState('20:36');
+  const [fin, setFin] = useState('21:38'); // vacío = sigue en vivo
   const [d, setD] = useState<D | null>(null);
   const [err, setErr] = useState('');
 
@@ -28,20 +29,20 @@ export default function VentasVivo() {
     try { localStorage.setItem(KEY, inicio); } catch {}
     let vivo = true;
     const cargar = () =>
-      fetch(`/api/vivo?desde=${encodeURIComponent(isoHoy(inicio))}`, { cache: 'no-store' })
+      fetch(`/api/vivo?desde=${encodeURIComponent(isoHoy(inicio))}${/^\d\d:\d\d$/.test(fin) ? `&hasta=${encodeURIComponent(isoHoy(fin))}:59` : ''}`, { cache: 'no-store' })
         .then((r) => r.json())
         .then((x) => { if (vivo) { if (x.error) setErr(x.error); else { setD(x); setErr(''); } } })
         .catch((e) => vivo && setErr(String(e)));
     cargar();
     const t = setInterval(cargar, 2 * 60e3);
     return () => { vivo = false; clearInterval(t); };
-  }, [inicio]);
+  }, [inicio, fin]);
 
   const v = d?.ventas ?? [];
   const suma = (l: V[]) => l.reduce((s, x) => s + x.monto, 0);
   const cob = v.filter((x) => x.cobrada);
   const pen = v.filter((x) => !x.cobrada);
-  const min = d ? Math.max(1, (new Date(d.ahora).getTime() - new Date(d.desde).getTime()) / 60000) : 1;
+  const min = d ? Math.max(1, (Math.min(new Date(d.ahora).getTime(), /^\d\d:\d\d$/.test(fin) ? new Date(isoHoy(fin)).getTime() : Infinity) - new Date(d.desde).getTime()) / 60000) : 1;
   const ult15 = d ? v.filter((x) => new Date(x.t).getTime() > new Date(d.ahora).getTime() - 15 * 60e3) : [];
 
   return (
@@ -54,6 +55,10 @@ export default function VentasVivo() {
         <label className="text-sm text-slate-400 flex items-center gap-2">
           Arrancó a las
           <input type="time" value={inicio} onChange={(e) => setInicio(e.target.value)} className="bg-slate-800 border border-slate-700 rounded px-2 py-0.5 text-slate-100" />
+        </label>
+        <label className="text-sm text-slate-400 flex items-center gap-2">
+          Terminó a las
+          <input type="time" value={fin} onChange={(e) => setFin(e.target.value)} className="bg-slate-800 border border-slate-700 rounded px-2 py-0.5 text-slate-100" />
         </label>
         <span className="text-xs text-slate-500 ml-auto">{d ? `actualizado ${hora(d.ahora)} · se refresca cada 2 min` : err ? '' : 'Cargando…'}</span>
       </div>
@@ -85,7 +90,7 @@ export default function VentasVivo() {
             </table>
           </div>
           <p className="text-xs text-slate-500">
-            Solo Tienda Online (Empretienda), sin local «a acordar» ni cancelados. El servidor lee Empretienda cada 30 min
+            Pedidos hechos durante el vivo: las transferencias que llegan después pasan solas de PENDIENTE a ABONADA. Solo Tienda Online (Empretienda), sin local «a acordar» ni cancelados. El servidor lee Empretienda cada 30 min
             {d.empretiendaUltima ? ` (última orden leída ${hora(d.empretiendaUltima)})` : ''}.
             {d.errores.empretienda && <span className="text-red-400"> Tienda: {d.errores.empretienda}</span>}
           </p>
