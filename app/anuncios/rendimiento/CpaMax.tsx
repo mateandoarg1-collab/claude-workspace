@@ -41,6 +41,7 @@ export default function CpaMax({ cuenta, nombreCuenta }: { cuenta: string; nombr
     } else if (!confirm(`¿Desactivar el apagado automático en ${nombreCuenta}?`)) return;
     setGuardando(true);
     await fetch('/api/anuncios/cpa-max', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cuenta, cpaMax: nuevo }) });
+    await new Promise((r) => setTimeout(r, 4000)); // Meta tarda unos segundos en reflejar el cambio
     setGuardando(false);
     setRecarga((n) => n + 1);
   }

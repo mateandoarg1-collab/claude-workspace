@@ -24,8 +24,10 @@ export async function POST(req: Request) {
   const { cuenta, cpaMax } = (await req.json()) as { cuenta: string; cpaMax: number | null };
   if (!cuenta || !tokenPara(cuenta)) return Response.json({ error: 'Elegí una cuenta' }, { status: 400 });
   try {
-    await guardarCpaMax(cuenta, cpaMax ? Number(cpaMax) : null);
-    return Response.json({ ok: true, cpaMax: await leerCpaMax(cuenta) });
+    const valor = cpaMax ? Math.round(Number(cpaMax)) : null;
+    await guardarCpaMax(cuenta, valor);
+    // (Meta tarda unos segundos en reflejar las etiquetas: se devuelve lo guardado, no lo releído)
+    return Response.json({ ok: true, cpaMax: valor });
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 });
   }
