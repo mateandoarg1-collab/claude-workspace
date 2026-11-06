@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import AppHeader from '../../components/AppHeader';
 import Pestanas from '../Pestanas';
+import CpaMax from './CpaMax';
 
 // Rendimiento de pauta por anuncio (Meta): miniatura del creativo, ordenado de mejor a peor por CPA, ROAS o CTR.
 
@@ -90,6 +91,8 @@ export default function RendimientoPage() {
             <input type="checkbox" checked={soloActivos} onChange={(e) => setSoloActivos(e.target.checked)} /> Solo activos
           </label>
         </div>
+
+        {cuenta && <CpaMax cuenta={cuenta} nombreCuenta={cuentas.find((c) => c.id === cuenta)?.nombre ?? cuenta} />}
 
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-slate-400">Ordenar por:</span>
