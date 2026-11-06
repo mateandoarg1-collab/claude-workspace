@@ -45,9 +45,11 @@ cat > /etc/cron.d/mateando <<'EOF'
 20 10,15 * * * root cd /root/claude-workspace && /root/tildar_comprobantes/venv/bin/python scripts/vencimientos.py >> /var/log/vencimientos.log 2>&1
 # Rentabilidad Tienda (y gasto de TikTok) cada hora; a las 6 recalcula 60 días
 22 * * * * root bash /root/claude-workspace/scripts/servidor/tienda-rentabilidad.sh >> /var/log/tienda-rentabilidad.log 2>&1
+# Apagado automático de anuncios de Meta por CPA máximo (configurado en /anuncios/rendimiento) cada 30 min
+12,42 * * * * root curl -s -m 110 -X POST https://claude-workspace-virid.vercel.app/api/anuncios/cpa-max/control >> /var/log/cpa-max.log 2>&1; echo >> /var/log/cpa-max.log
 EOF
 cat > /etc/logrotate.d/mateando <<'EOF'
-/var/log/tildador.log /var/log/empretienda.log /var/log/vencimientos.log /var/log/tienda-rentabilidad.log {
+/var/log/tildador.log /var/log/empretienda.log /var/log/vencimientos.log /var/log/tienda-rentabilidad.log /var/log/cpa-max.log {
   weekly
   rotate 4
   compress
