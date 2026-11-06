@@ -38,12 +38,15 @@ export async function GET(req: Request) {
     const creativos: Record<string, { thumb?: string; estado?: string; esVideo?: boolean }> = {};
     for (let i = 0; i < ids.length; i += 50) {
       const lote = ids.slice(i, i + 50);
+      // (el parámetro ?ids= quedó deprecado en v26: se filtra la lista de anuncios de la cuenta por id)
+      const filtro = encodeURIComponent(JSON.stringify([{ field: 'id', operator: 'IN', value: lote }]));
       const j = await meta(
-        `?ids=${lote.join(',')}&fields=effective_status,creative.thumbnail_width(320).thumbnail_height(320){thumbnail_url,image_url,video_id}`,
+        `${cuenta}/ads?limit=50&filtering=${filtro}&fields=id,effective_status,creative.thumbnail_width(320).thumbnail_height(320){thumbnail_url,image_url,video_id}`,
         token,
       );
-      for (const [id, ad] of Object.entries(j as Record<string, { effective_status?: string; creative?: { thumbnail_url?: string; image_url?: string; video_id?: string } }>)) {
-        creativos[id] = {
+      type Ad = { id: string; effective_status?: string; creative?: { thumbnail_url?: string; image_url?: string; video_id?: string } };
+      for (const ad of (j.data ?? []) as Ad[]) {
+        creativos[ad.id] = {
           thumb: ad.creative?.thumbnail_url ?? ad.creative?.image_url,
           estado: ad.effective_status,
           esVideo: !!ad.creative?.video_id,
