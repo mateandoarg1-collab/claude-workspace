@@ -28,7 +28,7 @@ export function tokensDisponibles(): string[] {
   return [process.env.META_ACCESS_TOKEN, process.env.META_MAYORISTA_TOKEN].filter((t): t is string => !!t);
 }
 
-export async function meta(path: string, token: string, init?: { method?: 'GET' | 'POST'; body?: Record<string, unknown> | FormData }) {
+export async function meta(path: string, token: string, init?: { method?: 'GET' | 'POST' | 'DELETE'; body?: Record<string, unknown> | FormData }) {
   const url = new URL(path.startsWith('http') ? path : `${GRAPH}/${path}`);
   let body: BodyInit | undefined;
   if (init?.body instanceof FormData) {
