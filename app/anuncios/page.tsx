@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import AppHeader from '../components/AppHeader';
+import Pestanas from './Pestanas';
 
 // Carga de anuncios en Meta (para Agus Machado): carpeta de Drive → campaña CBO → conjuntos → anuncios.
 // Regla: cada conjunto es 100% imágenes o 100% videos. Todo se crea PAUSADO.
@@ -188,6 +189,7 @@ export default function AnunciosPage() {
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <AppHeader title="Carga de anuncios" subtitle="Drive → Meta · campaña CBO, todo pausado" width="5xl" />
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+        <Pestanas />
 
         <section className={card}>
           <h2 className="font-semibold mb-3">1 · Carpeta de Drive</h2>

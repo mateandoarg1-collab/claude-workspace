@@ -1,15 +1,12 @@
 import { desdeAR, hastaAR, parsePeriodo } from '@/lib/periodo';
+import { RECARGO } from '@/lib/anuncios';
 
 // Gasto de Meta Ads del período (?periodo=hoy|ayer|semana|mes): la pauta de la Tienda Online (Empretienda).
 // Suma todas las cuentas de META_AD_ACCOUNTS (con RECARGO por comisiones) (act_…, separadas por coma). Token: META_ACCESS_TOKEN
 // (usuario de sistema "cuenta mp3", no vence). Sin eso devuelve spend null.
 // Recargo por comisiones sobre lo que informa Meta: estas cuentas se pagan con un medio que cobra 8%
 // (pedido de Agus Machado, ads manager). MATEANDO 3 MP va tal cual.
-const RECARGO: Record<string, number> = {
-  act_1439554678210755: 1.08, // MATEANDO2
-  act_750953847402633: 1.08, // MATEANDO-MANYCHAT (Mayorista)
-  act_1423285683055984: 1.08, // MATEANDO - SHOPIFY
-};
+// (RECARGO vive en lib/anuncios: también lo usa /anuncios/rendimiento)
 
 // ?cuenta= elige qué pauta leer:
 //   (nada)    → Tienda Online: META_ACCESS_TOKEN + META_AD_ACCOUNTS (MATEANDO2 + MATEANDO 3 MP)

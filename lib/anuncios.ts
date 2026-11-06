@@ -8,7 +8,15 @@ export const GRAPH = 'https://graph.facebook.com/v21.0';
 export const PAGE_ID_DEFAULT = '432778647449503'; // Mateando
 export const IG_ID_DEFAULT = '17841416378822536'; // @mateandoarg
 
-const lista = (s?: string) => (s ?? '').split(',').map((c) => c.trim()).filter(Boolean);
+// Recargo por comisiones sobre el gasto que informa Meta: estas cuentas se pagan con un medio
+// que cobra 8% (pedido de Agus Machado). MATEANDO 3 MP va tal cual.
+export const RECARGO: Record<string, number> = {
+  act_1439554678210755: 1.08, // MATEANDO2
+  act_750953847402633: 1.08, // MATEANDO-MANYCHAT (Mayorista)
+  act_1423285683055984: 1.08, // MATEANDO - SHOPIFY
+};
+
+const lista =(s?: string) => (s ?? '').split(',').map((c) => c.trim()).filter(Boolean);
 
 // La cuenta Mayorista usa otro token (otro Business Manager).
 export function tokenPara(cuenta: string): string | undefined {
