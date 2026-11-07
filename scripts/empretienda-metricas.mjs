@@ -124,6 +124,9 @@ async function leer(page, url, esMes) {
       const t = (await page.innerText('body')).toLowerCase();
       const pantallaHoy = t.includes('ventas de hoy') || (hoy.endsWith('-01') && t.includes(`ventas de ${mes}`));
       if (pedido.get('from') === hoy && pedido.get('until') === hoy && pantallaHoy) break;
+      // Del 1 a hoy (la semana el día 7, o «ayer» el día 2… cuando el rango arranca el 1): es la vista del mes, y
+      // Empretienda también saca las fechas de la dirección.
+      if (pedido.get('from') === `${hoy.slice(0, 8)}01` && pedido.get('until') === hoy && t.includes(`ventas de ${mes}`)) break;
     }
     if (i === 2) throw new Error(`Empretienda no aplicó el filtro: ${url}`);
   }
