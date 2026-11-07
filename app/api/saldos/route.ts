@@ -34,8 +34,9 @@ async function meta(cuenta: string, token: string, nombre?: string): Promise<Sal
   if (a.account_status !== 1) return { ...base, tipo: a.is_prepay_account ? 'prepaga' : 'tarjeta', saldo: null, dias: null, estado: 'problema', detalle: ESTADOS[a.account_status] ?? `estado ${a.account_status}` };
   if (!a.is_prepay_account) return { ...base, tipo: 'tarjeta', saldo: null, dias: null, estado: 'ok' };
   // «Saldo disponible: $12.345,67 ARS»; si no viene, tope de gasto − gastado (en centavos)
-  const m = String(a.funding_source_details?.display_string ?? '').match(/\$\s*([\d.]+,\d{2})/);
-  const saldo = m ? Number(m[1].replace(/\./g, '').replace(',', '.')) : (Number(a.spend_cap) - Number(a.amount_spent)) / 100;
+  // (Meta separa los miles con puntos o con espacios duros: «$1 551 570,00»)
+  const m = String(a.funding_source_details?.display_string ?? '').match(/\$\s*(\d[\d.\s]*,\d{2})/);
+  const saldo = m ? Number(m[1].replace(/[.\s]/g, '').replace(',', '.')) : (Number(a.spend_cap) - Number(a.amount_spent)) / 100;
   return { ...base, tipo: 'prepaga', saldo, dias: gastoDia ? saldo / gastoDia : null, estado: nivel(saldo, gastoDia) };
 }
 
