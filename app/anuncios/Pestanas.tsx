@@ -10,6 +10,7 @@ export default function Pestanas() {
     { href: '/anuncios', label: 'Cargar campaña' },
     { href: '/anuncios/rendimiento', label: 'Rendimiento de pauta' },
     { href: '/anuncios/presupuesto', label: 'Presupuesto por ROAS' },
+    { href: '/anuncios/google', label: 'Google Ads' },
   ];
   return (
     <div className="flex gap-1 rounded-xl bg-slate-900 border border-slate-800 p-1 w-fit max-w-full overflow-x-auto text-sm whitespace-nowrap">
