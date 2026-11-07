@@ -20,8 +20,10 @@ export type Saldo = {
   detalle?: string;
 };
 
-const nivel = (saldo: number, gastoDia: number): Saldo['estado'] =>
-  saldo <= Math.max(1000, gastoDia * 0.05) ? 'agotado' : gastoDia && saldo / gastoDia < 2 ? 'poco' : 'ok';
+// Cuándo avisar (pedido de Juampi): Meta cuando queda para 1 día de gasto; Google cuando quedan $200.000.
+const GOOGLE_AVISO = 200000;
+const nivel = (saldo: number, gastoDia: number, aviso: number): Saldo['estado'] =>
+  saldo <= Math.max(1000, gastoDia * 0.05) ? 'agotado' : saldo <= aviso ? 'poco' : 'ok';
 
 async function meta(cuenta: string, token: string, nombre?: string): Promise<Saldo> {
   const [a, ins] = await Promise.all([
@@ -37,7 +39,7 @@ async function meta(cuenta: string, token: string, nombre?: string): Promise<Sal
   // (Meta separa los miles con puntos o con espacios duros: «$1 551 570,00»)
   const m = String(a.funding_source_details?.display_string ?? '').match(/\$\s*(\d[\d.\s]*,\d{2})/);
   const saldo = m ? Number(m[1].replace(/[.\s]/g, '').replace(',', '.')) : (Number(a.spend_cap) - Number(a.amount_spent)) / 100;
-  return { ...base, tipo: 'prepaga', saldo, dias: gastoDia ? saldo / gastoDia : null, estado: nivel(saldo, gastoDia) };
+  return { ...base, tipo: 'prepaga', saldo, dias: gastoDia ? saldo / gastoDia : null, estado: nivel(saldo, gastoDia, gastoDia) };
 }
 
 async function google(): Promise<Saldo | null> {
@@ -65,7 +67,7 @@ async function google(): Promise<Saldo | null> {
   // sin tope aprobado (INFINITE) = se cobra sin límite: nada que avisar
   if (!presupuesto) return { cuenta: 'Google Ads', tipo: 'tarjeta', saldo: null, gastoDia, dias: null, estado: 'ok' };
   const saldo = (Number(presupuesto.accountBudget.approvedSpendingLimitMicros) - Number(presupuesto.accountBudget.amountServedMicros ?? 0)) / 1e6;
-  return { cuenta: 'Google Ads', tipo: 'prepaga', saldo, gastoDia, dias: gastoDia ? saldo / gastoDia : null, estado: nivel(saldo, gastoDia), detalle: 'presupuesto de la cuenta' };
+  return { cuenta: 'Google Ads', tipo: 'prepaga', saldo, gastoDia, dias: gastoDia ? saldo / gastoDia : null, estado: nivel(saldo, gastoDia, GOOGLE_AVISO), detalle: 'presupuesto de la cuenta' };
 }
 
 export async function GET() {
