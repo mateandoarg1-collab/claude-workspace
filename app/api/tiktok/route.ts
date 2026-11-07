@@ -1,3 +1,4 @@
+import { conCache } from '@/lib/cache';
 import { google } from 'googleapis';
 import { desdeAR, hastaAR, parsePeriodo } from '@/lib/periodo';
 import { getAuth } from '@/lib/sheets';
@@ -19,7 +20,7 @@ async function desdeEscalafy(desde: string, hasta: string) {
   return { spend, fuente: `TikTok Ads (datos hasta ${ult})` };
 }
 
-export async function GET(req: Request) {
+async function obtener(req: Request) {
   const token = process.env.TIKTOK_ACCESS_TOKEN;
   const cuenta = process.env.TIKTOK_ADVERTISER_ID;
   const periodo = parsePeriodo(new URL(req.url).searchParams.get('periodo'));
@@ -46,3 +47,5 @@ export async function GET(req: Request) {
     return Response.json({ spend: null, motivo: e instanceof Error ? e.message : String(e) });
   }
 }
+
+export const GET = conCache(obtener, 300);

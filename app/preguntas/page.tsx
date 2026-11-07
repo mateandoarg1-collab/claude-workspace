@@ -78,6 +78,7 @@ export default function Preguntas() {
     load(tab);
     loadPendingCount();
     const id = setInterval(() => {
+      if (document.hidden) return; // solo con la pestaña a la vista
       load(tab);
       loadPendingCount();
     }, 60_000);

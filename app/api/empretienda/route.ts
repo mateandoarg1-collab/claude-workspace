@@ -1,6 +1,7 @@
+import { conCache } from '@/lib/cache';
 import { getEmpretiendaCmv, getEmpretiendaManual, getEmpretiendaMetricas, setEmpretiendaManual } from '@/lib/sheets';
 
-export async function GET() {
+async function obtener() {
   try {
     const [data, metricas, cmv] = await Promise.all([getEmpretiendaManual(), getEmpretiendaMetricas(), getEmpretiendaCmv()]);
     return Response.json({ ...data, metricas, cmv });
@@ -23,3 +24,5 @@ export async function POST(req: Request) {
     return Response.json({ error: msg }, { status: 500 });
   }
 }
+
+export const GET = conCache(obtener, 60);

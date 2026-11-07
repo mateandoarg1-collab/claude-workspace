@@ -18,7 +18,8 @@ export default function PreguntasBadge() {
       }
     }
     load();
-    const id = setInterval(load, 60_000);
+    // cada 5 min y solo con la pestaña a la vista: el badge está en todas las páginas (gasto de Vercel)
+    const id = setInterval(() => !document.hidden && load(), 5 * 60_000);
     return () => {
       active = false;
       clearInterval(id);

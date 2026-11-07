@@ -180,7 +180,7 @@ export default function CyberMonday() {
         .then((x) => { setD(x); setErr(''); })
         .catch((e) => setErr(String(e)));
     cargar();
-    const t = setInterval(cargar, 2 * 60e3);
+    const t = setInterval(() => !document.hidden && cargar(), 2 * 60e3); // solo con la pestaña a la vista
     return () => clearInterval(t);
   }, []);
 

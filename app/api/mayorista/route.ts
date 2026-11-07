@@ -1,7 +1,8 @@
+import { conCache } from '@/lib/cache';
 import { getMayoristaPeriodo } from '@/lib/sheets';
 import { parsePeriodo } from '@/lib/periodo';
 
-export async function GET(req: Request) {
+async function obtener(req: Request) {
   try {
     return Response.json(await getMayoristaPeriodo(parsePeriodo(new URL(req.url).searchParams.get('periodo'))));
   } catch (e: unknown) {
@@ -9,3 +10,5 @@ export async function GET(req: Request) {
     return Response.json({ error: msg }, { status: 500 });
   }
 }
+
+export const GET = conCache(obtener, 300);

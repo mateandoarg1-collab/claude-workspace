@@ -1,3 +1,4 @@
+import { conCache } from '@/lib/cache';
 // Saldo de cada cuenta publicitaria, para el aviso de arriba del panel (que no se corte la pauta).
 // - Meta prepaga (MATEANDO 3 MP): «Saldo disponible» de funding_source_details (o tope − gastado) ÷ gasto diario de
 //   los últimos 7 días = días que alcanza.
@@ -70,7 +71,7 @@ async function google(): Promise<Saldo | null> {
   return { cuenta: 'Google Ads', tipo: 'prepaga', saldo, gastoDia, dias: gastoDia ? saldo / gastoDia : null, estado: nivel(saldo, gastoDia, GOOGLE_AVISO), detalle: 'presupuesto de la cuenta' };
 }
 
-export async function GET() {
+async function obtener() {
   const tareas: Promise<Saldo | null>[] = [];
   const t = process.env.META_ACCESS_TOKEN;
   const lista = (s?: string) => (s ?? '').split(',').map((c) => c.trim()).filter(Boolean);
@@ -82,3 +83,5 @@ export async function GET() {
   const errores = res.flatMap((r) => (r.status === 'rejected' ? [String(r.reason?.message ?? r.reason)] : []));
   return Response.json({ cuentas, errores, ahora: new Date().toISOString() });
 }
+
+export const GET = conCache(obtener, 300);

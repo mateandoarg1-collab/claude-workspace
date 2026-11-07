@@ -1,7 +1,8 @@
+import { conCache } from '@/lib/cache';
 import { addLocalVenta, getLocalVentasEntre, getLocalVentasSummary } from '@/lib/localVentas';
 
 // Cobro del local del mes en curso, o entre ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD.
-export async function GET(req: Request) {
+async function obtener(req: Request) {
   try {
     const q = new URL(req.url).searchParams;
     const dia = /^\d{4}-\d{2}-\d{2}$/;
@@ -32,3 +33,5 @@ export async function POST(req: Request) {
     return Response.json({ error: msg }, { status: 500 });
   }
 }
+
+export const GET = conCache(obtener, 300);

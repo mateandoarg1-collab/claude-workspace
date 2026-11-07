@@ -1,3 +1,4 @@
+import { conCache } from '@/lib/cache';
 import { desdeAR, hastaAR, parsePeriodo } from '@/lib/periodo';
 
 // Gasto de Google Ads del período (?periodo=hoy|ayer|semana|mes) y las conversiones que Google atribuye (compras de la
@@ -7,7 +8,7 @@ import { desdeAR, hastaAR, parsePeriodo } from '@/lib/periodo';
 // GOOGLE_ADS_CUSTOMER_ID. Sin eso devuelve spend null.
 const API = 'https://googleads.googleapis.com/v25';
 
-export async function GET(req: Request) {
+async function obtener(req: Request) {
   const { GOOGLE_ADS_CLIENT_ID: id, GOOGLE_ADS_CLIENT_SECRET: secret, GOOGLE_ADS_REFRESH_TOKEN: refresh, GOOGLE_ADS_CUSTOMER_ID: cliente } = process.env;
   if (!id || !secret || !refresh || !cliente) return Response.json({ spend: null, motivo: 'Falta acceso a Google Ads' });
   try {
@@ -38,3 +39,5 @@ export async function GET(req: Request) {
     return Response.json({ spend: null, motivo: e instanceof Error ? e.message : String(e) });
   }
 }
+
+export const GET = conCache(obtener, 300);

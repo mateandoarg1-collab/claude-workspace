@@ -1,3 +1,4 @@
+import { conCache } from '@/lib/cache';
 import { google } from 'googleapis';
 import { getAuth } from '@/lib/sheets';
 import { fetchOrdersInRange, isValidOrder } from '@/lib/ml';
@@ -48,7 +49,7 @@ async function meli(): Promise<Venta[]> {
   return [...packs.values()].map(([m, v]) => [m, Math.round(v)]);
 }
 
-export async function GET() {
+async function obtener() {
   const [e, m] = await Promise.allSettled([empretienda(), meli()]);
   const err = (x: PromiseSettledResult<unknown>) => (x.status === 'rejected' ? String(x.reason?.message ?? x.reason) : null);
   return Response.json({
@@ -64,3 +65,5 @@ export async function GET() {
     errores: { empretienda: err(e), meli: err(m) },
   });
 }
+
+export const GET = conCache(obtener, 600);

@@ -1,8 +1,9 @@
+import { conCache } from '@/lib/cache';
 // Dólar blue: cotización de hoy (dolarapi.com) y promedio mensual del blue venta (api.argentinadatos.com, histórico
 // diario). Se usa la VENTA: lo que costaría comprar dólares con los pesos vendidos. Cacheado 1 h.
 type Dia = { fecha: string; compra: number; venta: number };
 
-export async function GET() {
+async function obtener() {
   try {
     const [hoy, hist] = await Promise.all([
       fetch('https://dolarapi.com/v1/dolares/blue', { next: { revalidate: 3600 } }).then((r) => r.json()),
@@ -24,3 +25,5 @@ export async function GET() {
     return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
 }
+
+export const GET = conCache(obtener, 900);

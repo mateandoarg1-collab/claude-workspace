@@ -17,7 +17,7 @@ export default function AvisoSaldos() {
         .then((d) => vivo && setCuentas(d.cuentas ?? []))
         .catch(() => {});
     leer();
-    const id = setInterval(leer, 10 * 60 * 1000);
+    const id = setInterval(() => !document.hidden && leer(), 10 * 60 * 1000);
     return () => {
       vivo = false;
       clearInterval(id);

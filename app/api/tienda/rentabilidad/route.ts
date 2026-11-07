@@ -1,3 +1,4 @@
+import { conCache } from '@/lib/cache';
 import { getRentabilidadTienda, getShopifyParaMachado, type VentaTienda } from '@/lib/tienda';
 import { adicionalDelDia, getCostosAdicionales, type CostoAdicional } from '@/lib/costosMeli';
 import { desdeAR, hastaAR } from '@/lib/periodo';
@@ -92,7 +93,7 @@ function resumen(ventas: VentaTienda[], ads: { fecha: string; meta: number; goog
   return { total: { ...t, ...ind, otros, aparte, resultado, meta, google: googleAds, tiktok, sinCosto: vs.reduce((s, v) => s + v.sin_costo, 0), sinComision: vs.filter((v) => v.sin_comision).length }, dias, ventas: vs };
 }
 
-export async function GET(req: Request) {
+async function obtener(req: Request) {
   try {
     const q = new URL(req.url).searchParams;
     const dia = /^\d{4}-\d{2}-\d{2}$/;
@@ -174,3 +175,5 @@ export async function GET(req: Request) {
     return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
 }
+
+export const GET = conCache(obtener, 300);

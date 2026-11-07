@@ -1,3 +1,4 @@
+import { conCache } from '@/lib/cache';
 import { fetchAdsCost, fetchOrdersInRange, isValidOrder } from '@/lib/ml';
 import { getCostosMeli } from '@/lib/sheets';
 import { desdeAR, finAR, hastaAR, inicioAR, parsePeriodo } from '@/lib/periodo';
@@ -5,7 +6,7 @@ import { desdeAR, finAR, hastaAR, inicioAR, parsePeriodo } from '@/lib/periodo';
 export const maxDuration = 30;
 
 // Ventas de Mercado Libre del período (?periodo=hoy|ayer|semana|mes), contadas como /api/ml/sales.
-export async function GET(req: Request) {
+async function obtener(req: Request) {
   try {
     const periodo = parsePeriodo(new URL(req.url).searchParams.get('periodo'));
     const [all, ads, costos] = await Promise.all([
@@ -40,3 +41,5 @@ export async function GET(req: Request) {
     return Response.json({ error: msg }, { status: 500 });
   }
 }
+
+export const GET = conCache(obtener, 120);

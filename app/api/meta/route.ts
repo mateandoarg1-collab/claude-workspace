@@ -1,3 +1,4 @@
+import { conCache } from '@/lib/cache';
 import { desdeAR, hastaAR, parsePeriodo } from '@/lib/periodo';
 import { RECARGO } from '@/lib/anuncios';
 
@@ -12,7 +13,7 @@ import { RECARGO } from '@/lib/anuncios';
 //   (nada)    → Tienda Online: META_ACCESS_TOKEN + META_AD_ACCOUNTS (MATEANDO2 + MATEANDO 3 MP)
 //   shopify   → Shopify: META_ACCESS_TOKEN + META_SHOPIFY_ACCOUNTS (act_1423285683055984 MATEANDO - SHOPIFY)
 //   mayorista → Mayorista: META_MAYORISTA_TOKEN + META_MAYORISTA_ACCOUNTS (act_750953847402633 MATEANDO-MANYCHAT)
-export async function GET(req: Request) {
+async function obtener(req: Request) {
   const cuenta = new URL(req.url).searchParams.get('cuenta');
   const token = cuenta === 'mayorista' ? process.env.META_MAYORISTA_TOKEN : process.env.META_ACCESS_TOKEN;
   const listaCuentas =
@@ -38,3 +39,5 @@ export async function GET(req: Request) {
     return Response.json({ spend: null, motivo: e instanceof Error ? e.message : String(e) });
   }
 }
+
+export const GET = conCache(obtener, 300);
