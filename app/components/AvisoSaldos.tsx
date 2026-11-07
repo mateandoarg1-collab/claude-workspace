@@ -35,7 +35,7 @@ export default function AvisoSaldos() {
           const texto =
             c.estado === 'problema' ? c.detalle
             : c.estado === 'agotado' ? `sin saldo${c.saldo != null && c.saldo < -1000 ? ` (${corto(c.saldo)})` : ''} · se corta la pauta`
-            : `${corto(c.saldo ?? 0)}${c.dias != null ? ` · ${c.dias < 1 ? 'menos de 1 día' : `~${Math.floor(c.dias)} días`}` : ''}`;
+            : `${corto(c.saldo ?? 0)}${c.dias != null ? ` · ${c.dias < 1 ? 'menos de 1 día' : `~${Math.floor(c.dias)} días`}` : ''}${c.estado === 'poco' ? ' · cargar saldo' : ''}`;
           return (
             <span key={c.cuenta} className={color}>
               {c.cuenta}: {texto}
