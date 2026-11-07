@@ -24,6 +24,7 @@ function enesimoDia(anio: number, mes: number, diaSemana: number, n: number) {
 export const FACTORES = {
   madre: 1.19, // 11 días antes del Día de la Madre (3er domingo de octubre) y ese día
   cyber: 2.5, // CyberMonday: primer lunes de noviembre + 2 días
+  blackfriday: 1.8, // último viernes de noviembre + el fin de semana (supuesto hasta medirlo)
   empresariales: 1.25, // regalos de fin de año: 15/11 al 20/12 (se suma a Navidad)
   navidad: 1.7, // 1 al 24 de diciembre
   fin_de_anio: 0.65, // 25 al 31 de diciembre
@@ -34,9 +35,15 @@ export const FACTORES = {
 export type Evento = keyof typeof FACTORES;
 export type Ajustes = Partial<Record<Evento, number>>;
 export const NOMBRE_EVENTO: Record<Evento, string> = {
-  madre: 'Día de la Madre', cyber: 'CyberMonday', empresariales: 'Regalos empresariales', navidad: 'Navidad',
+  madre: 'Día de la Madre', cyber: 'CyberMonday', blackfriday: 'Black Friday', empresariales: 'Regalos empresariales', navidad: 'Navidad',
   fin_de_anio: 'Fin de año', hotsale: 'Hot Sale', mayo: 'Mayo post Hot Sale', padre: 'Día del Padre',
 };
+
+function ultimoViernes(anio: number, mes: number) {
+  const d = new Date(Date.UTC(anio, mes + 1, 0, 12));
+  while (d.getUTCDay() !== 5) d.setUTCDate(d.getUTCDate() - 1);
+  return d.getUTCDate();
+}
 
 export function eventosDel(dia: string): Evento[] {
   const d = fecha(dia);
@@ -44,6 +51,7 @@ export function eventosDel(dia: string): Evento[] {
   const ev: Evento[] = [];
   if (m === 9) { const madre = enesimoDia(a, 9, 0, 3); if (n >= madre - 11 && n <= madre) ev.push('madre'); }
   if (m === 10) { const cyber = enesimoDia(a, 10, 1, 1); if (n >= cyber && n <= cyber + 2) ev.push('cyber'); }
+  if (m === 10) { const bf = ultimoViernes(a, 10); if (n >= bf && n <= bf + 2) ev.push('blackfriday'); }
   if ((m === 10 && n >= 15) || (m === 11 && n <= 20)) ev.push('empresariales');
   if (m === 11) ev.push(n <= 24 ? 'navidad' : 'fin_de_anio');
   if (m === 4) { const hot = enesimoDia(a, 4, 1, 2); if (n >= hot && n <= hot + 2) ev.push('hotsale'); else if (n > hot + 2) ev.push('mayo'); }
