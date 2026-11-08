@@ -26,6 +26,7 @@ export default function Despacho() {
   const [activo, setActivo] = useState(false);
   const [manual, setManual] = useState('');
   const [errorCam, setErrorCam] = useState('');
+  const [estadoCam, setEstadoCam] = useState('');
   const ocupado = useRef(false);
   const ultimo = useRef<{ c: string; t: number }>({ c: '', t: 0 });
   const lector = useRef<{ stop: () => Promise<void> } | null>(null);
@@ -63,18 +64,23 @@ export default function Despacho() {
     setErrorCam('');
     setActivo(true);
     await new Promise((r) => setTimeout(r, 50));
+    const conTiempo = <T,>(p: Promise<T>, ms: number, msg: string) =>
+      Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error(msg)), ms))]);
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('Este navegador no deja usar la cámara. Abrí el link en Chrome o Safari (no desde WhatsApp ni Instagram).');
+      // 1) pedir la cámara directo (así aparece el cartel de permiso del celular) y soltarla
+      setEstadoCam('Pidiendo permiso para la cámara…');
+      const prueba = await conTiempo(navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }), 20000, 'El celular no respondió al pedido de cámara. Revisá que el navegador tenga permiso de cámara en Ajustes.');
+      prueba.getTracks().forEach((t) => t.stop());
+      // 2) arrancar el lector (sin recuadro: en algunos celulares deja la imagen en negro)
+      setEstadoCam('Abriendo cámara…');
       const { Html5Qrcode, Html5QrcodeSupportedFormats: F } = await import('html5-qrcode');
       const h = new Html5Qrcode('camara', { formatsToSupport: [F.CODE_128, F.QR_CODE, F.CODE_39, F.ITF], verbose: false });
-      await h.start(
-        { facingMode: 'environment' },
-        { fps: 10, qrbox: (w: number) => ({ width: Math.max(200, Math.floor(w * 0.9)), height: Math.max(100, Math.floor(w * 0.4)) }) },
-        (texto) => enviarRef.current(texto),
-        () => {},
-      );
+      await conTiempo(h.start({ facingMode: 'environment' }, { fps: 10 }, (texto) => enviarRef.current(texto), () => {}), 10000, 'La cámara no arrancó. Cerrá otras apps que la usen y probá de nuevo.');
       lector.current = h;
+      setEstadoCam('');
     } catch (e) {
+      setEstadoCam('');
       setActivo(false);
       const m = e instanceof Error ? e.message : String(e);
       setErrorCam(/NotAllowed|Permission/i.test(m) ? 'No hay permiso para la cámara: tocá el candado de la barra de direcciones y permitila.' : m);
@@ -109,7 +115,8 @@ export default function Despacho() {
           </button>
         )}
 
-        {errorCam && <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">{errorCam}</div>}
+        {estadoCam && <div className="text-center text-sm text-slate-300">{estadoCam}</div>}
+        {errorCam &&<div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">{errorCam}</div>}
         <div className={`rounded-2xl border-2 p-5 text-center transition-colors ${color}`}>
           {!res && <div className="text-slate-400">Apuntá al código de barras de la etiqueta</div>}
           {res?.ok && (
