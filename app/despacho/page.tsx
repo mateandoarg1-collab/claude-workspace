@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AppHeader from '../components/AppHeader';
 
+// Equipo de despacho (nov-2026): para sumar a alguien, agregarlo acá.
+const EQUIPO = ['ALEJO', 'ANGEL', 'FEDE', 'TOTE'];
+
 type Escaneo = { fecha: string; envio: string; orden: string; quien: string };
 type Res = { ok: boolean; envio: string | null; orden: string | null; repetido?: boolean; error?: string };
 
@@ -32,7 +35,7 @@ export default function Despacho() {
   const lector = useRef<{ stop: () => Promise<void> } | null>(null);
 
   useEffect(() => {
-    try { setQuien(localStorage.getItem('despacho-quien') ?? ''); } catch {}
+    try { const g = localStorage.getItem('despacho-quien') ?? ''; setQuien(EQUIPO.includes(g) ? g : ''); } catch {}
     cargar();
   }, []);
   const cargar = () => fetch('/api/despacho').then((r) => r.json()).then((d) => d.hoy && setHoy(d.hoy)).catch(() => {});
@@ -99,19 +102,27 @@ export default function Despacho() {
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <AppHeader title="Despacho" subtitle="Escaneá la etiqueta de OCA al terminar de embalar" width="4xl" />
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-4 space-y-4">
-        <input
-          value={quien}
-          onChange={(e) => { setQuien(e.target.value); try { localStorage.setItem('despacho-quien', e.target.value); } catch {} }}
-          placeholder="Tu nombre"
-          className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-base placeholder:text-slate-500 focus:border-emerald-500 outline-none"
-        />
+        <div>
+          <div className="text-xs text-slate-400 mb-1.5">¿Quién embala?</div>
+          <div className="grid grid-cols-4 gap-2">
+            {EQUIPO.map((n) => (
+              <button
+                key={n}
+                onClick={() => { setQuien(n); try { localStorage.setItem('despacho-quien', n); } catch {} }}
+                className={`rounded-lg border py-2 text-sm font-semibold ${quien === n ? 'border-emerald-500 bg-emerald-500/20 text-emerald-200' : 'border-slate-700 bg-slate-900 text-slate-300'}`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div id="camara" className={`w-full overflow-hidden rounded-2xl bg-black ${activo ? 'min-h-64' : 'hidden'}`} />
         {activo ? (
           <button onClick={apagar} className="w-full rounded-xl border border-slate-700 py-2 text-slate-300">Apagar cámara</button>
         ) : (
           <button onClick={prender} disabled={!quien.trim()} className="w-full rounded-xl bg-emerald-600 py-4 text-lg font-semibold disabled:opacity-40">
-            {quien.trim() ? '📷 Escanear etiquetas' : 'Poné tu nombre para empezar'}
+            {quien.trim() ? '📷 Escanear etiquetas' : 'Elegí quién sos para empezar'}
           </button>
         )}
 
