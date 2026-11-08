@@ -9,10 +9,11 @@ const ID = '1Gy8M6ccHZr-BX86bC2CHW5M2Ryzz8LX7EmHaZvX57wc';
 const ORIGEN = 'https://mateando-local.vercel.app';
 const CORS = { 'access-control-allow-origin': ORIGEN, 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type,x-pin' };
 
-// Solo con la clave del local (variable LOCAL_CAJA_PIN en Vercel, la carga Juampi). Sin la variable, no responde nada.
+// Clave del local (variable LOCAL_CAJA_PIN en Vercel). Mientras se desarrolla la caja (8-nov-2026, pedido de Juampi)
+// no hay variable y la ruta responde sin clave; al cargarla, la caja empieza a pedirla.
 function sinPermiso(req: Request) {
   const pin = process.env.LOCAL_CAJA_PIN;
-  if (pin && req.headers.get('x-pin') === pin) return null;
+  if (!pin || req.headers.get('x-pin') === pin) return null;
   return Response.json({ error: 'Clave incorrecta' }, { status: 401, headers: CORS });
 }
 
