@@ -27,6 +27,21 @@ function campo(c: Contacto, nombre: string): string {
 
 const txt = (v: unknown) => (v == null ? '' : String(v));
 
+// Lo que la IA del bot devolvió la última vez (campo ai_response: JSON con status, reply, orden, certeza, resumen…)
+function analisisIA(c: Contacto): Record<string, unknown> {
+  try {
+    const v = JSON.parse(campo(c, 'ai_response'));
+    return v && typeof v === 'object' ? (v as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}
+
+// 8-nov-2026 (Juampi: "lo que contesta el bot no puede? eso me haría mejorar el bot y encontrar errores"):
+// - en cada mensaje del cliente se guarda también la ÚLTIMA respuesta que le había dado el bot (em_reply) y lo que
+//   había entendido la IA (estado, orden, certeza): así se leen las conversaciones completas sin tocar ManyChat;
+// - si el External Request se agrega también DESPUÉS de la respuesta del bot con la URL ?quien=bot, esa respuesta
+//   queda como fila propia (Quién = bot), en el momento exacto.
 export async function POST(request: Request) {
   const token = process.env.MANYCHAT_WEBHOOK_TOKEN;
   if (!token || request.headers.get('x-mateando-token') !== token) {
@@ -38,8 +53,11 @@ export async function POST(request: Request) {
   } catch {
     return Response.json({ error: 'body inválido' }, { status: 400 });
   }
-  const mensaje = txt(c.last_input_text || c.mensaje);
-  const archivo = /^https?:\/\/\S+\.(jpe?g|png|pdf|webp)/i.test(mensaje) ? mensaje : '';
+  const esBot = new URL(request.url).searchParams.get('quien') === 'bot';
+  const ia = analisisIA(c);
+  const respuesta = campo(c, 'em_reply') || txt(ia.reply);
+  const mensaje = esBot ? respuesta : txt(c.last_input_text || c.mensaje);
+  const archivo = !esBot && /^https?:\/\/\S+\.(jpe?g|png|pdf|webp)/i.test(mensaje) ? mensaje : '';
   const fecha = new Date(Date.now() - 3 * 3600 * 1000).toISOString().replace('T', ' ').slice(0, 19);
   const fila = [
     fecha,
@@ -51,12 +69,18 @@ export async function POST(request: Request) {
     txt(c.live_chat_url),
     txt(c.id),
     txt(c.bot || c.page_id),
+    esBot ? 'bot' : 'cliente',
+    esBot ? '' : respuesta.slice(0, 2000), // la respuesta anterior del bot (a la que este mensaje contesta)
+    txt(ia.status),
+    txt(ia.orden),
+    txt(ia.certeza),
+    (campo(c, 'em_resumen') || txt(ia.resumen)).slice(0, 500),
   ];
   try {
     const sheets = google.sheets({ version: 'v4', auth: getAuth() });
     await sheets.spreadsheets.values.append({
       spreadsheetId: COMPROBANTES,
-      range: `'${TAB}'!A:I`,
+      range: `'${TAB}'!A:O`,
       valueInputOption: 'RAW',
       insertDataOption: 'INSERT_ROWS',
       requestBody: { values: [fila] },
