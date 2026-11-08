@@ -11,9 +11,9 @@ const OCA = 'https://webservice.oca.com.ar/ePak_tracking/Oep_TrackEPak.asmx';
 const CUIT = '30-71761250-3'; // Andomat 611 SRL
 
 export type Evento = { fecha: string; estado: string; sucursal: string; motivo: string };
-export type Paquete = { numero: string; eventos: Evento[] };
+export type Paquete = { numero: string; eventos: Evento[]; embalado?: { fecha: string; quien: string } };
 export type Etapa =
-  | 'pago_pendiente' | 'preparar' | 'etiqueta' | 'en_oca' | 'en_viaje' | 'en_destino' | 'en_reparto' | 'en_sucursal'
+  | 'pago_pendiente' | 'preparar' | 'etiqueta' | 'embalado' | 'retirado' | 'en_oca' | 'en_viaje' | 'en_destino' | 'en_reparto' | 'en_sucursal'
   | 'problema' | 'entregado' | 'express' | 'retiro_local' | 'acordar';
 export type OrdenEnvio = {
   numero: string; fecha: string; total: number; pago: string; envio: string; ciudad: string; provincia: string; cp: string;
@@ -24,7 +24,7 @@ const ahora = () => Date.now();
 const fechaOca = (d: Date) => `${String(d.getUTCDate()).padStart(2, '0')}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${d.getUTCFullYear()}`;
 const xml = (t: string, tag: string) => [...t.matchAll(new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`, 'g'))].map((m) => m[1].trim());
 
-async function listarEnvios(dias: number): Promise<Map<string, string[]>> {
+export async function listarEnvios(dias: number): Promise<Map<string, string[]>> {
   const desde = new Date(ahora() - 3 * 3600e3 - dias * 864e5);
   const hasta = new Date(ahora() - 3 * 3600e3 + 864e5);
   const r = await fetch(`${OCA}/List_Envios?CUIT=${CUIT}&FechaDesde=${fechaOca(desde)}&FechaHasta=${fechaOca(hasta)}`, { cache: 'no-store' });
@@ -71,18 +71,22 @@ function etapaOca(e: Evento): Etapa {
   if (/arribado/i.test(s)) return 'en_destino';
   if (/en viaje|tr[aá]nsito/i.test(s)) return 'en_viaje';
   if (/proceso de retiro/i.test(s)) return 'etiqueta';
+  if (/retirado en origen/i.test(s)) return 'retirado';
   return 'en_oca';
 }
-const ORDEN_ETAPA: Etapa[] = ['problema', 'etiqueta', 'en_oca', 'en_viaje', 'en_destino', 'en_reparto', 'en_sucursal', 'entregado'];
+const ORDEN_ETAPA: Etapa[] = ['problema', 'etiqueta', 'embalado', 'retirado', 'en_oca', 'en_viaje', 'en_destino', 'en_reparto', 'en_sucursal', 'entregado'];
 
 const horas = (iso: string | null) => (iso ? (ahora() - (Date.parse(iso + (iso.length <= 16 ? ':00-03:00' : ''))) ) / 3600e3 : 0);
 
 export async function getEnvios(dias = 3): Promise<OrdenEnvio[]> {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
-  const [ventasR, envios] = await Promise.all([
+  const [ventasR, envios, despachoR] = await Promise.all([
     sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'emp_ventas'!A2:R", valueRenderOption: 'UNFORMATTED_VALUE' }),
     listarEnvios(dias),
+    // escaneos de /despacho (lib/despacho.ts): envío OCA → cuándo y quién lo embaló
+    sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'despacho'!A2:D" }).catch(() => null),
   ]);
+  const embalados = new Map((despachoR?.data.values ?? []).map((x) => [String(x[1]), { fecha: String(x[0]), quien: String(x[3] ?? '') }]));
   // Órdenes de los últimos `dias` días + las más viejas que tuvieron etiqueta de OCA en esos días (después de un Cyber
   // se despacha con atraso: son justo los paquetes que están viajando).
   const corte = new Date(ahora() - dias * 864e5).toISOString();
@@ -98,7 +102,7 @@ export async function getEnvios(dias = 3): Promise<OrdenEnvio[]> {
     try {
       productos = (JSON.parse(String(v[16] || '[]')) as { n: string; q: number; v: string }[]).map((p) => `${p.q}× ${p.n}${p.v ? ` (${p.v})` : ''}`);
     } catch {}
-    const paquetes = (envios.get(numero) ?? []).map((n) => seguidas.get(n) ?? { numero: n, eventos: [] });
+    const paquetes = (envios.get(numero) ?? []).map((n) => ({ ...(seguidas.get(n) ?? { numero: n, eventos: [] }), embalado: embalados.get(n) }));
     const base = {
       numero, fecha: String(v[2]), total: Number(v[6]) - Number(v[7] || 0) - Number(v[8] || 0) + Number(v[9] || 0),
       pago: String(v[4]) === '1' ? 'pagada' : 'pendiente', envio: label, ciudad: String(v[15] ?? ''), provincia: String(v[14] ?? ''),
@@ -117,11 +121,16 @@ export async function getEnvios(dias = 3): Promise<OrdenEnvio[]> {
     // Con varios paquetes manda el más atrasado (o el que tiene problema).
     const estados = paquetes.map((p) => {
       const ult = p.eventos.at(-1);
-      return ult ? { etapa: etapaOca(ult), ev: ult } : { etapa: 'etiqueta' as Etapa, ev: null };
+      const etapa: Etapa = ult ? etapaOca(ult) : 'etiqueta';
+      // escaneada en /despacho y OCA todavía no la retiró → Embalado
+      if (etapa === 'etiqueta' && p.embalado) return { etapa: 'embalado' as Etapa, ev: null, emb: p.embalado };
+      return { etapa, ev: ult ?? null, emb: p.embalado };
     });
     const peor = estados.sort((a, b) => ORDEN_ETAPA.indexOf(a.etapa) - ORDEN_ETAPA.indexOf(b.etapa))[0];
     const ev = peor.ev;
-    const detalle = ev
+    const detalle = peor.etapa === 'embalado' && peor.emb
+      ? `Embalado${peor.emb.quien ? ` por ${peor.emb.quien}` : ''}, esperando que OCA lo retire`
+      : ev
       ? `${ev.estado}${ev.sucursal ? ` · ${ev.sucursal}` : ''}${ev.motivo && !/sin motivo/i.test(ev.motivo) ? ` (${ev.motivo})` : ''}`
       : 'Etiqueta hecha, falta que OCA la retire';
     const hEv = ev ? horas(ev.fecha) : hOrden;
@@ -129,6 +138,6 @@ export async function getEnvios(dias = 3): Promise<OrdenEnvio[]> {
     if (peor.etapa === 'problema') alerta = ev?.motivo && !/sin motivo/i.test(ev.motivo) ? ev.motivo : 'Problema en la entrega';
     else if (peor.etapa === 'en_sucursal' && hEv > 72) alerta = `Hace ${Math.round(hEv / 24)} días esperando en sucursal`;
     else if (peor.etapa !== 'entregado' && peor.etapa !== 'etiqueta' && hEv > 72) alerta = `Sin movimiento hace ${Math.round(hEv / 24)} días`;
-    return res(peor.etapa, detalle, ev?.fecha ?? null, alerta);
+    return res(peor.etapa, detalle, ev?.fecha ?? (peor.etapa === 'embalado' ? peor.emb!.fecha : null), alerta);
   });
 }

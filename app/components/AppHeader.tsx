@@ -20,6 +20,7 @@ const NAV: Array<{ href: string; label: string; badge?: boolean }> = [
   { href: '/china', label: 'Container China' },
   { href: '/simulador', label: 'Simulador Container' },
   { href: '/envios', label: 'Envíos' },
+  { href: '/despacho', label: 'Despacho' },
   { href: '/posventa', label: 'Posventa' },
   { href: '/productos', label: 'Productos' },
   { href: '/preguntas', label: 'Preguntas', badge: true },

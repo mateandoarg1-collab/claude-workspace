@@ -11,6 +11,7 @@
   "dependencies": {
     "exceljs": "^4.4.0",
     "googleapis": "^172.0.0",
+    "html5-qrcode": "^2.3.8",
     "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4"

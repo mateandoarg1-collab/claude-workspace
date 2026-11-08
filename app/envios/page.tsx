@@ -7,7 +7,9 @@ import type { Etapa, OrdenEnvio } from '@/lib/envios';
 const ETAPAS: Record<Etapa, { label: string; color: string }> = {
   problema: { label: 'Problema', color: 'bg-red-500/15 text-red-300 border-red-500/40' },
   preparar: { label: 'Para preparar', color: 'bg-amber-500/15 text-amber-300 border-amber-500/40' },
-  etiqueta: { label: 'Esperando retiro OCA', color: 'bg-yellow-500/15 text-yellow-200 border-yellow-500/40' },
+  etiqueta: { label: 'Etiqueta hecha', color: 'bg-yellow-500/15 text-yellow-200 border-yellow-500/40' },
+  embalado: { label: 'Embalado', color: 'bg-lime-500/15 text-lime-300 border-lime-500/40' },
+  retirado: { label: 'Retirado por OCA', color: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40' },
   en_oca: { label: 'En OCA', color: 'bg-sky-500/15 text-sky-300 border-sky-500/40' },
   en_viaje: { label: 'En viaje', color: 'bg-sky-500/15 text-sky-300 border-sky-500/40' },
   en_destino: { label: 'En centro de destino', color: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/40' },
@@ -19,7 +21,7 @@ const ETAPAS: Record<Etapa, { label: string; color: string }> = {
   acordar: { label: 'A acordar', color: 'bg-slate-500/15 text-slate-300 border-slate-500/40' },
   pago_pendiente: { label: 'Pago pendiente', color: 'bg-slate-500/15 text-slate-400 border-slate-600' },
 };
-const ORDEN: Etapa[] = ['problema', 'preparar', 'etiqueta', 'en_oca', 'en_viaje', 'en_destino', 'en_reparto', 'en_sucursal', 'entregado', 'express', 'retiro_local', 'acordar', 'pago_pendiente'];
+const ORDEN: Etapa[] = ['problema', 'preparar', 'etiqueta', 'embalado', 'retirado', 'en_oca', 'en_viaje', 'en_destino', 'en_reparto', 'en_sucursal', 'entregado', 'express', 'retiro_local', 'acordar', 'pago_pendiente'];
 
 const fmt = (n: number) => '$' + Math.round(n).toLocaleString('es-AR');
 const cuando = (iso: string | null) => {
@@ -65,6 +67,7 @@ function Fila({ o }: { o: OrdenEnvio }) {
                 <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
                   OCA <span className="select-all tabular-nums normal-case text-slate-300">{p.numero}</span>
                 </div>
+                {p.embalado && <div className="text-lime-300 text-xs mb-1">📦 Embalado{p.embalado.quien && ` por ${p.embalado.quien}`} · {cuando(p.embalado.fecha)}</div>}
                 {p.eventos.length === 0 ? (
                   <div className="text-slate-400">Etiqueta hecha, OCA todavía no la retiró.</div>
                 ) : (
