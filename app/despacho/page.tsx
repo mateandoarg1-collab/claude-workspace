@@ -25,6 +25,7 @@ export default function Despacho() {
   const [hoy, setHoy] = useState<Escaneo[]>([]);
   const [activo, setActivo] = useState(false);
   const [manual, setManual] = useState('');
+  const [errorCam, setErrorCam] = useState('');
   const ocupado = useRef(false);
   const ultimo = useRef<{ c: string; t: number }>({ c: '', t: 0 });
   const lector = useRef<{ stop: () => Promise<void> } | null>(null);
@@ -57,17 +58,27 @@ export default function Despacho() {
   const enviarRef = useRef(enviar);
   enviarRef.current = enviar;
 
+  // El recuadro tiene que estar visible antes de arrancar: con display:none mide 0 y el lector falla.
   async function prender() {
-    const { Html5Qrcode, Html5QrcodeSupportedFormats: F } = await import('html5-qrcode');
-    const h = new Html5Qrcode('camara', { formatsToSupport: [F.CODE_128, F.QR_CODE, F.CODE_39, F.ITF], verbose: false });
-    await h.start(
-      { facingMode: 'environment' },
-      { fps: 10, qrbox: (w: number, hh: number) => ({ width: Math.floor(w * 0.9), height: Math.floor(Math.min(hh, w) * 0.45) }) },
-      (texto) => enviarRef.current(texto),
-      () => {},
-    );
-    lector.current = h;
+    setErrorCam('');
     setActivo(true);
+    await new Promise((r) => setTimeout(r, 50));
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error('Este navegador no deja usar la cámara. Abrí el link en Chrome o Safari (no desde WhatsApp ni Instagram).');
+      const { Html5Qrcode, Html5QrcodeSupportedFormats: F } = await import('html5-qrcode');
+      const h = new Html5Qrcode('camara', { formatsToSupport: [F.CODE_128, F.QR_CODE, F.CODE_39, F.ITF], verbose: false });
+      await h.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: (w: number) => ({ width: Math.max(200, Math.floor(w * 0.9)), height: Math.max(100, Math.floor(w * 0.4)) }) },
+        (texto) => enviarRef.current(texto),
+        () => {},
+      );
+      lector.current = h;
+    } catch (e) {
+      setActivo(false);
+      const m = e instanceof Error ? e.message : String(e);
+      setErrorCam(/NotAllowed|Permission/i.test(m) ? 'No hay permiso para la cámara: tocá el candado de la barra de direcciones y permitila.' : m);
+    }
   }
   async function apagar() {
     await lector.current?.stop().catch(() => {});
@@ -89,7 +100,7 @@ export default function Despacho() {
           className="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-base placeholder:text-slate-500 focus:border-emerald-500 outline-none"
         />
 
-        <div id="camara" className={`w-full overflow-hidden rounded-2xl bg-black ${activo ? '' : 'hidden'}`} />
+        <div id="camara" className={`w-full overflow-hidden rounded-2xl bg-black ${activo ? 'min-h-64' : 'hidden'}`} />
         {activo ? (
           <button onClick={apagar} className="w-full rounded-xl border border-slate-700 py-2 text-slate-300">Apagar cámara</button>
         ) : (
@@ -98,6 +109,7 @@ export default function Despacho() {
           </button>
         )}
 
+        {errorCam && <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">{errorCam}</div>}
         <div className={`rounded-2xl border-2 p-5 text-center transition-colors ${color}`}>
           {!res && <div className="text-slate-400">Apuntá al código de barras de la etiqueta</div>}
           {res?.ok && (
