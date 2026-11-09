@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import { getAuth } from '@/lib/sheets';
+import { saldos } from '@/lib/localEfectivo';
 
 // Caja de efectivo del local (planilla "Mateando_Flujo_Efectivo COSTA RICA", pestaña Movimientos) para la app aparte
 // de la caja (mateando-local.vercel.app). Columnas: A fecha (solo en la 1ª fila del día) · B tipo · C categoría ·
@@ -58,6 +59,7 @@ export async function POST(req: Request) {
   const no = sinPermiso(req); if (no) return no;
   try {
     const b = await req.json();
+    if (b.cierre) return cierre(b);
     const tipo = b.tipo === 'Egreso' ? 'Egreso' : 'Ingreso';
     const categoria = String(b.categoria ?? '').slice(0, 40);
     const detalle = String(b.detalle ?? '').slice(0, 120);
@@ -84,4 +86,23 @@ export async function POST(req: Request) {
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500, headers: CORS });
   }
+}
+
+// Cierre de caja: la cajera cuenta la plata y se compara con el saldo de la planilla. Queda registrado en la pestaña
+// "Cierres Caja" (no toca Movimientos: si hay diferencia, se ve ahí y se decide aparte).
+const CIERRES = 'Cierres Caja';
+async function cierre(b: Record<string, unknown>) {
+  const s = sheets();
+  const meta = await s.spreadsheets.get({ spreadsheetId: ID, fields: 'sheets.properties.title' });
+  if (!meta.data.sheets?.some((x) => x.properties?.title === CIERRES)) {
+    await s.spreadsheets.batchUpdate({ spreadsheetId: ID, requestBody: { requests: [{ addSheet: { properties: { title: CIERRES, gridProperties: { frozenRowCount: 1 } } } }] } });
+    await s.spreadsheets.values.update({ spreadsheetId: ID, range: `'${CIERRES}'!A1`, valueInputOption: 'RAW', requestBody: { values: [[
+      'fecha_hora', 'cajera', 'esperado_pesos', 'contado_pesos', 'diferencia_pesos', 'esperado_usd', 'contado_usd', 'diferencia_usd', 'observaciones']] } });
+  }
+  const { saldo, saldoUsd } = saldos(await filas());
+  const contado = Math.round(Number(b.contado) || 0), contadoUsd = Math.round(Number(b.contadoUsd) || 0);
+  const ahora = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ');
+  const fila = [ahora, String(b.cajera ?? '').slice(0, 40), saldo, contado, contado - saldo, saldoUsd, contadoUsd, contadoUsd - saldoUsd, String(b.obs ?? '').slice(0, 200)];
+  await s.spreadsheets.values.append({ spreadsheetId: ID, range: `'${CIERRES}'!A:I`, valueInputOption: 'RAW', requestBody: { values: [fila] } });
+  return Response.json({ ok: true, esperado: saldo, esperadoUsd: saldoUsd, dif: contado - saldo, difUsd: contadoUsd - saldoUsd }, { headers: CORS });
 }

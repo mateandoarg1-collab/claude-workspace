@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import { getAuth } from '@/lib/sheets';
+import { agregarMovimiento } from '@/lib/localEfectivo';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +45,10 @@ export async function POST(req: Request) {
     if (b.anular) {
       const i = v.findIndex((f) => n(f[0]) === n(b.anular));
       if (i < 0) return Response.json({ error: 'No existe ese pedido' }, { status: 404, headers: CORS });
+      if (v[i][14] === 'anulada') return Response.json({ ok: true }, { headers: CORS });
       await sheets().spreadsheets.values.update({ spreadsheetId: ID, range: `'${HOJA}'!O${i + 2}`, valueInputOption: 'RAW', requestBody: { values: [['anulada']] } });
+      // si fue en efectivo, sale la plata de la caja (contramovimiento en Movimientos)
+      if (v[i][5] === 'Efectivo' && n(v[i][10])) await agregarMovimiento({ tipo: 'Egreso', categoria: 'Ventas mostrador', detalle: `Anulación pedido N° ${n(b.anular)}`, pesos: n(v[i][10]) });
       return Response.json({ ok: true }, { headers: CORS });
     }
     const items = (Array.isArray(b.items) ? b.items : []).slice(0, 100).map((i: Record<string, unknown>) => ({
@@ -58,7 +62,13 @@ export async function POST(req: Request) {
       n(b.conDesc), Number(b.d) || 0, n(b.total), items.reduce((s: number, i: { cant: number }) => s + i.cant, 0),
       items.map((i: { cant: number; nombre: string }) => `${i.cant}x ${i.nombre}`).join(' | '), txt(b.com, 300), 'ok', JSON.stringify(items)];
     await sheets().spreadsheets.values.update({ spreadsheetId: ID, range: `'${HOJA}'!A${v.length + 2}:P${v.length + 2}`, valueInputOption: 'RAW', requestBody: { values: [fila] } });
-    return Response.json({ ok: true, nro, dia, hora }, { headers: CORS });
+    // Venta en efectivo: entra la plata en la planilla de efectivo (Movimientos), sin cargarla dos veces.
+    let efectivo = null;
+    if (fila[5] === 'Efectivo' && n(b.total)) {
+      try { await agregarMovimiento({ tipo: 'Ingreso', categoria: 'Ventas mostrador', detalle: `Pedido N° ${nro} · ${fila[4]}`, pesos: n(b.total) }); efectivo = 'ok'; }
+      catch (e) { efectivo = e instanceof Error ? e.message : String(e); }
+    }
+    return Response.json({ ok: true, nro, dia, hora, efectivo }, { headers: CORS });
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500, headers: CORS });
   }
