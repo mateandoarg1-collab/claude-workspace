@@ -103,6 +103,24 @@ export async function POST(req: Request) {
       await moverEfectivo(leerPagos(v[i]), 'Egreso', `Anulación pedido N° ${n(b.anular)}`);
       return Response.json({ ok: true }, { headers: CORS });
     }
+    // Editar un pedido ya cobrado: se cambian productos, quién cobró y comentario. El total y los pagos quedan como se
+    // cobraron (la plata ya entró); si el nuevo detalle suma distinto, queda anotado en el comentario.
+    if (b.editar) {
+      const i = v.findIndex((f) => n(f[0]) === n(b.editar));
+      if (i < 0) return Response.json({ error: 'No existe ese pedido' }, { status: 404, headers: CORS });
+      const its = (Array.isArray(b.items) ? b.items : []).slice(0, 100).map((x: Record<string, unknown>) => ({
+        nombre: txt(x.nombre, 160), cant: n(x.cant) || 1, precio: n(x.precio), local: !!x.local }));
+      if (!its.length) return Response.json({ error: 'Venta sin productos' }, { status: 400, headers: CORS });
+      const fila = v[i];
+      const cajera = txt(b.cajera || fila[4], 40), com = txt(b.com ?? fila[13], 300);
+      await sheets().spreadsheets.values.batchUpdate({ spreadsheetId: ID, requestBody: { valueInputOption: 'RAW', data: [
+        { range: `'${HOJA}'!E${i + 2}`, values: [[cajera]] },
+        { range: `'${HOJA}'!L${i + 2}:N${i + 2}`, values: [[its.reduce((s: number, x: { cant: number }) => s + x.cant, 0),
+          its.map((x: { cant: number; nombre: string }) => `${x.cant}x ${x.nombre}`).join(' | '), com]] },
+        { range: `'${HOJA}'!P${i + 2}`, values: [[JSON.stringify(its)]] },
+      ] } });
+      return Response.json({ ok: true }, { headers: CORS });
+    }
     const items = (Array.isArray(b.items) ? b.items : []).slice(0, 100).map((i: Record<string, unknown>) => ({
       nombre: txt(i.nombre, 160), cant: n(i.cant) || 1, precio: n(i.precio), local: !!i.local }));
     if (!items.length) return Response.json({ error: 'Venta sin productos' }, { status: 400, headers: CORS });
