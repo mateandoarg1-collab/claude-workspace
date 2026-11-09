@@ -60,6 +60,8 @@ export default function Canales() {
   const mayorista = useApi<Venta & { tab: string }>(`/api/mayorista?periodo=${periodo}`);
   // Ventas del local del mes por medio de pago (MP Point/QR, efectivo, transferencias): para el IVA del Local.
   const localMes = useApi<{ amount: number; mp: { amount: number } }>('/api/local');
+  // Caja propia del local (desde el 9-nov-2026); antes de esa fecha el local es «Acordar» de Empretienda.
+  const caja = useApi<{ amount: number; orders: number }>(`/api/canales/local?periodo=${periodo}`);
   const posventa = useApi<Record<CanalId, number>>(`/api/posventa/costo?periodo=${periodo}`);
   const visitas = useApi<{ online: number | null; ml: number | null }>(`/api/canales/visitas?periodo=${periodo}`);
   const [manual, setManual] = useState<EmpretiendaManual | null>(null);
@@ -81,7 +83,9 @@ export default function Canales() {
   const canales = [
     { id: 'online' as CanalId, nombre: 'Tienda Online (.com)', monto: emp ? emp.totalMonto - emp.acordarMonto : 0, cantidad: emp ? emp.totalCant - emp.acordarCant : 0, fuente: emp ? `${empFuente} (total − Acordar)` : empFuente, hace: emp ? hace(emp.updatedAt, ahora) : '' },
     { id: 'ml' as CanalId, nombre: 'Mercado Libre', monto: ml.data?.amount ?? 0, cantidad: ml.data?.orders ?? 0, fuente: fuente(ml, 'API en vivo') },
-    { id: 'local' as CanalId, nombre: 'Local Físico', monto: emp?.acordarMonto ?? 0, cantidad: emp?.acordarCant ?? 0, fuente: emp ? `${empFuente} (Acordar)` : empFuente, hace: emp ? hace(emp.updatedAt, ahora) : '' },
+    { id: 'local' as CanalId, nombre: 'Local Físico', monto: (emp?.acordarMonto ?? 0) + (caja.data?.amount ?? 0), cantidad: (emp?.acordarCant ?? 0) + (caja.data?.orders ?? 0),
+      fuente: caja.err ? `Error caja: ${caja.err}` : desdeAR(periodo) >= '2026-11-09' ? 'Caja del local (mateando-local)' : `Hasta 8-nov: ${emp ? `${empFuente} (Acordar)` : empFuente} · desde 9-nov: caja del local`,
+      hace: emp && desdeAR(periodo) < '2026-11-09' ? hace(emp.updatedAt, ahora) : '' },
     { id: 'shopify' as CanalId, nombre: 'Shopify (mateando.com)', monto: shopify.data?.amount ?? 0, cantidad: shopify.data?.orders ?? 0, fuente: fuente(shopify, 'API en vivo · lo que pagó el cliente (pedidos pagados, sin envío)') },
     { id: 'mayorista' as CanalId, nombre: 'Mayorista', monto: mayorista.data?.amount ?? 0, cantidad: mayorista.data?.orders ?? 0, fuente: fuente(mayorista, `Google Sheets (${mayorista.data?.tab ?? '—'})`) },
   ];
@@ -229,7 +233,7 @@ export default function Canales() {
             </tbody>
           </table>
           <p className="text-xs text-slate-500 mt-3">
-            Tienda Online y Local Físico salen de Métricas de Empretienda (Local = Acordar); se actualizan solas cada 30 min (GitHub Actions, no hace falta la Mac).
+            Tienda Online sale de Métricas de Empretienda; Local Físico: hasta el 8-nov «Acordar» de Empretienda, desde el 9-nov la caja propia del local; se actualizan solas cada 30 min (GitHub Actions, no hace falta la Mac).
             Semana = últimos 7 días contando hoy.
           </p>
           <p className="text-xs text-slate-500 mt-1">Tocá un canal para ver su gráfico por día.</p>

@@ -1,3 +1,4 @@
+import { cajaPorDia, CORTE_CAJA } from '@/lib/localCajaPeriodo';
 import { fetchOrdersInRange, isValidOrder } from '@/lib/ml';
 import { desdeAR, inicioAR } from '@/lib/periodo';
 import { getEmpretiendaDiario, getMayoristaDiario } from '@/lib/sheets';
@@ -38,6 +39,11 @@ export async function GET(req: Request) {
           ? { ventas: r.acordarCant, monto: r.acordarMonto }
           : { ventas: r.totalCant - r.acordarCant, monto: r.totalMonto - r.acordarMonto });
       }
+      // Local desde el 9-nov-2026: la caja propia (en Empretienda ya no se carga).
+      if (canal === 'local') for (const [d, v] of await cajaPorDia(desde, hoy)) {
+        const x = dias.get(d) ?? { ventas: 0, monto: 0 };
+        dias.set(d, { ventas: x.ventas + v.ventas, monto: x.monto + v.monto });
+      }
     } else {
       return Response.json({ error: 'canal inválido' }, { status: 400 });
     }
@@ -47,7 +53,7 @@ export async function GET(req: Request) {
     for (let d = new Date(`${desde}T12:00:00Z`); d.toISOString().slice(0, 10) <= hoy; d.setUTCDate(d.getUTCDate() + 1)) {
       const k = d.toISOString().slice(0, 10);
       const v = dias.get(k);
-      const sinDato = !v && (canal === 'online' || canal === 'local');
+      const sinDato = !v && (canal === 'online' || (canal === 'local' && k < CORTE_CAJA));
       out.push({ dia: k, ventas: sinDato ? null : (v?.ventas ?? 0), monto: sinDato ? null : Math.round(v?.monto ?? 0) });
     }
     return Response.json({ canal, dias: out });
