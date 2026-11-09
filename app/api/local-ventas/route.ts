@@ -33,7 +33,7 @@ async function unirConMP(v: string[][]) {
   const desde = Date.now() - 2 * 864e5;
   const pend = v.map((f, i) => ({ f, i })).filter(({ f }) => f[0] && CON_MP.has(f[5]) && f[14] !== 'anulada' && !f[16] && horaVenta(f[1]) >= desde);
   if (!pend.length) return;
-  const pagos = await getPagosLocal(new Date(desde - 3600e3).toISOString(), new Date().toISOString());
+  const pagos = await getPagosLocal('NOW-3DAYS', 'NOW') // MP no acepta fechas ISO en Z: devuelve 0;
   const usados = new Set(v.map((f) => String(f[16] ?? '').replace(/\D/g, '')).filter(Boolean));
   const libres = pagos.filter((p) => !usados.has(String(p.id)));
   const cambios: { range: string; values: string[][] }[] = [];
