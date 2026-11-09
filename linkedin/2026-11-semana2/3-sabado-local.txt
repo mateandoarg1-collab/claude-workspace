@@ -1,0 +1,18 @@
+Este mes hicimos un cambio que parece chico pero nos costó decidir: separamos el local de la tienda online.
+
+Hasta ahora, cada venta del local la cargábamos como si fuera un pedido online. Mismo sistema, misma numeración, todo mezclado.
+
+Funcionaba… hasta que quisimos responder preguntas simples:
+¿Cuánto vende realmente el local?
+¿Qué productos se venden en persona y cuáles por internet?
+¿El local paga sus costos?
+
+No podíamos responderlas bien.
+
+Ahora el local tiene su propia caja, su propia numeración y sus propios números. Del sistema online solo toma el catálogo y los precios.
+
+Lo que aprendí: mezclar canales para simplificar te ahorra trabajo hoy y te quita claridad mañana.
+
+[foto del local / del equipo atendiendo]
+
+¿Ustedes separan los números de cada canal o los miran todos juntos?

@@ -1,0 +1,23 @@
+Durante meses miré un número de rentabilidad que estaba mal.
+
+Usábamos una herramienta paga para medir cuánto ganábamos en Mercado Libre. Los números se veían bien. Demasiado bien.
+
+Un día revisé una venta a mano, línea por línea, y encontré el problema: no restaba el costo de nuestro envío Flex propio.
+
+En una venta no parece mucho. En [X] ventas por mes, es la diferencia entre un producto que deja plata y uno que la pierde.
+
+Así que decidimos armar nuestro propio cálculo:
+→ Precio de venta
+→ Menos comisión y cargo fijo de MeLi
+→ Menos publicidad
+→ Menos envío (el real, no el estimado)
+→ Menos costo del producto
+→ Menos impuestos
+
+Se actualiza solo, cada hora, publicación por publicación.
+
+¿Qué cambió? [completar: ej. pausamos X publicaciones que perdían plata / subimos precio en Y]
+
+La lección: si no sabés exactamente cómo se calcula un número, no lo uses para decidir.
+
+¿Ustedes confían en el margen que les muestran sus herramientas, o lo calculan por su cuenta?

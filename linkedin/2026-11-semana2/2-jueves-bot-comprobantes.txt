@@ -1,0 +1,23 @@
+Cada día nos llegan [X] comprobantes de transferencia por WhatsApp.
+
+Antes, alguien del equipo los abría uno por uno, buscaba el pedido, entraba al banco a ver si la plata estaba y recién ahí lo marcaba como pagado.
+
+Lento. Cansador. Y con un riesgo enorme: los comprobantes falsos.
+
+Hoy eso lo hace un bot. Así funciona:
+
+1. El cliente manda la foto del comprobante por WhatsApp.
+2. La IA lee el monto, la fecha y el número de operación.
+3. Lo cruzamos con los movimientos reales de la cuenta.
+4. Si coincide, el pedido se marca como pagado solo.
+5. Si algo no cierra, queda en "revisar" y lo mira una persona.
+
+La regla que más nos importa: nunca se despacha nada que no esté cobrado. Ante la duda, frena.
+
+Ya detectó [X] intentos de estafa con comprobantes editados.
+
+No hace falta ser una empresa grande para automatizar. Hace falta tener claro el proceso y animarse a probar.
+
+En el carrusel les dejo el paso a paso 👇
+
+¿Qué tarea repetitiva de tu negocio automatizarías primero?
