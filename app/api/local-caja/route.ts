@@ -20,7 +20,7 @@ const limpio = (s: string) => s.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').r
 
 type Variante = { id: number; precio: number; stock: number | null; op: Record<string, string> };
 type Prod = { nombre: string; precio: number; transferencia: number | null; img: string; link: string; cat: string;
-  id?: string | null; variantes?: Variante[]; unico?: number; vendidos?: number; vendidosLocal?: number };
+  id?: string | null; variantes?: Variante[]; unico?: number; vendidos?: number; vendidosLocal?: number; extra?: boolean };
 
 async function catalogo() {
   const sitemap = await txt(`${BASE}/sitemap.xml`);
@@ -54,6 +54,11 @@ async function catalogo() {
     return out;
   }));
   for (const lista of porCat) for (const x of lista) if (!prods.has(x.link)) prods.set(x.link, x);
+  // Productos que no aparecen en los listados de categorías (9-nov-2026: faltaban los Torpedo): todas las URLs del
+  // sitemap que no son categorías se leen como producto; las que no tienen `var stock` se descartan.
+  const titulo = (c: string) => c.replace(/-/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+  for (const u of urls) if (!cats.includes(u) && !prods.has(u) && new URL(u).pathname.split('/').filter(Boolean).length >= 2)
+    prods.set(u, { nombre: '', precio: 0, transferencia: null, img: '', link: u, cat: titulo(new URL(u).pathname.split('/')[1]), extra: true } as Prod);
 
   const todos = [...prods.values()];
   for (let i = 0; i < todos.length; i += 12) {
@@ -62,6 +67,10 @@ async function catalogo() {
       x.id = h.match(/name="product" value="(\d+)"/)?.[1] ?? null;
       const st = h.match(/var stock = (\[[\s\S]*?\]);\s*\n/)?.[1];
       if (!st) return;
+      if (x.extra) { // sacado del sitemap: nombre y foto de la página del producto
+        const og = (k: string) => limpio(h.match(new RegExp(`property="og:${k}" content="([^"]*)"`))?.[1] ?? '');
+        x.nombre = og('title'); x.img = og('image');
+      }
       let arr: { idStock: number; s_oferta: number; s_precio_oferta: number; s_precio: number; s_ilimitado: number; s_cantidad: number;
         valoratributo?: { at_nombre: string; valor?: { vat_valor: string } }[] }[];
       try { arr = JSON.parse(st); } catch { return; }
@@ -69,10 +78,14 @@ async function catalogo() {
         id: v.idStock, precio: v.s_oferta ? v.s_precio_oferta : v.s_precio, stock: v.s_ilimitado ? null : v.s_cantidad,
         op: Object.fromEntries((v.valoratributo ?? []).map((a) => [a.at_nombre, a.valor?.vat_valor ?? ''])),
       }));
+      if (x.extra) { const m = Math.min(...x.variantes.map((v) => v.precio).filter((n) => n > 0)); x.precio = Number.isFinite(m) ? m : 0; }
       if (x.variantes.length === 1 && !Object.keys(x.variantes[0].op).length) { x.unico = x.variantes[0].id; delete x.variantes; }
     }));
   }
-  return todos;
+  // el mismo producto puede estar en varias categorías: uno por id
+  const porId = new Map<string, Prod>();
+  for (const x of todos) { if (!x.nombre || !(x.precio > 0)) continue; const k = x.id ?? x.link, y = porId.get(k); if (!y || (y.extra && !x.extra)) porId.set(k, x); }
+  return [...porId.values()].map(({ extra: _e, ...x }) => x as Prod);
 }
 
 async function obtener() {
