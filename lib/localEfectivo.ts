@@ -26,7 +26,7 @@ export function saldos(v: string[][]) {
 }
 
 // Agrega un movimiento con el mismo formato que cargan las chicas (los saldos quedan como fórmula).
-export async function agregarMovimiento(m: { tipo: 'Ingreso' | 'Egreso'; categoria: string; detalle: string; pesos?: number; usd?: number; vuelto?: number; obs?: string }) {
+export async function agregarMovimiento(m: { tipo: 'Ingreso' | 'Egreso'; categoria: string; detalle: string; pesos?: number; usd?: number; eur?: number; vuelto?: number; obs?: string }) {
   const v = await movimientos();
   let fecha = '';
   for (const f of v) if (f[0]) fecha = f[0];
@@ -34,9 +34,10 @@ export async function agregarMovimiento(m: { tipo: 'Ingreso' | 'Egreso'; categor
   const pesos = Math.abs(m.pesos || 0), vuelto = Math.abs(m.vuelto || 0);
   const fila = [
     fecha === hoyAR() ? '' : hoyAR(), m.tipo, m.categoria, m.detalle,
-    m.tipo === 'Ingreso' && pesos ? pesos : '', m.tipo === 'Egreso' && pesos ? pesos : vuelto || '',
+    // sin pesos (venta en dólares/euros): 0 en la columna de pesos, como hacen las chicas, para que el saldo $ siga la cadena
+    m.tipo === 'Ingreso' && pesos ? pesos : m.tipo === 'Ingreso' && !vuelto ? 0 : '', m.tipo === 'Egreso' && pesos ? pesos : vuelto || (m.tipo === 'Egreso' ? 0 : ''),
     `=IF(AND(E${n}="",F${n}=""),"",G${n - 1}+IF(E${n}="",0,E${n})-IF(F${n}="",0,F${n}))`,
-    m.usd || '', `=I${n - 1}+IF(H${n}="",0,H${n})`, '', `=K${n - 1}+IF(J${n}="",0,J${n})`,
+    m.usd || '', `=I${n - 1}+IF(H${n}="",0,H${n})`, m.eur || '', `=K${n - 1}+IF(J${n}="",0,J${n})`,
     m.obs || 'Caja local',
   ];
   await sheetsRW().spreadsheets.values.update({

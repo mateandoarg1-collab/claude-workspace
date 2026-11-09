@@ -18,8 +18,24 @@ function sinPermiso(req: Request) {
   return Response.json({ error: 'Clave incorrecta' }, { status: 401, headers: CORS });
 }
 const sheets = () => google.sheets({ version: 'v4', auth: getAuth() });
-const filas = async () => (await sheets().spreadsheets.values.get({ spreadsheetId: ID, range: `'${HOJA}'!A2:Q`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
+const filas = async () => (await sheets().spreadsheets.values.get({ spreadsheetId: ID, range: `'${HOJA}'!A2:R`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
 const n = (x: unknown) => Math.round(Number(x) || 0);
+// Partes del pago (col R, JSON): [{medio, pesos, cotiz?, monto?}]. Ventas viejas sin R: una sola parte con el total.
+type Parte = { medio: string; pesos: number; cotiz?: number; monto?: number };
+function leerPagos(f: string[]): Parte[] {
+  try { const p = JSON.parse(f[17] || ''); if (Array.isArray(p) && p.length) return p; } catch {}
+  return [{ medio: f[5], pesos: n(f[10]) }];
+}
+// Lo que entra o sale de la caja de efectivo por cada parte en efectivo (pesos, dólares o euros).
+async function moverEfectivo(pagos: Parte[], tipo: 'Ingreso' | 'Egreso', detalle: string) {
+  for (const p of pagos) {
+    if (p.medio === 'Efectivo' && p.pesos) await agregarMovimiento({ tipo, categoria: 'Ventas mostrador', detalle, pesos: p.pesos });
+    if ((p.medio === 'USD' || p.medio === 'EUR') && p.monto) {
+      const m = tipo === 'Ingreso' ? p.monto : -p.monto;
+      await agregarMovimiento({ tipo, categoria: 'Ventas mostrador', detalle: `${detalle} · ${p.medio} ${p.monto} a $${p.cotiz}`, ...(p.medio === 'USD' ? { usd: m } : { eur: m }) });
+    }
+  }
+}
 const txt = (x: unknown, max: number) => String(x ?? '').slice(0, max);
 
 export async function OPTIONS() { return new Response(null, { headers: CORS }); }
@@ -31,14 +47,15 @@ const CON_MP = new Set(['Débito', 'Crédito', 'QR MP']);
 const horaVenta = (f: unknown) => Date.parse(String(f).replace(' ', 'T') + ':00-03:00');
 async function unirConMP(v: string[][]) {
   const desde = Date.now() - 2 * 864e5;
-  const pend = v.map((f, i) => ({ f, i })).filter(({ f }) => f[0] && CON_MP.has(f[5]) && f[14] !== 'anulada' && !f[16] && horaVenta(f[1]) >= desde);
+  const mpDe = (f: string[]) => leerPagos(f).filter((p) => CON_MP.has(p.medio)).reduce((s, p) => s + p.pesos, 0);
+  const pend = v.map((f, i) => ({ f, i })).filter(({ f }) => f[0] && mpDe(f) > 0 && f[14] !== 'anulada' && !f[16] && horaVenta(f[1]) >= desde);
   if (!pend.length) return;
   const pagos = await getPagosLocal('NOW-3DAYS', 'NOW') // MP no acepta fechas ISO en Z: devuelve 0;
   const usados = new Set(v.map((f) => String(f[16] ?? '').replace(/\D/g, '')).filter(Boolean));
   const libres = pagos.filter((p) => !usados.has(String(p.id)));
   const cambios: { range: string; values: string[][] }[] = [];
   for (const { f, i } of pend.sort((a, b) => horaVenta(a.f[1]) - horaVenta(b.f[1]))) {
-    const t = horaVenta(f[1]), total = n(f[10]);
+    const t = horaVenta(f[1]), total = mpDe(f);
     const lejos = (p: { monto: number }) => (Math.abs(p.monto - total) > 1 ? 1 : 0);
     const cand = libres.filter((p) => p.fecha >= t - 20 * 60e3 && p.fecha <= t + 10 * 60e3)
       .sort((a, b) => lejos(a) - lejos(b) || Math.abs(a.fecha - t) - Math.abs(b.fecha - t));
@@ -60,7 +77,7 @@ export async function GET(req: Request) {
     const ventas = v.filter((f) => f[0]).map((f) => {
       let items = []; try { items = JSON.parse(f[15] || '[]'); } catch {}
       return { nro: n(f[0]), fecha: f[1], dia: f[2], hora: f[3], cajera: f[4], medio: f[5], sub: n(f[6]), dTransf: n(f[7]), conDesc: n(f[8]),
-        d: Number(f[9]) || 0, total: n(f[10]), unidades: n(f[11]), com: f[13] ?? '', estado: f[14] || 'ok', mp: f[16] ?? '', items };
+        d: Number(f[9]) || 0, total: n(f[10]), unidades: n(f[11]), com: f[13] ?? '', estado: f[14] || 'ok', mp: f[16] ?? '', pagos: leerPagos(f), items };
     }).reverse();
     return Response.json({ ventas, mpError }, { headers: { ...CORS, 'cache-control': 'no-store' } });
   } catch (e) {
@@ -79,24 +96,26 @@ export async function POST(req: Request) {
       if (v[i][14] === 'anulada') return Response.json({ ok: true }, { headers: CORS });
       await sheets().spreadsheets.values.update({ spreadsheetId: ID, range: `'${HOJA}'!O${i + 2}`, valueInputOption: 'RAW', requestBody: { values: [['anulada']] } });
       // si fue en efectivo, sale la plata de la caja (contramovimiento en Movimientos)
-      if (v[i][5] === 'Efectivo' && n(v[i][10])) await agregarMovimiento({ tipo: 'Egreso', categoria: 'Ventas mostrador', detalle: `Anulación pedido N° ${n(b.anular)}`, pesos: n(v[i][10]) });
+      await moverEfectivo(leerPagos(v[i]), 'Egreso', `Anulación pedido N° ${n(b.anular)}`);
       return Response.json({ ok: true }, { headers: CORS });
     }
     const items = (Array.isArray(b.items) ? b.items : []).slice(0, 100).map((i: Record<string, unknown>) => ({
       nombre: txt(i.nombre, 160), cant: n(i.cant) || 1, precio: n(i.precio), local: !!i.local }));
     if (!items.length) return Response.json({ error: 'Venta sin productos' }, { status: 400, headers: CORS });
     const nro = Math.max(0, ...v.map((f) => n(f[0]))) + 1;
+    const pagos: Parte[] = (Array.isArray(b.pagos) && b.pagos.length ? b.pagos : [{ medio: b.medio, pesos: b.total }]).slice(0, 4).map((p: Record<string, unknown>) => ({
+      medio: txt(p.medio, 20), pesos: n(p.pesos), ...(p.cotiz ? { cotiz: Number(p.cotiz) || 0, monto: Math.round((Number(p.monto) || 0) * 100) / 100 } : {}) }));
     const ahora = new Date(Date.now() - 3 * 3600e3);
     const dia = ahora.toISOString().slice(0, 10).split('-').reverse().join('/');
     const hora = ahora.toISOString().slice(11, 16);
     const fila = [nro, ahora.toISOString().slice(0, 16).replace('T', ' '), dia, hora, txt(b.cajera, 40), txt(b.medio, 30), n(b.sub), n(b.dTransf),
       n(b.conDesc), Number(b.d) || 0, n(b.total), items.reduce((s: number, i: { cant: number }) => s + i.cant, 0),
-      items.map((i: { cant: number; nombre: string }) => `${i.cant}x ${i.nombre}`).join(' | '), txt(b.com, 300), 'ok', JSON.stringify(items)];
-    await sheets().spreadsheets.values.update({ spreadsheetId: ID, range: `'${HOJA}'!A${v.length + 2}:P${v.length + 2}`, valueInputOption: 'RAW', requestBody: { values: [fila] } });
+      items.map((i: { cant: number; nombre: string }) => `${i.cant}x ${i.nombre}`).join(' | '), txt(b.com, 300), 'ok', JSON.stringify(items), '', JSON.stringify(pagos)];
+    await sheets().spreadsheets.values.update({ spreadsheetId: ID, range: `'${HOJA}'!A${v.length + 2}:R${v.length + 2}`, valueInputOption: 'RAW', requestBody: { values: [fila] } });
     // Venta en efectivo: entra la plata en la planilla de efectivo (Movimientos), sin cargarla dos veces.
     let efectivo = null;
-    if (fila[5] === 'Efectivo' && n(b.total)) {
-      try { await agregarMovimiento({ tipo: 'Ingreso', categoria: 'Ventas mostrador', detalle: `Pedido N° ${nro} · ${fila[4]}`, pesos: n(b.total) }); efectivo = 'ok'; }
+    if (pagos.some((p) => ['Efectivo', 'USD', 'EUR'].includes(p.medio))) {
+      try { await moverEfectivo(pagos, 'Ingreso', `Pedido N° ${nro} · ${fila[4]}`); efectivo = 'ok'; }
       catch (e) { efectivo = e instanceof Error ? e.message : String(e); }
     }
     return Response.json({ ok: true, nro, dia, hora, efectivo }, { headers: CORS });
