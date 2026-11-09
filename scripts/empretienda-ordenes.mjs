@@ -11,7 +11,7 @@ const ORDENES = 'https://dashboard.empretienda.ar.ua.la/1/orders';
 const PRODUCTOS = 'https://api.empretienda.com/producto';
 const DIAS = 60;
 const DESDE_CHINA = '2026-09-01T03:00:00Z'; // /china cuenta las ventas desde que llegó el container: no se borran
-const RECIENTES = 7;
+const RECIENTES = 15; // 9-nov-2026: 15 para re-leer el medio de las ventas del local desde el 26-oct
 const IMG = 'https://d22fxaf9t8d39k.cloudfront.net/';
 
 // Abre una pantalla del panel y devuelve el Authorization que usó contra `host`.
@@ -52,12 +52,16 @@ export const VENTAS_COLS = ['order_id', 'numero', 'fecha', 'pago_metodo', 'pago_
 // Ventas del local ("a acordar"): desde el 26-oct-2026 las chicas anotan el medio de pago en las observaciones
 // (quedan en las notas de la dirección): la palabra o el código T = transferencia, E = efectivo, TAR = tarjeta. Como
 // Empretienda pide 10 caracteres, la estiran ("efectivooooo"). Se guarda solo el medio, nunca el texto de la nota.
-export function medioLocal(nota) {
-  const t = String(nota ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z ]/g, ' ').trim();
-  if (/^(tar|tj|deb|cred|posnet|point|mp\b|mercado ?pago|qr)/.test(t)) return 'tarjeta';
-  if (/^(tr|t\b|t+$)/.test(t)) return 'transferencia';
-  if (/^(ef|e\b|e+$|cash)/.test(t)) return 'efectivo';
-  return '';
+// 9-nov-2026 (Juampi): se busca la palabra en CUALQUIER parte de la nota, con errores de tipeo ("tranasfe",
+// "efectivooo", "pago con transf"). Solo hay que reconocer transferencia y efectivo: el resto del local se cobra con
+// Point/QR de Mercado Pago, así que desde el 26-oct todo lo que no es transferencia ni efectivo cuenta como tarjeta.
+export function medioLocal(nota, fecha) {
+  const t = String(nota ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+    .replace(/[^a-z]+/g, ' ').replace(/([a-z])\1+/g, '$1').trim(); // "efectivooo" → "efectivo"
+  const p = t.split(' ').filter(Boolean);
+  if (p.some((w) => /^(tr|tf)/.test(w) || /^t$/.test(w)) || /transf/.test(t.replace(/ /g, ''))) return 'transferencia';
+  if (p.some((w) => /^(ef|cash|cas$)/.test(w) || /^e$/.test(w)) || /efect/.test(t.replace(/ /g, ''))) return 'efectivo';
+  return String(fecha ?? '') >= '2026-10-26T03' ? 'tarjeta' : '';
 }
 export function venta(o) {
   const s = o.shipping ?? {};
@@ -72,7 +76,7 @@ export function venta(o) {
       id: String(x.product_id).replace(/^product-/, ''), sku: x.sku ?? '', n: x.name ?? '', q: x.quantity, p: x.price,
       v: (x.attributes ?? []).map((at) => `${at.name}: ${at.value}`).join(' | '),
     }))),
-    o.payment?.method === 3 ? medioLocal(s.address?.notes ?? o.billing?.address?.notes) : '',
+    o.payment?.method === 3 ? medioLocal(s.address?.notes ?? o.billing?.address?.notes, o.created_at) : '',
   ];
 }
 
