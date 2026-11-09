@@ -105,3 +105,22 @@ async function summarize(fromISO: string, toISO: string, filter: (p: Payment) =>
 
   return { orders: seen.size, amount: Array.from(seen.values()).reduce((s, v) => s + v, 0) };
 }
+
+// Pagos del local (Point + QR INSTORE) con hora y medio, para unirlos con las ventas de la caja del local.
+export type PagoLocal = { id: number; monto: number; fecha: number; tipo: string };
+export async function getPagosLocal(fromISO: string, toISO: string): Promise<PagoLocal[]> {
+  const out = new Map<number, PagoLocal>();
+  for (const filter of [{ operation_type: 'pos_payment' }, { 'point_of_interaction.type': 'INSTORE' }] as Record<string, string>[]) {
+    const params = new URLSearchParams({ range: 'date_created', begin_date: fromISO, end_date: toISO, sort: 'date_created',
+      criteria: 'asc', status: 'approved', limit: '100', ...filter });
+    for (let offset = 0; offset < 1000; offset += 100) {
+      params.set('offset', String(offset));
+      const res = await fetch(`https://api.mercadopago.com/v1/payments/search?${params}`, { headers: { Authorization: `Bearer ${TOKEN}` }, cache: 'no-store' });
+      if (!res.ok) throw new Error(`MP API: ${res.status}`);
+      const d = (await res.json()) as { results: (Payment & { date_created: string; payment_type_id?: string })[] };
+      for (const p of d.results) out.set(p.id, { id: p.id, monto: p.transaction_amount, fecha: Date.parse(p.date_created), tipo: p.payment_type_id ?? '' });
+      if (d.results.length < 100) break;
+    }
+  }
+  return [...out.values()];
+}

@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
 import { getAuth } from '@/lib/sheets';
 import { agregarMovimiento } from '@/lib/localEfectivo';
+import { getPagosLocal } from '@/lib/mercadopago';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,19 +18,48 @@ function sinPermiso(req: Request) {
   return Response.json({ error: 'Clave incorrecta' }, { status: 401, headers: CORS });
 }
 const sheets = () => google.sheets({ version: 'v4', auth: getAuth() });
-const filas = async () => (await sheets().spreadsheets.values.get({ spreadsheetId: ID, range: `'${HOJA}'!A2:P`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
+const filas = async () => (await sheets().spreadsheets.values.get({ spreadsheetId: ID, range: `'${HOJA}'!A2:Q`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
 const n = (x: unknown) => Math.round(Number(x) || 0);
 const txt = (x: unknown, max: number) => String(x ?? '').slice(0, max);
 
 export async function OPTIONS() { return new Response(null, { headers: CORS }); }
 
+// Une las ventas con tarjeta/QR de los últimos 2 días con los pagos de Mercado Pago (Point/QR del local) por horario:
+// el pago más cercano entre 20 min antes y 10 min después de guardar la venta, priorizando el mismo monto. El id del
+// pago queda en la columna Q ("MP 123…"), así cada pago se usa una sola vez.
+const CON_MP = new Set(['Débito', 'Crédito', 'QR MP']);
+const horaVenta = (f: unknown) => Date.parse(String(f).replace(' ', 'T') + ':00-03:00');
+async function unirConMP(v: string[][]) {
+  const desde = Date.now() - 2 * 864e5;
+  const pend = v.map((f, i) => ({ f, i })).filter(({ f }) => f[0] && CON_MP.has(f[5]) && f[14] !== 'anulada' && !f[16] && horaVenta(f[1]) >= desde);
+  if (!pend.length) return;
+  const pagos = await getPagosLocal(new Date(desde - 3600e3).toISOString(), new Date().toISOString());
+  const usados = new Set(v.map((f) => String(f[16] ?? '').replace(/\D/g, '')).filter(Boolean));
+  const libres = pagos.filter((p) => !usados.has(String(p.id)));
+  const cambios: { range: string; values: string[][] }[] = [];
+  for (const { f, i } of pend.sort((a, b) => horaVenta(a.f[1]) - horaVenta(b.f[1]))) {
+    const t = horaVenta(f[1]), total = n(f[10]);
+    const lejos = (p: { monto: number }) => (Math.abs(p.monto - total) > 1 ? 1 : 0);
+    const cand = libres.filter((p) => p.fecha >= t - 20 * 60e3 && p.fecha <= t + 10 * 60e3)
+      .sort((a, b) => lejos(a) - lejos(b) || Math.abs(a.fecha - t) - Math.abs(b.fecha - t));
+    const p = cand[0]; if (!p) continue;
+    libres.splice(libres.indexOf(p), 1);
+    const txtMP = `MP ${p.id}${lejos(p) ? ` (cobró $${Math.round(p.monto)})` : ''}`;
+    f[16] = txtMP;
+    cambios.push({ range: `'${HOJA}'!Q${i + 2}`, values: [[txtMP]] });
+  }
+  if (cambios.length) await sheets().spreadsheets.values.batchUpdate({ spreadsheetId: ID, requestBody: { valueInputOption: 'RAW', data: cambios } });
+}
+
 export async function GET(req: Request) {
   const no = sinPermiso(req); if (no) return no;
   try {
-    const ventas = (await filas()).filter((f) => f[0]).map((f) => {
+    const v = await filas();
+    await unirConMP(v).catch(() => {});
+    const ventas = v.filter((f) => f[0]).map((f) => {
       let items = []; try { items = JSON.parse(f[15] || '[]'); } catch {}
       return { nro: n(f[0]), fecha: f[1], dia: f[2], hora: f[3], cajera: f[4], medio: f[5], sub: n(f[6]), dTransf: n(f[7]), conDesc: n(f[8]),
-        d: Number(f[9]) || 0, total: n(f[10]), unidades: n(f[11]), com: f[13] ?? '', estado: f[14] || 'ok', items };
+        d: Number(f[9]) || 0, total: n(f[10]), unidades: n(f[11]), com: f[13] ?? '', estado: f[14] || 'ok', mp: f[16] ?? '', items };
     }).reverse();
     return Response.json({ ventas }, { headers: { ...CORS, 'cache-control': 'no-store' } });
   } catch (e) {
