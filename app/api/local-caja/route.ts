@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
 import { getAuth } from '@/lib/sheets';
 import { conCache } from '@/lib/cache';
+import { ventas } from '@/lib/localCajaVentas';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -74,32 +75,6 @@ async function catalogo() {
   return todos;
 }
 
-async function ventas() {
-  const sheets = google.sheets({ version: 'v4', auth: getAuth() });
-  const [ro, rv] = await Promise.all([
-    sheets.spreadsheets.values.get({ spreadsheetId: EMP, range: "'emp_ordenes'!A2:H", valueRenderOption: 'UNFORMATTED_VALUE' }),
-    sheets.spreadsheets.values.get({ spreadsheetId: EMP, range: "'emp_ventas'!A2:R", valueRenderOption: 'UNFORMATTED_VALUE' }),
-  ]);
-  const medio: Record<string, string> = {};
-  for (const v of rv.data.values ?? []) medio[String(v[0])] = v[17] || '';
-  const vendidos: Record<string, number> = {}, local: Record<string, number> = {};
-  const lista = [];
-  for (const o of ro.data.values ?? []) {
-    if (String(o[5]) !== '1') continue;
-    const esLocal = String(o[4]) === '3';
-    let u = 0;
-    for (const it of String(o[7] ?? '').split(',').filter(Boolean)) {
-      const [id, c] = it.split(':'); const n = Number(c) || 1; u += n;
-      vendidos[id] = (vendidos[id] ?? 0) + n;
-      if (esLocal) local[id] = (local[id] ?? 0) + n;
-    }
-    if (!esLocal) continue;
-    const d = new Date(Date.parse(o[2]) - 3 * 3600e3);
-    lista.push({ f: d.toISOString().slice(0, 10), h: d.getUTCHours(), dow: d.getUTCDay(), t: Number(o[3]) || 0, m: medio[String(o[0])] || 'sin dato', u });
-  }
-  return { vendidos, local, lista };
-}
-
 async function obtener() {
   try {
     const [prods, v] = await Promise.all([catalogo(), ventas()]);
@@ -109,7 +84,7 @@ async function obtener() {
     for (const x of productos) if (x.transferencia) { const d = Math.round((1 - x.transferencia / x.precio) * 100); cuenta[d] = (cuenta[d] ?? 0) + 1; }
     const descTransferencia = Number(Object.entries(cuenta).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 0);
     if (productos.length < 20) throw new Error(`Catálogo incompleto (${productos.length})`);
-    return Response.json({ actualizado: new Date().toISOString(), descTransferencia, productos, ventas: v.lista }, { headers: CORS });
+    return Response.json({ actualizado: new Date().toISOString(), descTransferencia, productos }, { headers: CORS }); // las ventas van por /api/local-metricas (con clave)
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500, headers: CORS });
   }

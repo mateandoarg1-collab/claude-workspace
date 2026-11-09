@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
 import { getAuth } from '@/lib/sheets';
-import { saldos } from '@/lib/localEfectivo';
+import { saldos, agregarMovimiento } from '@/lib/localEfectivo';
 
 // Caja de efectivo del local (planilla "Mateando_Flujo_Efectivo COSTA RICA", pestaña Movimientos) para la app aparte
 // de la caja (mateando-local.vercel.app). Columnas: A fecha (solo en la 1ª fila del día) · B tipo · C categoría ·
@@ -62,26 +62,10 @@ export async function POST(req: Request) {
     if (b.cierre) return cierre(b);
     const tipo = b.tipo === 'Egreso' ? 'Egreso' : 'Ingreso';
     const categoria = String(b.categoria ?? '').slice(0, 40);
-    const detalle = String(b.detalle ?? '').slice(0, 120);
-    const pesos = Math.abs(Number(b.pesos) || 0);
-    const usd = Number(b.usd) || 0;
-    const vuelto = Math.abs(Number(b.vuelto) || 0); // venta en dólares con vuelto en pesos
+    const pesos = Math.abs(Number(b.pesos) || 0), usd = Number(b.usd) || 0;
     if (!categoria || (!pesos && !usd)) return Response.json({ error: 'Falta monto o categoría' }, { status: 400, headers: CORS });
-
-    const v = await filas();
-    let fecha = '';
-    for (const f of v) if (f[0]) fecha = f[0];
-    const n = v.length + 4; // fila nueva (los datos arrancan en la 4)
-    const fila = [
-      fecha === hoyAR() ? '' : hoyAR(), tipo, categoria, detalle,
-      tipo === 'Ingreso' && pesos ? pesos : '', tipo === 'Egreso' && pesos ? pesos : vuelto || '',
-      `=IF(AND(E${n}="",F${n}=""),"",G${n - 1}+IF(E${n}="",0,E${n})-IF(F${n}="",0,F${n}))`,
-      usd || '', `=I${n - 1}+IF(H${n}="",0,H${n})`, '', `=K${n - 1}+IF(J${n}="",0,J${n})`,
-      String(b.obs ?? '').slice(0, 200) || 'Caja local',
-    ];
-    await sheets().spreadsheets.values.update({
-      spreadsheetId: ID, range: `Movimientos!A${n}:L${n}`, valueInputOption: 'USER_ENTERED', requestBody: { values: [fila] },
-    });
+    const n = await agregarMovimiento({ tipo, categoria, detalle: String(b.detalle ?? '').slice(0, 120), pesos, usd,
+      vuelto: Math.abs(Number(b.vuelto) || 0), obs: String(b.obs ?? '').slice(0, 200) || 'Caja local' });
     return Response.json({ ok: true, fila: n }, { headers: CORS });
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500, headers: CORS });
