@@ -10,9 +10,6 @@ type Item = { href: string; label: string; badge?: boolean };
 // Solapas de arriba. Las que tienen `sub` agrupan varias páginas: al entrar se muestra una segunda fila para elegir.
 const NAV: Array<Item & { sub?: Item[] }> = [
   { href: '/canales', label: 'Canales' },
-  { href: '/estadisticas', label: 'Estadísticas' },
-  { href: '/anuncios', label: 'Carga Anuncios' },
-  { href: '/mercadolibre', label: 'Mercado Libre' },
   {
     href: '/rentabilidad-tienda',
     label: 'Rentabilidad',
@@ -31,6 +28,7 @@ const NAV: Array<Item & { sub?: Item[] }> = [
       { href: '/productos', label: 'Productos vendidos' },
     ],
   },
+  { href: '/preguntas', label: 'Preguntas ML', badge: true },
   {
     href: '/envios',
     label: 'Logística',
@@ -40,7 +38,9 @@ const NAV: Array<Item & { sub?: Item[] }> = [
       { href: '/posventa', label: 'Posventa' },
     ],
   },
-  { href: '/preguntas', label: 'Preguntas ML', badge: true },
+  { href: '/anuncios', label: 'Carga Anuncios' },
+  { href: '/estadisticas', label: 'Estadísticas' },
+  { href: '/mercadolibre', label: 'Mercado Libre' },
 ];
 
 const activa = (path: string, href: string) => (href === '/' ? path === '/' : path.startsWith(href));
