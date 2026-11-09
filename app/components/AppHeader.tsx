@@ -6,24 +6,48 @@ import { usePathname } from 'next/navigation';
 import PreguntasBadge from './PreguntasBadge';
 import Wordmark from './Wordmark';
 
-const NAV: Array<{ href: string; label: string; badge?: boolean }> = [
+type Item = { href: string; label: string; badge?: boolean };
+// Solapas de arriba. Las que tienen `sub` agrupan varias páginas: al entrar se muestra una segunda fila para elegir.
+const NAV: Array<Item & { sub?: Item[] }> = [
   { href: '/canales', label: 'Canales' },
-  { href: '/cybermonday', label: 'CYBERMONDAY' },
   { href: '/estadisticas', label: 'Estadísticas' },
   { href: '/anuncios', label: 'Carga Anuncios' },
-  { href: '/vencimientos', label: 'Vencimientos' },
   { href: '/mercadolibre', label: 'Mercado Libre' },
-  { href: '/rentabilidad-meli', label: 'Rentabilidad ML' },
-  { href: '/rentabilidad-tienda', label: 'Rentabilidad Tienda' },
-  { href: '/full', label: 'Stock Full' },
-  { href: '/china', label: 'Container China' },
-  { href: '/simulador', label: 'Simulador Container' },
-  { href: '/envios', label: 'Envíos' },
-  { href: '/despacho', label: 'Despacho' },
-  { href: '/posventa', label: 'Posventa' },
-  { href: '/productos', label: 'Productos' },
-  { href: '/preguntas', label: 'Preguntas', badge: true },
+  {
+    href: '/rentabilidad-tienda',
+    label: 'Rentabilidad',
+    sub: [
+      { href: '/rentabilidad-tienda', label: 'Tienda' },
+      { href: '/rentabilidad-meli', label: 'Mercado Libre' },
+    ],
+  },
+  {
+    href: '/full',
+    label: 'China',
+    sub: [
+      { href: '/full', label: 'Stock en Full' },
+      { href: '/china', label: 'Ritmo de venta' },
+      { href: '/simulador', label: 'Simulador de espacio' },
+      { href: '/productos', label: 'Productos vendidos' },
+    ],
+  },
+  {
+    href: '/envios',
+    label: 'Logística',
+    sub: [
+      { href: '/envios', label: 'Envíos' },
+      { href: '/despacho', label: 'Despacho' },
+      { href: '/posventa', label: 'Posventa' },
+    ],
+  },
+  { href: '/preguntas', label: 'Preguntas ML', badge: true },
 ];
+
+const activa = (path: string, href: string) => (href === '/' ? path === '/' : path.startsWith(href));
+const pill = (on: boolean) =>
+  `whitespace-nowrap rounded-full px-3 py-1.5 flex items-center transition-colors ${
+    on ? 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
+  }`;
 
 const WIDTHS = { '4xl': 'max-w-4xl', '5xl': 'max-w-5xl', '7xl': 'max-w-7xl' } as const;
 
@@ -43,6 +67,7 @@ export default function AppHeader({
 }) {
   const path = usePathname();
   const activeRef = useRef<HTMLAnchorElement>(null);
+  const grupo = NAV.find((n) => n.sub?.some((x) => activa(path, x.href)));
   // En mobile la fila de pills scrollea: dejar visible la página actual.
   useEffect(() => {
     activeRef.current?.scrollIntoView({ block: 'nearest', inline: 'center' });
@@ -68,26 +93,28 @@ export default function AppHeader({
             {subtitle && <p className="text-xs text-slate-500 truncate">{subtitle}</p>}
           </div>
         </div>
-        <nav className="-mx-4 px-4 sm:mx-0 sm:px-0 flex gap-1 overflow-x-auto no-scrollbar text-sm">
-          {NAV.map((n) => {
-            const active = n.href === '/' ? path === '/' : path.startsWith(n.href);
-            return (
-              <Link
-                key={n.href}
-                ref={active ? activeRef : undefined}
-                href={n.href}
-                className={`whitespace-nowrap rounded-full px-3 py-1.5 flex items-center transition-colors ${
-                  active
-                    ? 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60'
-                }`}
-              >
-                {n.label}
-                {n.badge && <PreguntasBadge />}
-              </Link>
-            );
-          })}
-        </nav>
+        <div className="flex flex-col gap-1.5 min-w-0">
+          <nav className="-mx-4 px-4 sm:mx-0 sm:px-0 flex gap-1 overflow-x-auto no-scrollbar text-sm">
+            {NAV.map((n) => {
+              const active = n.sub ? n.sub.some((x) => activa(path, x.href)) : activa(path, n.href);
+              return (
+                <Link key={n.label} ref={active ? activeRef : undefined} href={n.href} className={pill(active)}>
+                  {n.label}
+                  {n.badge && <PreguntasBadge />}
+                </Link>
+              );
+            })}
+          </nav>
+          {grupo && (
+            <nav className="-mx-4 px-4 sm:mx-0 sm:px-0 flex gap-1 overflow-x-auto no-scrollbar text-xs">
+              {grupo.sub!.map((x) => (
+                <Link key={x.href} href={x.href} className={pill(activa(path, x.href)).replace('px-3 py-1.5', 'px-2.5 py-1')}>
+                  {x.label}
+                </Link>
+              ))}
+            </nav>
+          )}
+        </div>
       </div>
     </header>
   );
