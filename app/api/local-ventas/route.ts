@@ -51,7 +51,7 @@ async function unirConMP(v: string[][]) {
   const pend = v.map((f, i) => ({ f, i })).filter(({ f }) => f[0] && mpDe(f) > 0 && f[14] !== 'anulada' && !f[16] && horaVenta(f[1]) >= desde);
   if (!pend.length) return;
   const pagos = await getPagosLocal('NOW-3DAYS', 'NOW') // MP no acepta fechas ISO en Z: devuelve 0;
-  const usados = new Set(v.map((f) => String(f[16] ?? '').replace(/\D/g, '')).filter(Boolean));
+  const usados = new Set(v.map((f) => (String(f[16] ?? '').match(/MP (\d+)/)?.[1] ?? '')).filter(Boolean));
   const libres = pagos.filter((p) => !usados.has(String(p.id)));
   const cambios: { range: string; values: string[][] }[] = [];
   for (const { f, i } of pend.sort((a, b) => horaVenta(a.f[1]) - horaVenta(b.f[1]))) {
@@ -61,7 +61,11 @@ async function unirConMP(v: string[][]) {
       .sort((a, b) => lejos(a) - lejos(b) || Math.abs(a.fecha - t) - Math.abs(b.fecha - t));
     const p = cand[0]; if (!p) continue;
     libres.splice(libres.indexOf(p), 1);
-    const txtMP = `MP ${p.id}${lejos(p) ? ` (cobró $${Math.round(p.monto)})` : ''}`;
+    // "MP 123 · Visa crédito": la tarjeta con la que pagó, para verla en el historial
+    const TIPO: Record<string, string> = { credit_card: 'crédito', debit_card: 'débito', prepaid_card: 'prepaga', account_money: 'dinero en cuenta' };
+    const marca = p.marca === 'account_money' ? '' : p.marca.replace(/^deb(?=[a-z])/, '').replace(/^\w/, (c) => c.toUpperCase());
+    const tarjeta = [marca, TIPO[p.tipo] ?? p.tipo].filter(Boolean).join(' ');
+    const txtMP = `MP ${p.id}${tarjeta ? ` · ${tarjeta}` : ''}${lejos(p) ? ` (cobró $${Math.round(p.monto)})` : ''}`;
     f[16] = txtMP;
     cambios.push({ range: `'${HOJA}'!Q${i + 2}`, values: [[txtMP]] });
   }
