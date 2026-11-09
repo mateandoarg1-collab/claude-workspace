@@ -109,7 +109,7 @@ export async function POST(req: Request) {
       const i = v.findIndex((f) => n(f[0]) === n(b.editar));
       if (i < 0) return Response.json({ error: 'No existe ese pedido' }, { status: 404, headers: CORS });
       const its = (Array.isArray(b.items) ? b.items : []).slice(0, 100).map((x: Record<string, unknown>) => ({
-        nombre: txt(x.nombre, 160), cant: n(x.cant) || 1, precio: n(x.precio), local: !!x.local }));
+        nombre: txt(x.nombre, 160), cant: n(x.cant) || 1, precio: n(x.precio), local: !!x.local, n: txt(x.n, 160), v: txt(x.v, 200) }));
       if (!its.length) return Response.json({ error: 'Venta sin productos' }, { status: 400, headers: CORS });
       const fila = v[i];
       const cajera = txt(b.cajera || fila[4], 40), com = txt(b.com ?? fila[13], 300);
@@ -122,7 +122,7 @@ export async function POST(req: Request) {
       return Response.json({ ok: true }, { headers: CORS });
     }
     const items = (Array.isArray(b.items) ? b.items : []).slice(0, 100).map((i: Record<string, unknown>) => ({
-      nombre: txt(i.nombre, 160), cant: n(i.cant) || 1, precio: n(i.precio), local: !!i.local }));
+      nombre: txt(i.nombre, 160), cant: n(i.cant) || 1, precio: n(i.precio), local: !!i.local, n: txt(i.n, 160), v: txt(i.v, 200) }));
     if (!items.length) return Response.json({ error: 'Venta sin productos' }, { status: 400, headers: CORS });
     const nro = Math.max(0, ...v.map((f) => n(f[0]))) + 1;
     const pagos: Parte[] = (Array.isArray(b.pagos) && b.pagos.length ? b.pagos : [{ medio: b.medio, pesos: b.total }]).slice(0, 4).map((p: Record<string, unknown>) => ({

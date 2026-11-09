@@ -6,3 +6,4 @@ cd /root/claude-workspace || exit 1
 # corre a los 22 de cada hora: no se cruza con leer-metricas.sh (7 y 37), que también actualiza el repo
 git fetch -q && git reset -q --hard origin/main || echo "No pude actualizar el repo, sigo con lo que hay"
 MATEANDO_CLAVES=/root/mateando/claves timeout 20m node scripts/tienda-rentabilidad.mjs
+MATEANDO_CLAVES=/root/mateando/claves timeout 10m node scripts/local-rentabilidad.mjs
