@@ -55,13 +55,14 @@ export async function GET(req: Request) {
   const no = sinPermiso(req); if (no) return no;
   try {
     const v = await filas();
-    await unirConMP(v).catch(() => {});
+    let mpError = '';
+    await unirConMP(v).catch((e) => { mpError = e instanceof Error ? e.message : String(e); });
     const ventas = v.filter((f) => f[0]).map((f) => {
       let items = []; try { items = JSON.parse(f[15] || '[]'); } catch {}
       return { nro: n(f[0]), fecha: f[1], dia: f[2], hora: f[3], cajera: f[4], medio: f[5], sub: n(f[6]), dTransf: n(f[7]), conDesc: n(f[8]),
         d: Number(f[9]) || 0, total: n(f[10]), unidades: n(f[11]), com: f[13] ?? '', estado: f[14] || 'ok', mp: f[16] ?? '', items };
     }).reverse();
-    return Response.json({ ventas }, { headers: { ...CORS, 'cache-control': 'no-store' } });
+    return Response.json({ ventas, mpError }, { headers: { ...CORS, 'cache-control': 'no-store' } });
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500, headers: CORS });
   }
