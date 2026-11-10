@@ -80,6 +80,17 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const b = await req.json();
+    // TEMPORAL: presupuesto de prueba (no va a ARCA) para ver si unit_price va con o sin IVA y cómo aplica la bonificación
+    if (b.pruebaPresupuesto && process.env.LOCAL_METRICAS_CLAVE && req.headers.get('x-clave') === process.env.LOCAL_METRICAS_CLAVE) {
+      const { llamar } = await import('@/lib/ecommapp');
+      const hoy = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+      const j = await llamar('/emitir', { method: 'POST', headers: { 'Idempotency-Key': 'mateando-local-prueba-presupuesto-1' }, body: JSON.stringify({
+        invoice_type_source: 'tipo_presupuesto', invoice_type_id: 1, quote_type_id: 1, document_number: '30717612503', concept_id: 1, issue_date: hoy,
+        point_of_sale: PUNTO_VENTA_LOCAL, notes: 'PRUEBA caja local - borrar', client_reference: 'PRUEBA-CAJA',
+        items: [{ description: 'PRUEBA caja local (borrar)', quantity: 1, unit_price: 12100, vat_rate_id: 5, discount_percentage: 10 }] }) }).catch((e) => ({ fallo: String(e) }));
+      const d = (j as { data?: { amounts?: unknown; items?: unknown; invoice?: unknown; pdf?: unknown } }).data;
+      return json({ fallo: (j as { fallo?: string }).fallo, amounts: d?.amounts, items: d?.items, invoice: d?.invoice, pdf: d?.pdf, claves: Object.keys(d ?? j ?? {}) });
+    }
     const nro = Number(b.nro), documento = String(b.documento ?? '').replace(/\D/g, '');
     const email = String(b.email ?? '').trim();
     // Hasta verificar con un presupuesto de prueba si Ecomm-App toma unit_price con o sin IVA, no se emite nada.
