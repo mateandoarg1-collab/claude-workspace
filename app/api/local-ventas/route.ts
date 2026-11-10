@@ -18,7 +18,7 @@ function sinPermiso(req: Request) {
   return Response.json({ error: 'Clave incorrecta' }, { status: 401, headers: CORS });
 }
 const sheets = () => google.sheets({ version: 'v4', auth: getAuth() });
-const filas = async () => (await sheets().spreadsheets.values.get({ spreadsheetId: ID, range: `'${HOJA}'!A2:R`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
+const filas = async () => (await sheets().spreadsheets.values.get({ spreadsheetId: ID, range: `'${HOJA}'!A2:T`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
 const n = (x: unknown) => Math.round(Number(x) || 0);
 // Partes del pago (col R, JSON): [{medio, pesos, cotiz?, monto?}]. Ventas viejas sin R: una sola parte con el total.
 type Parte = { medio: string; pesos: number; cotiz?: number; monto?: number };
@@ -81,7 +81,7 @@ export async function GET(req: Request) {
     const ventas = v.filter((f) => f[0]).map((f) => {
       let items = []; try { items = JSON.parse(f[15] || '[]'); } catch {}
       return { nro: n(f[0]), fecha: f[1], dia: f[2], hora: f[3], cajera: f[4], medio: f[5], sub: n(f[6]), dTransf: n(f[7]), conDesc: n(f[8]),
-        d: Number(f[9]) || 0, total: n(f[10]), unidades: n(f[11]), com: f[13] ?? '', estado: f[14] || 'ok', mp: f[16] ?? '', pagos: leerPagos(f), items };
+        d: Number(f[9]) || 0, total: n(f[10]), unidades: n(f[11]), com: f[13] ?? '', estado: f[14] || 'ok', mp: f[16] ?? '', pagos: leerPagos(f), items, factura: (() => { try { return f[19] ? JSON.parse(f[19]) : null; } catch { return null; } })() };
     }).reverse();
     return Response.json({ ventas, mpError }, { headers: { ...CORS, 'cache-control': 'no-store' } });
   } catch (e) {

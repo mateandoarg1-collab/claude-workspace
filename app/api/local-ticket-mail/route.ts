@@ -23,6 +23,7 @@ type Pago = { medio: string; pesos: number; monto?: number; cotiz?: number };
 
 function ticket(f: unknown[]) {
   const [nro, , dia, hora, cajera, medio, sub, dTransf, pct, d, total, , , com] = f;
+  let fa: { pdf?: string; tipo?: string; numero?: string } | null = null; try { fa = f[19] ? JSON.parse(String(f[19])) : null; } catch {}
   let items: Item[] = []; try { items = JSON.parse(String(f[15] || '[]')); } catch {}
   let pagos: Pago[] = []; try { pagos = JSON.parse(String(f[17] || '[]')); } catch {}
   const fila = (a: string, b: string, estilo = '') => `<tr><td style="padding:3px 0;${estilo}">${a}</td><td style="padding:3px 0;text-align:right;white-space:nowrap;${estilo}">${b}</td></tr>`;
@@ -50,6 +51,7 @@ function ticket(f: unknown[]) {
       ${pagoTxt}
     </table>
     ${com ? `<p style="font-size:13px;color:#555;margin:12px 0 0">${e(com)}</p>` : ''}
+    ${fa?.pdf ? `<div style="text-align:center;margin:18px 0 4px"><a href="${e(fa.pdf)}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:bold">📄 Descargá tu ${e(fa.tipo || 'factura')} ${e(fa.numero)}</a></div>` : ''}
     <hr style="border:0;border-top:1px dashed #bbb;margin:16px 0">
     <div style="text-align:center;font-size:13px;line-height:1.6"><b>NO VÁLIDO COMO FACTURA</b><br>¡Gracias por tu compra!<br><a href="https://www.instagram.com/mateando" style="color:#111">@mateando</a></div>
   </div></div></body></html>`;
@@ -65,7 +67,7 @@ export async function POST(req: Request) {
     if (!user || !pass) return json({ error: 'Falta configurar el mail de envío' }, 500);
     const desde = process.env.GMAIL_FROM || user; // info@mateando.com: tiene que estar como "Enviar como" en esa cuenta de Gmail
     const s = google.sheets({ version: 'v4', auth: getAuth() });
-    const filas = (await s.spreadsheets.values.get({ spreadsheetId: ID, range: `'${HOJA}'!A2:S`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
+    const filas = (await s.spreadsheets.values.get({ spreadsheetId: ID, range: `'${HOJA}'!A2:T`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
     const i = filas.findIndex((f) => Number(f[0]) === nro);
     if (i < 0) return json({ error: `No existe el pedido N° ${nro}` }, 404);
     const f = filas[i];
