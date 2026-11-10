@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "exceljs": "^4.4.0",
     "googleapis": "^172.0.0",
     "html5-qrcode": "^2.3.8",
