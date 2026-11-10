@@ -19,7 +19,7 @@ function token() {
   return t;
 }
 
-async function llamar(path: string, init: RequestInit = {}) {
+export async function llamar(path: string, init: RequestInit = {}) {
   const r = await fetch(BASE + path, { ...init, headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json', ...(init.headers ?? {}) }, cache: 'no-store' });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j?.error?.message || j?.error?.code || `Ecomm-App respondió ${r.status}`);

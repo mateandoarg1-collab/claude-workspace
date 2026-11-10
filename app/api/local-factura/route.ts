@@ -39,6 +39,13 @@ export async function GET(req: Request) {
     // TEMPORAL: ver cómo trae Ecomm-App los comprobantes de un monto (con la clave de Métricas)
     if (u.searchParams.get('debug') && process.env.LOCAL_METRICAS_CLAVE && req.headers.get('x-clave') === process.env.LOCAL_METRICAS_CLAVE) {
       const { comprobantesDelDia } = await import('@/lib/ecommapp');
+      if (u.searchParams.get('raw')) {
+        const { llamar } = await import('@/lib/ecommapp');
+        const q = new URLSearchParams({ date_from: String(u.searchParams.get('dia')), date_to: String(u.searchParams.get('dia')), per_page: '5' });
+        const j = await llamar(`/comprobantes?${q}`).catch((e) => ({ fallo: String(e) }));
+        const forma = (o: unknown, d = 0): unknown => d > 2 || o == null || typeof o !== 'object' ? typeof o : Array.isArray(o) ? [o.length, forma(o[0], d + 1)] : Object.fromEntries(Object.entries(o).map(([k, v]) => [k, forma(v, d + 1)]));
+        return json({ forma: forma(j), fallo: (j as { fallo?: string }).fallo });
+      }
       const todos = await comprobantesDelDia(String(u.searchParams.get('dia')));
       const monto = Number(u.searchParams.get('monto'));
       return json({ cantidad: todos.length, canales: [...new Set(todos.map((c) => c.invoice?.sales_channel))], claves: Object.keys(todos[0] ?? {}),
