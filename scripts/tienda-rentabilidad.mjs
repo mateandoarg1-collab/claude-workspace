@@ -43,6 +43,7 @@ const META_RECARGO = { act_1439554678210755: 1.08 };
 const GOOGLE_ADS_CLIENTE = '5346606046';
 
 const args = process.argv.slice(2);
+// --solo-tiktok-anuncios → solo actualiza la pestaña tiktok_anuncios y termina (para probar).
 const arg = (k) => (args.includes(k) ? args[args.indexOf(k) + 1] : undefined);
 const horaAR = new Date(Date.now() - 3 * 3600e3).getUTCHours();
 const DIAS = Number(arg('--dias') ?? (horaAR === 6 ? 60 : 10));
@@ -56,6 +57,7 @@ const auth = new google.auth.GoogleAuth({
   scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 const sheets = google.sheets({ version: 'v4', auth });
+if (args.includes('--solo-tiktok-anuncios')) { await tiktokAnunciosAPlanilla(); process.exit(0); }
 
 const diaAR = (iso) => new Date(new Date(iso).getTime() - 3 * 3600e3).toISOString().slice(0, 10);
 const r2 = (n) => Math.round(n * 100) / 100;
@@ -169,6 +171,45 @@ async function tiktokAPlanilla(desde, hasta) {
   console.log(`TikTok: ${dias.length} días, $${dias.reduce((t, d) => t + d[1], 0).toLocaleString('es-AR')}`);
 }
 
+// Rendimiento por anuncio de TikTok (para /anuncios/tiktok): hoy, ayer, 7, 14 y 30 días → pestaña tiktok_anuncios.
+// El token solo tiene Reporting (sin miniaturas ni estado). Montos en pesos al dólar blue venta de hoy.
+async function tiktokAnunciosAPlanilla() {
+  let tk;
+  try { tk = leerEnv('.tiktok'); } catch { return; }
+  const blue = (await fetch('https://api.argentinadatos.com/v1/cotizaciones/dolares/blue').then((r) => r.json())).at(-1).venta;
+  const hoyAR = new Date(Date.now() - 3 * 3600e3);
+  const dia = (n) => { const d = new Date(hoyAR); d.setUTCDate(d.getUTCDate() - n); return d.toISOString().slice(0, 10); };
+  const periodos = { hoy: [dia(0), dia(0)], ayer: [dia(1), dia(1)], '7d': [dia(6), dia(0)], '14d': [dia(13), dia(0)], '30d': [dia(29), dia(0)] };
+  const filas = [];
+  for (const [periodo, [desde, hasta]] of Object.entries(periodos)) {
+    for (let page = 1; page <= 20; page++) {
+      const q = new URLSearchParams({
+        advertiser_id: tk.TIKTOK_ADVERTISER_ID, report_type: 'BASIC', data_level: 'AUCTION_AD', dimensions: '["ad_id"]',
+        metrics: JSON.stringify(['ad_name', 'campaign_name', 'adgroup_name', 'spend', 'impressions', 'clicks', 'complete_payment', 'total_complete_payment_rate']),
+        start_date: desde, end_date: hasta, page_size: '1000', page: String(page),
+      });
+      const j = await fetch(`https://business-api.tiktok.com/open_api/v1.3/report/integrated/get/?${q}`, { headers: { 'Access-Token': tk.TIKTOK_ACCESS_TOKEN } }).then((r) => r.json());
+      if (j.code !== 0) throw new Error(j.message);
+      for (const d of j.data?.list ?? []) {
+        const m = d.metrics;
+        if (!(Number(m.spend) > 0)) continue;
+        filas.push([periodo, d.dimensions.ad_id, m.ad_name, m.campaign_name, m.adgroup_name, Math.round(Number(m.spend) * blue),
+          Number(m.complete_payment) || 0, Math.round(Number(m.total_complete_payment_rate || 0) * blue), Number(m.impressions) || 0, Number(m.clicks) || 0]);
+      }
+      if (page >= (j.data?.page_info?.total_page ?? 1)) break;
+    }
+  }
+  const ahora = new Date().toISOString();
+  await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: "'tiktok_anuncios'!A:L" }).catch(async () => {
+    await sheets.spreadsheets.batchUpdate({ spreadsheetId: SPREADSHEET_ID, requestBody: { requests: [{ addSheet: { properties: { title: 'tiktok_anuncios' } } }] } });
+  });
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID, range: "'tiktok_anuncios'!A1", valueInputOption: 'RAW',
+    requestBody: { values: [['periodo', 'ad_id', 'anuncio', 'campana', 'conjunto', 'gasto', 'compras', 'valor', 'impresiones', 'clics', 'actualizado', 'blue'], ...filas.map((f) => [...f, ahora, blue])] },
+  });
+  console.log(`TikTok anuncios: ${filas.length} filas`);
+}
+
 // Pauta por día de Meta (cuentas de la tienda online), Google Ads y TikTok (pestaña tiktok_gasto, la llena el gasto de
 // Escalafy mientras TikTok no apruebe la API; ver app/api/tiktok).
 async function pautaPorDia(desde, hasta) {
@@ -199,6 +240,7 @@ async function pautaPorDia(desde, hasta) {
   if (g.error) throw new Error(`Google Ads: ${g.error.message}`);
   for (const f of g.results ?? []) sumar(f.segments.date, 'google', Number(f.metrics.costMicros || 0) / 1e6);
   await tiktokAPlanilla(desde, hasta).catch((e) => console.log(`No pude leer TikTok: ${e.message}`));
+  await tiktokAnunciosAPlanilla().catch((e) => console.log(`No pude leer anuncios de TikTok: ${e.message}`));
   const tiktok = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'tiktok_gasto'!A2:B", valueRenderOption: 'UNFORMATTED_VALUE' }).catch(() => null);
   for (const [fecha, gasto] of tiktok?.data.values ?? []) if (fecha >= desde && fecha <= hasta && Number(gasto)) sumar(String(fecha), 'tiktok', Number(gasto));
   // tiktok va al final: las filas viejas (sin TikTok) quedan con la misma forma
