@@ -3,6 +3,7 @@
 // y guarda el refresh token en ~/.claude/.mateando-gads-token.json (fuera del repo).
 //
 // Uso: node scripts/google-ads-auth.mjs   → abre el navegador, aceptás el permiso y listo.
+// --guardar <archivo> → guarda en otro archivo (ej. ~/.claude/.mateando-gads-token-admin.json para mateandoads).
 
 import { google } from 'googleapis';
 import http from 'http';
@@ -11,6 +12,8 @@ import { readFileSync, writeFileSync } from 'fs';
 import { homedir } from 'os';
 
 const { client_id, client_secret } = JSON.parse(readFileSync(`${homedir()}/.claude/.mateando-oauth.json`, 'utf8')).installed;
+const i = process.argv.indexOf('--guardar');
+const DESTINO = i > 0 ? process.argv[i + 1].replace(/^~/, homedir()) : `${homedir()}/.claude/.mateando-gads-token.json`;
 const REDIRECT = 'http://localhost:9998/callback';
 const auth = new google.auth.OAuth2(client_id, client_secret, REDIRECT);
 const url = auth.generateAuthUrl({
@@ -36,9 +39,8 @@ const server = http.createServer(async (req, res) => {
     console.log('⚠️  Google no devolvió refresh token. Volvé a correr el comando.');
     return;
   }
-  writeFileSync(`${homedir()}/.claude/.mateando-gads-token.json`, JSON.stringify(tokens, null, 2), { mode: 0o600 });
-  console.log('✅ Autorización guardada en ~/.claude/.mateando-gads-token.json');
-  console.log('   Falta el developer token y el ID de cliente de Google Ads para leer el gasto.');
+  writeFileSync(DESTINO, JSON.stringify(tokens, null, 2), { mode: 0o600 });
+  console.log(`✅ Autorización guardada en ${DESTINO}`);
 }).listen(9998);
 
 console.log('Esperando que aceptes el permiso en el navegador...');
