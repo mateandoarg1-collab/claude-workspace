@@ -5,7 +5,7 @@ const BASE = 'https://admin.ecomm-app.com/api/v3/public/facturacion';
 export type FacturaLocal = { numero: string; tipo: string; cae: string; vence: string; pdf: string; total: number; origen: 'mp' | 'caja'; doc?: string; nombre?: string };
 
 export type Comprobante = {
-  invoice?: { id?: number; type?: { letra?: string; description?: string }; full_number?: string; issue_date?: string; sales_channel?: string; client_reference?: string; notes?: string };
+  invoice?: { id?: number; type?: { letra?: string; description?: string }; full_number?: string; issue_date?: string; sales_channel?: string; client_reference?: string; notes?: string; anulado?: boolean; fecha_ultima_modificacion?: string };
   authorization?: { cae?: string; expiration_date?: string };
   customer?: { document_number?: string; first_name?: string; last_name?: string };
   amounts?: { total?: number };
@@ -46,19 +46,22 @@ export async function comprobantesDelDia(dia: string): Promise<Comprobante[]> {
     const data: Comprobante[] = Array.isArray(j.data?.items) ? j.data.items : Array.isArray(j.data) ? j.data : [];
     out.push(...data);
     const tp = Number(j.data?.pagination?.total_pages ?? j.pagination?.total_pages ?? 0);
-    if (!data.length || (tp && page >= tp) || data.length < 50) break;
+    if (!data.length || (tp ? page >= tp : data.length < 50)) break;
   }
   return out;
 }
 
-// La factura que Ecomm-App hizo sola para un pago de Mercado Pago (canal Mercado Pago): se busca por el N° de pago en
-// la referencia del comprobante; si no aparece ahí, por monto exacto entre las de Mercado Pago del día (solo si hay una).
-export async function facturaDePagoMP(mpId: string, dias: string[], monto: number): Promise<FacturaLocal | null> {
+// La factura que Ecomm-App hizo sola para un pago de Mercado Pago del local (canal "mercadopago"). Ecomm-App no guarda
+// el N° de pago en el comprobante, así que se busca por monto exacto entre las del canal Mercado Pago del día de la
+// venta y el siguiente, sin anular y que no estén ya tomadas por otra venta de la caja; si hay varias, la creada más
+// cerca del horario de la venta.
+export async function facturaDePagoMP(dias: string[], monto: number, horaVenta: number, usadas: Set<string>): Promise<FacturaLocal | null> {
   const todos = (await Promise.all(dias.map(comprobantesDelDia))).flat();
-  const porRef = todos.find((c) => [c.invoice?.client_reference, c.invoice?.notes].some((x) => String(x ?? '').includes(mpId)));
-  if (porRef) return aFactura(porRef, 'mp');
-  const mismoMonto = todos.filter((c) => /mercado ?pago/i.test(c.invoice?.sales_channel ?? '') && Math.abs((Number(c.amounts?.total) || 0) - monto) < 1);
-  return mismoMonto.length === 1 ? aFactura(mismoMonto[0], 'mp') : null;
+  const t = (c: Comprobante) => Date.parse(String(c.invoice?.fecha_ultima_modificacion ?? '').replace(' ', 'T') + (/[Z+]/.test(String(c.invoice?.fecha_ultima_modificacion)) ? '' : '-03:00'));
+  const cand = todos.filter((c) => c.invoice?.sales_channel === 'mercadopago' && !c.invoice?.anulado && Math.abs((Number(c.amounts?.total) || 0) - monto) < 1
+    && !usadas.has(c.invoice?.full_number ?? '') && /^Factura/i.test(c.invoice?.type?.description ?? 'Factura'))
+    .sort((a, b) => Math.abs((t(a) || 0) - horaVenta) - Math.abs((t(b) || 0) - horaVenta));
+  return cand[0] ? aFactura(cand[0], 'mp') : null;
 }
 
 export type ItemFactura = { description: string; quantity: number; unit_price: number; vat_rate_id: number; discount_percentage?: number };

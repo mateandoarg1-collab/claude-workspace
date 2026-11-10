@@ -26,7 +26,8 @@ const guardada = (f: unknown[]): FacturaLocal | null => { try { return f[19] ? J
 async function fila(nro: number) {
   const v = (await sheets().spreadsheets.values.get({ spreadsheetId: ID, range: `'${HOJA}'!A2:T`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
   const i = v.findIndex((f) => Number(f[0]) === nro);
-  return i < 0 ? null : { f: v[i], celda: `'${HOJA}'!T${i + 2}` };
+  const usadas = new Set(v.map((f) => guardada(f)?.numero ?? '').filter(Boolean));
+  return i < 0 ? null : { f: v[i], celda: `'${HOJA}'!T${i + 2}`, usadas };
 }
 const guardar = (celda: string, fa: FacturaLocal) =>
   sheets().spreadsheets.values.update({ spreadsheetId: ID, range: celda, valueInputOption: 'RAW', requestBody: { values: [[JSON.stringify(fa)]] } });
@@ -49,7 +50,7 @@ export async function GET(req: Request) {
       const todos = await comprobantesDelDia(String(u.searchParams.get('dia')));
       const monto = Number(u.searchParams.get('monto'));
       return json({ cantidad: todos.length, canales: [...new Set(todos.map((c) => c.invoice?.sales_channel))], claves: Object.keys(todos[0] ?? {}),
-        invoiceKeys: Object.keys(todos[0]?.invoice ?? {}), match: todos.filter((c) => Math.abs((Number(c.amounts?.total) || 0) - monto) < 1).map((c) => ({ ...c.invoice, total: c.amounts?.total })) });
+        invoiceKeys: Object.keys(todos[0]?.invoice ?? {}), match: todos.filter((c) => Math.abs((Number(c.amounts?.total) || 0) - monto) < 1).map((c) => ({ ...c.invoice, total: c.amounts?.total, amounts: c.amounts, items: (c as { items?: unknown }).items })) });
     }
     const nro = Number(u.searchParams.get('nro'));
     const x = nro > 0 ? await fila(nro) : null;
@@ -63,7 +64,7 @@ export async function GET(req: Request) {
     const cobro = Number(String(x.f[16]).match(/cobró \$(\d+)/)?.[1]) || mpPesos;
     const [d, m, a] = String(x.f[2]).split('/');
     const dia = `${a}-${m}-${d}`, sig = new Date(Date.parse(dia + 'T12:00:00Z') + 864e5).toISOString().slice(0, 10);
-    const fa = await facturaDePagoMP(mp[1], [dia, sig], cobro);
+    const fa = await facturaDePagoMP([dia, sig], cobro, Date.parse(String(x.f[1]).replace(' ', 'T') + ':00-03:00'), x.usadas);
     if (!fa) return json({ factura: null, pendiente: 'Ecomm-App todavía no hizo la factura de este pago (se hace sola, probá en unos minutos)' });
     await guardar(x.celda, fa);
     return json({ factura: fa });
