@@ -35,7 +35,16 @@ export async function OPTIONS() { return new Response(null, { headers: CORS }); 
 
 export async function GET(req: Request) {
   try {
-    const nro = Number(new URL(req.url).searchParams.get('nro'));
+    const u = new URL(req.url);
+    // TEMPORAL: ver cómo trae Ecomm-App los comprobantes de un monto (con la clave de Métricas)
+    if (u.searchParams.get('debug') && process.env.LOCAL_METRICAS_CLAVE && req.headers.get('x-clave') === process.env.LOCAL_METRICAS_CLAVE) {
+      const { comprobantesDelDia } = await import('@/lib/ecommapp');
+      const todos = await comprobantesDelDia(String(u.searchParams.get('dia')));
+      const monto = Number(u.searchParams.get('monto'));
+      return json({ cantidad: todos.length, canales: [...new Set(todos.map((c) => c.invoice?.sales_channel))], claves: Object.keys(todos[0] ?? {}),
+        invoiceKeys: Object.keys(todos[0]?.invoice ?? {}), match: todos.filter((c) => Math.abs((Number(c.amounts?.total) || 0) - monto) < 1).map((c) => ({ ...c.invoice, total: c.amounts?.total })) });
+    }
+    const nro = Number(u.searchParams.get('nro'));
     const x = nro > 0 ? await fila(nro) : null;
     if (!x) return json({ error: 'No existe ese pedido' }, 404);
     const ya = guardada(x.f);

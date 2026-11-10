@@ -4,7 +4,7 @@ const BASE = 'https://admin.ecomm-app.com/api/v3/public/facturacion';
 
 export type FacturaLocal = { numero: string; tipo: string; cae: string; vence: string; pdf: string; total: number; origen: 'mp' | 'caja'; doc?: string; nombre?: string };
 
-type Comprobante = {
+export type Comprobante = {
   invoice?: { id?: number; type?: { letra?: string; description?: string }; full_number?: string; issue_date?: string; sales_channel?: string; client_reference?: string; notes?: string };
   authorization?: { cae?: string; expiration_date?: string };
   customer?: { document_number?: string; first_name?: string; last_name?: string };
