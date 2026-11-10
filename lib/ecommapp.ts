@@ -73,7 +73,9 @@ export async function emitirFactura(p: { clave: string; documento: string; items
   const j = await llamar('/emitir', {
     method: 'POST',
     headers: { 'Idempotency-Key': p.clave },
-    body: JSON.stringify({ document_number: p.documento, concept_id: 1, issue_date: hoy, point_of_sale: p.puntoVenta,
+    // origin facturador-agil: como el Facturador Ágil del local (método manual), así si el cliente ya existe en Ecomm-App
+    // con otros datos se actualiza con los del padrón de ARCA en vez de frenar la emisión.
+    body: JSON.stringify({ origin: 'facturador-agil', document_number: p.documento, concept_id: 1, issue_date: hoy, point_of_sale: p.puntoVenta,
       client_reference: p.referencia, notes: p.notas, ...(p.email ? { email: p.email } : {}), items: p.items }),
   });
   return aFactura(j.data ?? j, 'caja', p.documento);

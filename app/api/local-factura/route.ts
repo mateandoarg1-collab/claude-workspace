@@ -84,8 +84,8 @@ export async function POST(req: Request) {
     if (b.pruebaPresupuesto && process.env.LOCAL_METRICAS_CLAVE && req.headers.get('x-clave') === process.env.LOCAL_METRICAS_CLAVE) {
       const { llamar } = await import('@/lib/ecommapp');
       const hoy = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
-      const j = await llamar('/emitir', { method: 'POST', headers: { 'Idempotency-Key': 'mateando-local-prueba-presupuesto-1' }, body: JSON.stringify({
-        invoice_type_source: 'tipo_presupuesto', invoice_type_id: 1, quote_type_id: 1, document_number: '30717612503', concept_id: 1, issue_date: hoy,
+      const j = await llamar('/emitir', { method: 'POST', headers: { 'Idempotency-Key': 'mateando-local-prueba-presupuesto-2' }, body: JSON.stringify({
+        origin: 'facturador-agil', invoice_type_source: 'tipo_presupuesto', invoice_type_id: 1, quote_type_id: 1, document_number: '30717612503', concept_id: 1, issue_date: hoy,
         point_of_sale: PUNTO_VENTA_LOCAL, notes: 'PRUEBA caja local - borrar', client_reference: 'PRUEBA-CAJA',
         items: [{ description: 'PRUEBA caja local (borrar)', quantity: 1, unit_price: 12100, vat_rate_id: 5, discount_percentage: 10 }] }) }).catch((e) => ({ fallo: String(e) }));
       const d = (j as { data?: { amounts?: unknown; items?: unknown; invoice?: unknown; pdf?: unknown } }).data;
