@@ -43,9 +43,9 @@ export async function comprobantesDelDia(dia: string): Promise<Comprobante[]> {
   for (let page = 1; page <= 30; page++) {
     const q = new URLSearchParams({ date_from: dia, date_to: dia, per_page: '50', page: String(page), sort: 'fecha_desc' });
     const j = await llamar(`/comprobantes?${q}`);
-    const data: Comprobante[] = Array.isArray(j.data) ? j.data : [];
+    const data: Comprobante[] = Array.isArray(j.data?.items) ? j.data.items : Array.isArray(j.data) ? j.data : [];
     out.push(...data);
-    const tp = Number(j.pagination?.total_pages ?? j.meta?.total_pages ?? 0);
+    const tp = Number(j.data?.pagination?.total_pages ?? j.pagination?.total_pages ?? 0);
     if (!data.length || (tp && page >= tp) || data.length < 50) break;
   }
   return out;
