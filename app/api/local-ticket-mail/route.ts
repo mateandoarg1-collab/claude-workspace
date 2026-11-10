@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 // Manda por mail el ticket de una venta de la caja del local (mateando-local.vercel.app).
 // POST {nro, email}. El ticket se arma acá con la fila de "Ventas Caja" (no con lo que manda la página), así el
 // endpoint no sirve para mandar cualquier cosa. Sale por el Gmail de Mateando (SMTP con contraseña de aplicación,
-// env GMAIL_USER y GMAIL_APP_PASSWORD en Vercel). Guarda el mail del cliente en la columna S de la venta.
+// env GMAIL_USER y GMAIL_APP_PASSWORD en Vercel; remitente GMAIL_FROM = info@mateando.com). Guarda el mail del cliente en la columna S de la venta.
 const CORS = { 'access-control-allow-origin': 'https://mateando-local.vercel.app', 'access-control-allow-methods': 'POST,OPTIONS', 'access-control-allow-headers': 'content-type' };
 const ID = '1Gy8M6ccHZr-BX86bC2CHW5M2Ryzz8LX7EmHaZvX57wc';
 const HOJA = 'Ventas Caja';
@@ -63,6 +63,7 @@ export async function POST(req: Request) {
     if (!/^[^\s@,;<>]+@[^\s@,;<>]+\.[a-z]{2,}$/i.test(email) || email.length > 120) return json({ error: 'El mail no es válido' }, 400);
     const user = process.env.GMAIL_USER, pass = process.env.GMAIL_APP_PASSWORD?.replace(/\s/g, '');
     if (!user || !pass) return json({ error: 'Falta configurar el mail de envío' }, 500);
+    const desde = process.env.GMAIL_FROM || user; // info@mateando.com: tiene que estar como "Enviar como" en esa cuenta de Gmail
     const s = google.sheets({ version: 'v4', auth: getAuth() });
     const filas = (await s.spreadsheets.values.get({ spreadsheetId: ID, range: `'${HOJA}'!A2:S`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
     const i = filas.findIndex((f) => Number(f[0]) === nro);
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
     const enviados = String(f[18] ?? '').split(', ').filter(Boolean);
     if (enviados.length >= 5) return json({ error: 'Ya se mandó muchas veces este ticket' }, 429);
     await nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user, pass } }).sendMail({
-      from: `Mateando <${user}>`, to: email, subject: `Tu compra en Mateando · Pedido N° ${nro}`, html: ticket(f),
+      from: `Mateando <${desde}>`, replyTo: desde, to: email, subject: `Tu compra en Mateando · Pedido N° ${nro}`, html: ticket(f),
       text: `Gracias por tu compra en Mateando (Local Costa Rica 5651). Pedido N° ${nro} · Total ${plata(Number(f[10]))}. No válido como factura.`,
     });
     if (!enviados.includes(email)) enviados.push(email);
