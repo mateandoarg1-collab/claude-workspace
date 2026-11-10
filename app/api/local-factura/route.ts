@@ -78,6 +78,8 @@ export async function POST(req: Request) {
     const b = await req.json();
     const nro = Number(b.nro), documento = String(b.documento ?? '').replace(/\D/g, '');
     const email = String(b.email ?? '').trim();
+    // Hasta verificar con un presupuesto de prueba si Ecomm-App toma unit_price con o sin IVA, no se emite nada.
+    if (process.env.LOCAL_FACTURA_CUIT !== '1') return json({ error: 'Facturar a CUIT todavía está en prueba: hacela desde Ecomm-App por ahora' }, 503);
     if (!cuitValido(documento)) return json({ error: 'El CUIT/CUIL no es válido (son 11 números)' }, 400);
     const x = nro > 0 ? await fila(nro) : null;
     if (!x) return json({ error: 'No existe ese pedido' }, 404);
