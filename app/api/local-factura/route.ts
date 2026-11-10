@@ -24,7 +24,11 @@ const pagosDe = (f: unknown[]): Parte[] => { try { const p = JSON.parse(String(f
 const guardada = (f: unknown[]): FacturaLocal | null => { try { return f[19] ? JSON.parse(String(f[19])) : null; } catch { return null; } };
 
 async function fila(nro: number) {
-  const v = (await sheets().spreadsheets.values.get({ spreadsheetId: ID, range: `'${HOJA}'!A2:T`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
+  let v: unknown[][] = [];
+  for (let k = 0; ; k++) { // Google limita lecturas por minuto (cupo compartido con los paneles): esperar y reintentar
+    try { v = (await sheets().spreadsheets.values.get({ spreadsheetId: ID, range: `'${HOJA}'!A2:T`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? []; break; }
+    catch (e) { if (k >= 3 || !/quota|rate/i.test(String(e))) throw e; await new Promise((r) => setTimeout(r, 4000 * (k + 1))); }
+  }
   const i = v.findIndex((f) => Number(f[0]) === nro);
   const usadas = new Set(v.map((f) => guardada(f)?.numero ?? '').filter(Boolean));
   return i < 0 ? null : { f: v[i], celda: `'${HOJA}'!T${i + 2}`, usadas };
