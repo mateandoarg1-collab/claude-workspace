@@ -5,23 +5,6 @@ import costosOverride from '../scripts/cmv/costos_override.json';
 
 const SPREADSHEET_ID = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
 
-const MESES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
-
-// Pestaña del mes en hora argentina (Vercel corre en UTC: a las 21 h AR del último día ya sería el mes siguiente).
-function currentTabName(now = new Date()): string {
-  const ar = new Date(now.getTime() - 3 * 3600 * 1000);
-  const mes = MESES[ar.getUTCMonth()];
-  const yy = String(ar.getUTCFullYear()).slice(-2);
-  return `${mes} ${yy}`;
-}
-
-// Si la pestaña del mes todavía no existe (primer día del mes), 0 en vez de error.
-const sinPestana = (e: unknown) => /Unable to parse range/i.test(e instanceof Error ? e.message : String(e));
-
-function parseMonto(raw: string | undefined): number {
-  if (!raw) return 0;
-  return Number(raw.replace(/\$/g, '').replace(/\./g, '').replace(',', '.')) || 0;
-}
 
 export function getAuth() {
   const scopes = ['https://www.googleapis.com/auth/spreadsheets'];
@@ -30,53 +13,25 @@ export function getAuth() {
     : new google.auth.GoogleAuth({ keyFile: '/Users/jpcipolletta/.claude/.mateando-credentials.json', scopes });
 }
 
-export async function getMayoristaSummary() {
+// Mayorista: desde el 11-nov-2026 los pedidos se cargan en la app (mateando-mayorista.vercel.app), pestaña
+// "App Pedidos" de esta planilla (los de OCT 25–NOV 26 se migraron del Excel). Monto = total con IVA, sin anulados.
+export async function getPedidosMayoristaApp(desde: string, hasta: string) {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
-  const tab = currentTabName();
-
-  let row: string[] = [];
-  try {
-    const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A2:M2` });
-    row = res.data.values?.[0] ?? [];
-  } catch (e) {
-    if (!sinPestana(e)) throw e;
-  }
-  const orders = Number(row[0]) || 0;
-  const amount = parseMonto(row[12]); // columna M: MONTO TOTAL
-
-  return { tab, orders, amount };
+  const r = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'App Pedidos'!A2:T`, valueRenderOption: 'UNFORMATTED_VALUE' });
+  return (r.data.values ?? [])
+    .filter((f) => f[0] && f[19] !== 'SI' && String(f[2]) >= desde && String(f[2]) <= hasta)
+    .map((f) => ({ fecha: String(f[2]), total: Number(f[8]) || 0 }));
 }
 
-// Mayorista de hoy / ayer / semana: la fecha (dd/mm) va en la col A solo en la 1ª fila de cada pedido;
-// las filas siguientes del pedido la heredan. Monto = col M de cada fila.
+export async function getMayoristaSummary() {
+  return getMayoristaPeriodo('mes');
+}
+
 export async function getMayoristaPeriodo(periodo: Periodo) {
-  if (periodo === 'mes') return getMayoristaSummary();
   const desde = desdeAR(periodo);
   const hasta = hastaAR(periodo);
-  const tabs = [...new Set([desde, hasta].map((d) => currentTabName(new Date(`${d}T12:00:00-03:00`))))];
-  const sheets = google.sheets({ version: 'v4', auth: getAuth() });
-  let orders = 0;
-  let amount = 0;
-  for (const tab of tabs) {
-    const anio = 2000 + Number(tab.slice(-2));
-    let values: string[][] = [];
-    try {
-      const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A3:M` });
-      values = res.data.values ?? [];
-    } catch (e) {
-      if (!sinPestana(e)) throw e;
-    }
-    let dia = '';
-    for (const r of values) {
-      const m = String(r[0] ?? '').trim().match(/^(\d{1,2})\/(\d{1,2})$/);
-      if (m) {
-        dia = `${anio}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
-        if (dia >= desde && dia <= hasta) orders += 1;
-      }
-      if (dia && dia >= desde && dia <= hasta) amount += parseMonto(r[12]);
-    }
-  }
-  return { tab: tabs.join(' + '), orders, amount };
+  const ps = await getPedidosMayoristaApp(desde, hasta);
+  return { tab: 'App Pedidos', orders: ps.length, amount: ps.reduce((s, p) => s + p.total, 0) };
 }
 
 const MANUAL_TAB = 'dashboard_manual';
@@ -143,25 +98,12 @@ export async function setEmpretiendaManual(data: Omit<EmpretiendaManualData, 'up
 
 // Mayorista por día del mes en curso: pedidos (fila con fecha dd/mm) y monto (col M) por día AR.
 export async function getMayoristaDiario(desde: string) {
-  const sheets = google.sheets({ version: 'v4', auth: getAuth() });
-  const tab = currentTabName(new Date(`${desde}T12:00:00-03:00`));
-  const anio = 2000 + Number(tab.slice(-2));
-  const res = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${tab}'!A3:M` });
   const dias = new Map<string, { ventas: number; monto: number }>();
-  let dia = '';
-  for (const r of res.data.values ?? []) {
-    const m = String(r[0] ?? '').trim().match(/^(\d{1,2})\/(\d{1,2})$/);
-    if (m) {
-      dia = `${anio}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
-      const d = dias.get(dia) ?? { ventas: 0, monto: 0 };
-      d.ventas += 1;
-      dias.set(dia, d);
-    }
-    if (dia) {
-      const d = dias.get(dia) ?? { ventas: 0, monto: 0 };
-      d.monto += parseMonto(r[12]);
-      dias.set(dia, d);
-    }
+  for (const p of await getPedidosMayoristaApp(desde, '9999-12-31')) {
+    const d = dias.get(p.fecha) ?? { ventas: 0, monto: 0 };
+    d.ventas += 1;
+    d.monto += p.total;
+    dias.set(p.fecha, d);
   }
   return dias;
 }
