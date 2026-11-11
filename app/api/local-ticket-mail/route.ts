@@ -12,6 +12,10 @@ const CORS = { 'access-control-allow-origin': 'https://mateando-local.vercel.app
 const ID = '1Gy8M6ccHZr-BX86bC2CHW5M2Ryzz8LX7EmHaZvX57wc';
 const HOJA = 'Ventas Caja';
 const MONEDA: Record<string, string> = { USD: 'US$', EUR: '€' };
+// Ficha de Google de "mateando" (Costa Rica 5651). El place id sale del id de la ficha 0x95bcb59a342579ad:0x282dc78d564936ea.
+const MAPS = 'https://maps.google.com/?cid=2895189545321051882';
+const RESENA = 'https://search.google.com/local/writereview?placeid=ChIJrXklNJq1vJUR6jZJVo3HLSg'; // abre directo "dejar reseña"
+const QR_RESENA = 'https://mateando-local.vercel.app/resena-qr.png'; // QR de RESENA (qrencode), en el repo mateando-local
 const plata = (n: number) => '$' + Math.round(n).toLocaleString('es-AR');
 const e = (x: unknown) => String(x ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const json = (b: unknown, status = 200) => Response.json(b, { status, headers: CORS });
@@ -35,7 +39,7 @@ function ticket(f: unknown[]) {
   <div style="max-width:420px;margin:0 auto;padding:24px 12px">
   <div style="background:#fff;border-radius:14px;padding:24px 22px">
     <div style="text-align:center"><img src="https://mateando-local.vercel.app/logo-ticket.jpg" alt="Mateando" width="200" style="display:block;margin:0 auto 8px;max-width:200px">
-      <div style="font-size:13px;color:#555;line-height:1.5">www.mateandoarg.com<br>Local Costa Rica 5651 (Palermo Hollywood)</div></div>
+      <div style="font-size:13px;color:#555;line-height:1.5">www.mateandoarg.com<br>Local <a href="${MAPS}" style="color:#555">Costa Rica 5651 (Palermo Hollywood)</a></div></div>
     <hr style="border:0;border-top:1px dashed #bbb;margin:16px 0">
     <table width="100%" style="font-size:14px;border-collapse:collapse">${fila(`<b>Pedido N° ${e(nro)}</b>`, `${e(dia)} ${e(hora)}`)}${fila('Atendió', e(cajera))}</table>
     <hr style="border:0;border-top:1px dashed #bbb;margin:12px 0">
@@ -54,6 +58,12 @@ function ticket(f: unknown[]) {
     ${fa?.pdf ? `<div style="text-align:center;margin:18px 0 4px"><a href="${e(fa.pdf)}" style="display:inline-block;background:#111;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:bold">📄 Descargá tu ${e(fa.tipo || 'factura')} ${e(fa.numero)}</a></div>` : ''}
     <hr style="border:0;border-top:1px dashed #bbb;margin:16px 0">
     <div style="text-align:center;font-size:13px;line-height:1.6"><b>NO VÁLIDO COMO FACTURA</b><br>¡Gracias por tu compra!<br><a href="https://www.instagram.com/mateando" style="color:#111">@mateando</a></div>
+    <hr style="border:0;border-top:1px dashed #bbb;margin:16px 0">
+    <div style="text-align:center;font-size:14px;line-height:1.5">
+      <b>¿Te gustó tu visita?</b><br>Dejanos tu reseña en Google ⭐⭐⭐⭐⭐
+      <a href="${RESENA}" style="display:block;margin:12px auto 6px;width:150px"><img src="${QR_RESENA}" alt="QR para dejar tu reseña" width="150" height="150" style="display:block;width:150px;height:150px;border:0"></a>
+      <span style="font-size:12px;color:#555">Escaneá el código o <a href="${RESENA}" style="color:#111">tocá acá</a></span>
+    </div>
   </div></div></body></html>`;
 }
 
@@ -76,7 +86,7 @@ export async function POST(req: Request) {
     if (enviados.length >= 5) return json({ error: 'Ya se mandó muchas veces este ticket' }, 429);
     await nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user, pass } }).sendMail({
       from: `Mateando <${desde}>`, replyTo: desde, to: email, subject: `Tu compra en Mateando · Pedido N° ${nro}`, html: ticket(f),
-      text: `Gracias por tu compra en Mateando (Local Costa Rica 5651). Pedido N° ${nro} · Total ${plata(Number(f[10]))}. No válido como factura.`,
+      text: `Gracias por tu compra en Mateando (Local Costa Rica 5651). Pedido N° ${nro} · Total ${plata(Number(f[10]))}. No válido como factura.\n\n¿Te gustó tu visita? Dejanos tu reseña en Google: ${RESENA}`,
     });
     if (!enviados.includes(email)) enviados.push(email);
     await s.spreadsheets.values.update({ spreadsheetId: ID, range: `'${HOJA}'!S${i + 2}`, valueInputOption: 'RAW', requestBody: { values: [[enviados.join(', ')]] } });
