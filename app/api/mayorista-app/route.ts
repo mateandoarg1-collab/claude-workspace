@@ -38,7 +38,7 @@ export async function GET(req: Request) {
       .map((p) => ({ ...p, costo: 0, items: p.items.map((i) => ({ ...i, costo: 0 })) }));
     pedidos.sort((a, b) => (b.fecha + b.nro).localeCompare(a.fecha + a.nro) || b.nro - a.nro);
     const clientes = cli.filter((f) => f[0]).map((f) => ({ nombre: f[0], cuit: f[1], telefono: f[2], direccion: f[3], email: f[4] }));
-    const productos = prod.filter((f) => f[0] && f[3] !== 'NO').map((f) => ({ nombre: f[0], precio: num(f[1]), costo: yo.admin ? num(f[2]) : 0 }));
+    const productos = prod.filter((f) => f[0] && f[3] !== 'NO').map((f) => ({ nombre: f[0], precio: num(f[1]), costo: yo.admin ? num(f[2]) : 0, foto: f[4] ?? '' }));
     const vendedores = ven.filter((f) => f[0]).map((f) => ({ nombre: f[0], pin: f[1], admin: f[2] === 'SI', activo: f[3] !== 'NO' }));
     return ok({ yo, pedidos, clientes, productos, vendedores });
   } catch (e) {
@@ -89,7 +89,7 @@ export async function POST(req: Request) {
       }
       // precio nuevo → queda como precio sugerido; producto nuevo → se agrega al catálogo
       const nuevos = items.filter((x) => !costoDe.has(x.nombre.toLowerCase()));
-      await agregar('productos', [...new Map(nuevos.map((x) => [x.nombre.toLowerCase(), [x.nombre, x.precio, 0, 'SI']])).values()]);
+      await agregar('productos', [...new Map(nuevos.map((x) => [x.nombre.toLowerCase(), [x.nombre, x.precio, 0, 'SI', '']])).values()]);
 
       if (b.nro) {
         const { i, p } = buscar(b.nro);
@@ -142,7 +142,10 @@ export async function POST(req: Request) {
     if (b.accion === 'producto') {
       const prod = await leer('productos');
       const nombre = txt(b.nombre, 160);
-      const fila = [nombre, num(b.precio), num(b.costo), b.activo === false ? 'NO' : 'SI'];
+      const pi0 = prod.findIndex((f) => f[0].toLowerCase() === txt(b.original || nombre, 160).toLowerCase());
+      // foto: URL o miniatura data:image/jpeg (entra en una celda, < 50 mil caracteres). Sin foto nueva queda la que tenía.
+      const foto = typeof b.foto === 'string' && /^(https:\/\/|data:image\/jpeg;base64,)/.test(b.foto) && b.foto.length < 49000 ? b.foto : (pi0 >= 0 ? prod[pi0][4] ?? '' : '');
+      const fila = [nombre, num(b.precio), num(b.costo), b.activo === false ? 'NO' : 'SI', b.foto === '' ? '' : foto];
       const pi = prod.findIndex((f) => f[0].toLowerCase() === txt(b.original || nombre, 160).toLowerCase());
       if (pi < 0) await agregar('productos', [fila]); else await reemplazar('productos', pi, fila);
       return ok({ ok: true });
