@@ -14,10 +14,13 @@ const ok = (d: unknown, status = 200) => Response.json(d, { status, headers: { .
 const txt = (x: unknown, max = 200) => String(x ?? '').trim().slice(0, max);
 const ESTADOS = ['Pendiente', 'Armado', 'Entregado'];
 
+// De momento (pedido de Juampi, 11-nov-2026) se entra sin PIN: sin PIN = admin "Equipo". Para volver a exigirlo: false.
+const SIN_PIN = true;
+
 type Yo = { nombre: string; admin: boolean };
 async function quien(req: Request): Promise<Yo | null> {
   const pin = txt(req.headers.get('x-pin'), 20);
-  if (!pin) return null;
+  if (!pin) return SIN_PIN ? { nombre: 'Equipo', admin: true } : null;
   if (process.env.MAYORISTA_ADMIN_PIN && pin === process.env.MAYORISTA_ADMIN_PIN) return { nombre: 'Juampi', admin: true };
   const v = (await leer('vendedores')).find((f) => f[1] === pin && f[3] !== 'NO');
   return v ? { nombre: v[0], admin: v[2] === 'SI' } : null;
