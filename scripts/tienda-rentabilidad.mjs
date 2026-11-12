@@ -21,6 +21,7 @@ import { readFileSync, rmSync, writeFileSync } from 'fs';
 import { homedir, tmpdir } from 'os';
 import { join } from 'path';
 import { google } from 'googleapis';
+import { armarManuales } from './cmv/costos-manuales.mjs';
 import { venta as filaVenta, VENTAS_COLS } from './empretienda-ordenes.mjs';
 
 const SPREADSHEET_ID = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
@@ -110,14 +111,14 @@ async function costosSku() {
       if (sku?.trim() && c && n > 0) costos[sku.trim()] = n;
     }
   }
-  costos._productos = await costosProducto();
+  Object.assign(costos, await costosProducto());
   return costos;
 }
 
 // Costo cargado a mano por producto en /rentabilidad-tienda/costos (pestaña costos_tienda): gana a las reglas de scripts/cmv.
 async function costosProducto() {
-  const r = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'costos_tienda'!A2:B", valueRenderOption: 'UNFORMATTED_VALUE' }).catch(() => null);
-  return Object.fromEntries((r?.data.values ?? []).filter(([p, c]) => String(p ?? '').trim() && Number(c) >= 0).map(([p, c]) => [String(p).toUpperCase().replace(/\s+/g, ' ').trim(), Number(c)]));
+  const r = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'costos_tienda'!A2:D", valueRenderOption: 'UNFORMATTED_VALUE' }).catch(() => null);
+  return armarManuales(r?.data.values ?? []);
 }
 
 // Comisión real de Mercado Pago de un pago: comisión + financiación de cuotas sin interés.
@@ -266,7 +267,7 @@ const ventas = crudas
 const costos = await costosSku();
 const archivoCostos = join(tmpdir(), `costos-tienda-${process.pid}.json`);
 writeFileSync(archivoCostos, JSON.stringify(costos));
-const entrada = ventas.map((v) => ({ id: String(v.order_id), local: Number(v.pago_metodo) === 3, productos: JSON.parse(v.productos || '[]') }));
+const entrada = ventas.map((v) => ({ id: String(v.order_id), fecha: diaAR(v.fecha), local: Number(v.pago_metodo) === 3, productos: JSON.parse(v.productos || '[]') }));
 const cmv = new Map(
   JSON.parse(execFileSync('python3', [new URL('./cmv/cmv_orden.py', import.meta.url).pathname, archivoCostos], { input: JSON.stringify(entrada), encoding: 'utf8', maxBuffer: 64 << 20 }))
     .map((c) => [c.id, c]),

@@ -2,7 +2,8 @@
 Uso: python3 cmv_orden.py costos.json < ventas.json
 ventas.json: [{"id": ..., "local": bool, "productos": [{"n": nombre, "v": "Opción: valor | ...", "q": cant}]}]
 Imprime [{"id", "cmv", "empaque", "despacho", "sin_costo": unidades, "sin_regla": [nombres], "sin_costo_n": [nombres]}].
-Costos cargados a mano por producto (/rentabilidad-tienda/costos): costos["_productos"] = {NOMBRE: costo sin IVA}. Reemplazan
+Costos cargados a mano por producto (/rentabilidad-tienda/costos): costos["_productos"] = {NOMBRE: costo vigente hoy} y
+costos["_productos_hist"] = {NOMBRE: [[desde, costo], ...]}; si la venta trae "fecha", vale el de esa fecha. Reemplazan
 el costo de los SKUs del producto, pero se siguen sumando lo que agrega la variante (bombilla, caja o bolsa de regalo) y el
 packaging (con los componentes de la regla si la hay; si no, una caja de despacho simple).
 Packaging (README): online, cada mate sin caja de regalo lleva el packaging general y la venta lleva UNA caja de
@@ -19,13 +20,21 @@ def calcular(costos, v):
     out = {'id': v['id'], 'cmv': 0, 'empaque': 0, 'despacho': 0, 'sin_costo': 0, 'sin_regla': [], 'sin_costo_n': []}
     cajas = []
     manuales = costos.get('_productos', {})
+    historial = costos.get('_productos_hist', {})
+    fecha = str(v.get('fecha') or '')[:10]
     for p in v['productos']:
         nombre, variante, q = str(p['n'] or '').upper(), str(p['v'] or '').upper(), p['q'] or 0
-        manual = manuales.get(re.sub(r'\s+', ' ', nombre).strip())
+        clave = re.sub(r'\s+', ' ', nombre).strip()
         try:
             base, estado = reglas.resolver(nombre, variante)
         except (TypeError, ValueError):  # regla que necesita el color y la variante no lo dice
             base, estado = None, 'FALTA'
+        manual = manuales.get(clave)
+        if fecha and clave in historial:
+            # el costo a mano vigente en la fecha de la venta (cada fila vale desde su fecha; sin fecha = desde siempre).
+            # Antes del primer cambio: la regla; si no hay regla, el costo a mano más viejo.
+            previos = [c for d, c in historial[clave] if d <= fecha]
+            manual = previos[-1] if previos else (None if base else historial[clave][0][1])
         extras = reglas.extras(nombre, variante)
         comps = (base or []) + extras
         if manual is not None:

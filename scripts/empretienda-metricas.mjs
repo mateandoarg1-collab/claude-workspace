@@ -20,6 +20,7 @@ import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { chromium } from 'playwright';
 import { google } from 'googleapis';
 import { volcarOrdenes } from './empretienda-ordenes.mjs';
+import { armarManuales } from './cmv/costos-manuales.mjs';
 
 const SESION_ENC = '.sesion.enc';
 const clave = () => {
@@ -256,8 +257,8 @@ try {
     }
   }
   // Costo cargado a mano por producto en /rentabilidad-tienda/costos (pestaña costos_tienda): gana a las reglas.
-  const manuales = (await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'costos_tienda'!A2:B", valueRenderOption: 'UNFORMATTED_VALUE' }).catch(() => null))?.data.values ?? [];
-  costos._productos = Object.fromEntries(manuales.filter(([p, c]) => String(p ?? '').trim() && Number(c) >= 0).map(([p, c]) => [String(p).toUpperCase().replace(/\s+/g, ' ').trim(), Number(c)]));
+  const manuales = (await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'costos_tienda'!A2:D", valueRenderOption: 'UNFORMATTED_VALUE' }).catch(() => null))?.data.values ?? [];
+  costos._productos = armarManuales(manuales)._productos; // el costo vigente hoy
   writeFileSync('/tmp/costos.json', JSON.stringify(costos));
 
   const archivos = Object.values(listados).flatMap((l) => [l.total, l.acordar]).filter(Boolean);

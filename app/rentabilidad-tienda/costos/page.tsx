@@ -6,10 +6,10 @@ import AppHeader from '../../components/AppHeader';
 import CostosAdicionales from '../../components/CostosAdicionales';
 import type { CostoAdicional } from '@/lib/costosAdicionales';
 
-type CostoProducto = { producto: string; costo: number; actualizado: string };
+type CostoProducto = { producto: string; costo: number; actualizado: string; desde: string };
 type Producto = {
   producto: string; foto: string | null; activo: boolean; reglaMin: number | null; reglaMax: number | null;
-  manual: number | null; unidades: number; ventas: number; ultima: string; faltaCosto: boolean; sinCosto: boolean;
+  manual: number | null; historial: { desde: string; costo: number }[]; unidades: number; ventas: number; ultima: string; faltaCosto: boolean; sinCosto: boolean;
 };
 type Data = { productos: Producto[]; adicionales: CostoAdicional[] };
 type Filtro = 'sinCosto' | 'vendidos' | 'todos';
@@ -18,6 +18,8 @@ const entrada = 'rounded-lg bg-slate-950 border border-slate-800 px-2.5 py-1.5 t
 const pesos = (n: number) => '$' + Math.round(n).toLocaleString('es-AR');
 const ddmm = (f: string) => (f ? `${f.slice(8, 10)}/${f.slice(5, 7)}` : '');
 const normalizar = (p: string) => p.toUpperCase().replace(/\s+/g, ' ').trim();
+const hoyAR = () => new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+const ddmmaa = (f: string) => `${f.slice(8, 10)}/${f.slice(5, 7)}/${f.slice(2, 4)}`;
 
 function regla(p: Producto) {
   if (p.reglaMin == null) return 'Sin costo por regla';
@@ -29,9 +31,11 @@ function regla(p: Producto) {
 // Un producto: el costo a mano se edita en la fila (Enter o Guardar). Vacío y Guardar en uno cargado = volver a la regla.
 function FilaProducto({ p, onGuardado }: { p: Producto; onGuardado: (manuales: CostoProducto[]) => void }) {
   const [valor, setValor] = useState(p.manual != null ? String(p.manual) : '');
+  // ¿Desde cuándo? vacío = corrige todas las ventas (estaba mal cargado); con fecha = el costo cambió ese día.
+  const [desde, setDesde] = useState('');
   const [estado, setEstado] = useState<'guardando' | 'error' | null>(null);
   const numero = valor.trim() === '' ? null : Number(valor.replace(/\./g, '').replace(',', '.'));
-  const cambio = numero !== p.manual && (numero == null ? p.manual != null : numero >= 0);
+  const cambio = (numero !== p.manual || (desde !== '' && numero != null)) && (numero == null ? p.manual != null : numero >= 0);
 
   async function guardar() {
     if (!cambio) return;
@@ -39,10 +43,11 @@ function FilaProducto({ p, onGuardado }: { p: Producto; onGuardado: (manuales: C
     const r = await fetch('/api/tienda/costos', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ producto: p.producto, costo: numero }),
+      body: JSON.stringify({ producto: p.producto, costo: numero, desde: numero == null ? '' : desde }),
     }).then((x) => x.json()).catch((e) => ({ error: String(e) }));
     if (r.error) return setEstado('error');
     setEstado(null);
+    setDesde('');
     onGuardado(r.manuales);
   }
 
@@ -63,12 +68,21 @@ function FilaProducto({ p, onGuardado }: { p: Producto; onGuardado: (manuales: C
         <div className={`text-xs truncate ${p.sinCosto ? 'text-amber-300' : 'text-slate-500'}`}>
           {p.manual != null ? `A mano ${pesos(p.manual)} + regalo o bombilla si la variante los lleva (${regla(p).toLowerCase()})` : regla(p)} · {vendidas}
         </div>
+        {p.historial.some((h) => h.desde) && (
+          <div className="text-[11px] text-slate-500 truncate">
+            Cambios: {p.historial.map((h) => `${pesos(h.costo)} ${h.desde ? `desde ${ddmmaa(h.desde)}` : 'antes'}`).join(' → ')}
+          </div>
+        )}
       </div>
       <span className="text-slate-500 text-sm">$</span>
       <input value={valor} onChange={(e) => { setValor(e.target.value); setEstado(null); }} onKeyDown={(e) => e.key === 'Enter' && guardar()}
         inputMode="decimal" aria-label={`Costo de ${p.producto}`}
         placeholder={p.reglaMin != null ? Math.round(p.reglaMin).toLocaleString('es-AR') : 'Sin costo'}
         className={`${entrada} w-28 text-right tabular-nums ${p.sinCosto && !valor ? 'border-amber-700/60' : ''}`} />
+      <input type="date" value={desde} max={hoyAR()} onChange={(e) => { setDesde(e.target.value); setEstado(null); }}
+        aria-label={`Desde cuándo vale el costo de ${p.producto}`}
+        title="¿Desde cuándo vale? Vacío = corrige todas las ventas (estaba mal). Con fecha = el costo cambió ese día y las ventas anteriores quedan con el de antes."
+        className={`${entrada} w-[8.5rem] text-xs ${desde ? '' : 'text-slate-500'}`} />
       <button onClick={guardar} disabled={!cambio || estado === 'guardando'}
         className="rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-30 px-3 py-1.5 text-sm text-white shrink-0 w-[4.5rem]">
         {estado === 'guardando' ? '…' : numero == null && p.manual != null ? 'Borrar' : 'Guardar'}
@@ -100,10 +114,16 @@ export default function CostosTienda() {
   const actualizar = (manuales: CostoProducto[]) =>
     setData((d) => {
       if (!d) return d;
-      const m = new Map(manuales.map((x) => [normalizar(x.producto), x.costo]));
+      const orden = [...manuales].sort((a, b) => a.desde.localeCompare(b.desde));
+      const m = new Map<string, number>(), h = new Map<string, { desde: string; costo: number }[]>();
+      for (const x of orden) {
+        const k = normalizar(x.producto);
+        if (x.desde <= hoyAR()) m.set(k, x.costo);
+        h.set(k, [...(h.get(k) ?? []), { desde: x.desde, costo: x.costo }]);
+      }
       return { ...d, productos: d.productos.map((p) => {
         const manual = m.get(normalizar(p.producto)) ?? null;
-        return { ...p, manual, sinCosto: manual == null && p.faltaCosto };
+        return { ...p, manual, historial: h.get(normalizar(p.producto)) ?? [], sinCosto: manual == null && p.faltaCosto };
       }) };
     });
 
@@ -136,8 +156,10 @@ export default function CostosTienda() {
               <p className="text-xs text-slate-500 mt-0.5 mb-3">
                 Costo por unidad sin IVA del producto solo. «Por regla» es el que sale de la planilla de costos por SKU; si ponés uno a
                 mano, reemplaza al de la regla (borralo para volver) y vale para todas las variantes: la caja o bolsa de regalo, la
-                bombilla y el packaging se le siguen sumando solos según cada venta. Las ventas nuevas ya salen con el costo nuevo; las de
-                días anteriores se recalculan a la mañana.
+                bombilla y el packaging se le siguen sumando solos según cada venta. <b className="text-slate-300">Fecha</b>: dejala
+                vacía si el costo estaba mal (corrige todas las ventas); poné el día en que cambió el costo (por ejemplo, un aumento) y
+                las ventas anteriores quedan con el costo de antes. Las ventas nuevas ya salen con el costo nuevo; las de días anteriores
+                se recalculan a la mañana.
               </p>
               <div className="flex flex-col sm:flex-row gap-2 mb-3">
                 <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar producto…" className={`${entrada} flex-1`} />
@@ -154,7 +176,7 @@ export default function CostosTienda() {
                 <>
                   <ul className="divide-y divide-slate-800">
                     {lista.slice(0, limite).map((p) => (
-                      <FilaProducto key={p.producto + (p.manual ?? '')} p={p} onGuardado={actualizar} />
+                      <FilaProducto key={p.producto + (p.manual ?? '') + p.historial.length} p={p} onGuardado={actualizar} />
                     ))}
                   </ul>
                   {lista.length > limite && (

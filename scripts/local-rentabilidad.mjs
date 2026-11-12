@@ -14,6 +14,7 @@ import { readFileSync, rmSync, writeFileSync } from 'fs';
 import { homedir, tmpdir } from 'os';
 import { join } from 'path';
 import { google } from 'googleapis';
+import { armarManuales } from './cmv/costos-manuales.mjs';
 
 const EFECTIVO = '1Gy8M6ccHZr-BX86bC2CHW5M2Ryzz8LX7EmHaZvX57wc';
 const MAYORISTA = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
@@ -43,8 +44,7 @@ async function costosSku() {
       if (String(sku ?? '').trim() && c && n > 0) costos[String(sku).trim()] = n;
     }
   }
-  costos._productos = Object.fromEntries((await get(MAYORISTA, "'costos_tienda'!A2:B"))
-    .filter(([p, c]) => String(p ?? '').trim() && Number(c) >= 0).map(([p, c]) => [String(p).toUpperCase().replace(/\s+/g, ' ').trim(), Number(c)]));
+  Object.assign(costos, armarManuales(await get(MAYORISTA, "'costos_tienda'!A2:D")));
   return costos;
 }
 
@@ -97,7 +97,7 @@ const archivo = join(tmpdir(), `costos-local-${process.pid}.json`);
 writeFileSync(archivo, JSON.stringify(costos));
 let cmv = [];
 try {
-  const entrada = ventas.map((v) => ({ id: v.nro, local: true, productos: v.productos.map((p) => ({ n: p.n, v: p.v, q: p.q })) }));
+  const entrada = ventas.map((v) => ({ id: v.nro, fecha: String(v.fecha).slice(0, 10), local: true, productos: v.productos.map((p) => ({ n: p.n, v: p.v, q: p.q })) }));
   cmv = JSON.parse(execFileSync('python3', [new URL('./cmv/cmv_orden.py', import.meta.url).pathname, archivo], { input: JSON.stringify(entrada), encoding: 'utf8', maxBuffer: 64 << 20 }));
 } finally { rmSync(archivo, { force: true }); }
 const cmvPor = new Map(cmv.map((c) => [Number(c.id), c]));

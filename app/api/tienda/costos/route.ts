@@ -13,14 +13,16 @@ export async function GET() {
   }
 }
 
-// POST { producto, costo } → costo a mano de un producto (costo null lo borra y vuelve a las reglas).
+// POST { producto, costo, desde? } → costo a mano de un producto (costo null lo borra y vuelve a las reglas). desde
+// (YYYY-MM-DD) = el costo cambió ese día; sin desde = corrige todas las ventas.
 export async function POST(req: Request) {
   try {
     const b = await req.json();
     const producto = String(b.producto ?? '').trim().slice(0, 200);
     const costo = b.costo == null ? null : Number(b.costo);
     if (!producto || (costo != null && !(costo >= 0))) return Response.json({ error: 'Datos inválidos' }, { status: 400 });
-    return Response.json({ manuales: await setCostoTienda(producto, costo) });
+    const desde = /^\d{4}-\d{2}-\d{2}$/.test(String(b.desde ?? '')) ? String(b.desde) : '';
+    return Response.json({ manuales: await setCostoTienda(producto, costo, desde) });
   } catch (e: unknown) {
     return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 });
   }
