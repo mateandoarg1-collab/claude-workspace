@@ -4,8 +4,9 @@ import { cuitValido, emitirFactura, llamar } from '@/lib/ecommapp';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-// Punto de venta de Ecomm-App para las facturas mayoristas (0 = todavía sin definir: el botón Facturar avisa).
-const PUNTO_VENTA_MAYORISTA = 0;
+// Punto de venta de Ecomm-App para las facturas mayoristas: el 4, el mismo de las que se hacían a mano (AGUILA40,
+// Dublin en Casa, Media Pinta… canal "offline", nov-2026). El local usa el 5.
+const PUNTO_VENTA_MAYORISTA = 4;
 
 // API de la app de pedidos mayoristas (mateando-mayorista.vercel.app). Cada vendedor entra con su PIN (header x-pin,
 // pestaña "App Vendedores"); MAYORISTA_ADMIN_PIN (env) entra siempre como admin aunque la pestaña esté vacía.
