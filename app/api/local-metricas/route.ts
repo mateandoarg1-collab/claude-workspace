@@ -31,7 +31,7 @@ export async function GET(req: Request) {
     ]);
     const rentabilidad = (rent?.data.values ?? []).map((f) => ({
       nro: Number(f[0]), dia: String(f[2]), venta: Number(f[3]) || 0, cmv: (Number(f[4]) || 0) + (Number(f[5]) || 0), comision: Number(f[6]) || 0,
-      impuestos: (Number(f[7]) || 0) + (Number(f[8]) || 0) + (Number(f[9]) || 0), financiera: Number(f[10]) || 0, ganancia: Number(f[11]) || 0,
+      iva: Number(f[7]) || 0, ventaNeta: (Number(f[3]) || 0) - (Number(f[7]) || 0), impuestos: (Number(f[8]) || 0) + (Number(f[9]) || 0), financiera: Number(f[10]) || 0, ganancia: Number(f[11]) || 0,
       sinCosto: f[12] ? String(f[12]).split(' | ') : [], actualizado: f[13] ?? '' }));
     // fijos del local por mes, con su vigencia (desde/hasta)
     const fijosLocal = (fijos?.data.values ?? []).filter((f) => f[6] === 'local' && f[1] === 'fijo')
