@@ -71,7 +71,7 @@ async function local(desde: string, hasta: string, origen: string) {
     { clave: 'pack', nombre: 'Bolsa', monto: -(s(5) + e('packaging')), nota: 'una por pedido' },
   ];
   const ordenes: Orden[] = filas.map((f) => ({
-    id: `N° ${f[0]}`, fecha: String(f[1]), detalle: 'caja', venta: Number(f[3]) || 0, costo: (Number(f[4]) || 0) + (Number(f[5]) || 0),
+    id: `N° ${f[0]}`, fecha: String(f[1]), detalle: 'caja', venta: (Number(f[3]) || 0) - (Number(f[7]) || 0), costo: (Number(f[4]) || 0) + (Number(f[5]) || 0),
     ganancia: Number(f[11]) || 0, sinCosto: !!f[12],
   }));
   for (const v of emp?.ventas ?? []) ordenes.push({ id: `#${v.numero}`, fecha: v.fecha, detalle: 'Empretienda (Acordar)', venta: v.venta, costo: v.costo + v.packaging, ganancia: v.neto, sinCosto: v.sin_costo > 0 });
