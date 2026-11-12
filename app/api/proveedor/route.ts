@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { conCache } from '@/lib/cache';
 import { getChina } from '@/lib/china';
 import { COBERTURA, proyectar, UNIDADES_CAJA } from '@/lib/chinaProyeccion';
@@ -6,9 +5,7 @@ import { COBERTURA, proyectar, UNIDADES_CAJA } from '@/lib/chinaProyeccion';
 export const maxDuration = 60;
 
 // Datos para la página de la fábrica china (mateando-factory.vercel.app): solo unidades y canales del container
-// LX20260521F01. Nada de precios, plata ni márgenes. Se entra con un link privado (?k=…); acá solo está el hash de la
-// clave (la clave está en ~/.claude/.mateando-proveedor). Para cambiarla: clave nueva y su sha256 acá.
-const HASH = 'ba05a84e08e33739d9400f4fde485bee47136c5f32e82b0f8293f8ca3141479a';
+// LX20260521F01. Nada de precios, plata ni márgenes. Abierta sin clave (decisión de Juampi, 12-nov-2026).
 
 // Pedidos que ya están hechos y todavía no llegaron: se restan de la producción sugerida.
 const YA_PEDIDO: Record<string, number> = { 'Autocebante|Rosa': 1725 };
@@ -20,10 +17,7 @@ const EN: Record<string, string> = {
   Negro: 'Black', Rosa: 'Pink', Beige: 'Beige', Blanco: 'White',
 };
 
-const ok = (k: string | null) => !!k && createHash('sha256').update(k).digest('hex') === HASH;
-
-async function get(req: Request) {
-  if (!ok(new URL(req.url).searchParams.get('k'))) return Response.json({ error: 'not found' }, { status: 404 });
+async function get() {
   // Si una fuente falla (MeLi a veces corta), se reintenta una vez; si sigue incompleto no se muestra (ni se cachea).
   let d = await getChina();
   if (d.errores.length) d = await getChina();
