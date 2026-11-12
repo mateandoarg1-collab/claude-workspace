@@ -6,13 +6,14 @@ import { getAuth } from './sheets';
 //  · App Pedidos     nro · creado · fecha · vendedor · cliente · items(JSON) · neto · iva · total · costo · entrega ·
 //                    direccion · fechaEntrega · estado · pagos(JSON) · obs · origen · actualizado · conIva · anulado
 //  · App Clientes    nombre · cuit · telefono · direccion · email · alta
-//  · App Productos   nombre · precio · costo · activo · foto (URL de Shopify o miniatura JPEG en base64)
+//  · App Productos   nombre · precio · costo · activo · foto (URL o miniatura JPEG en base64) · colores (separados por coma)
+//                    · es (producto del catálogo al que equivale un nombre viejo del Excel; sus ventas se suman ahí)
 //  · App Vendedores  nombre · pin · admin(SI/NO) · activo
 export const ID = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
 export const HOJAS = {
   pedidos: { t: 'App Pedidos', cols: ['nro', 'creado', 'fecha', 'vendedor', 'cliente', 'items', 'neto', 'iva', 'total', 'costo', 'entrega', 'direccion', 'fechaEntrega', 'estado', 'pagos', 'obs', 'origen', 'actualizado', 'conIva', 'anulado'] },
   clientes: { t: 'App Clientes', cols: ['nombre', 'cuit', 'telefono', 'direccion', 'email', 'alta'] },
-  productos: { t: 'App Productos', cols: ['nombre', 'precio', 'costo', 'activo', 'foto'] },
+  productos: { t: 'App Productos', cols: ['nombre', 'precio', 'costo', 'activo', 'foto', 'colores', 'es'] },
   vendedores: { t: 'App Vendedores', cols: ['nombre', 'pin', 'admin', 'activo'] },
 } as const;
 type Hoja = keyof typeof HOJAS;
@@ -40,7 +41,7 @@ export async function reemplazar(h: Hoja, i: number, fila: (string | number)[]) 
   await sheets().spreadsheets.values.update({ spreadsheetId: ID, range: `'${t}'!A${i + 2}:${col(cols.length - 1)}${i + 2}`, valueInputOption: 'RAW', requestBody: { values: [fila] } });
 }
 
-export type Item = { nombre: string; cant: number; precio: number; costo: number; pers: boolean };
+export type Item = { nombre: string; cant: number; precio: number; costo: number; pers: boolean; color?: string };
 export type Pago = { fecha: string; monto: number; medio: string; nota?: string };
 export type Pedido = {
   nro: number; creado: string; fecha: string; vendedor: string; cliente: string; items: Item[]; neto: number; iva: number; total: number;
