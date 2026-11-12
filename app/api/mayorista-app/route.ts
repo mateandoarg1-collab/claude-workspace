@@ -217,9 +217,10 @@ export async function POST(req: Request) {
 async function puntosDeVenta() {
   const cuits = new Set((await leer('clientes')).map((f) => String(f[1] ?? '').replace(/\D/g, '')).filter((c) => c.length === 11));
   const hasta = hoyAR(), desde = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10);
+  const manuales: Record<string, unknown>[] = [];
   const g: Record<string, { facturas: number; aMayoristas: number; canales: Record<string, number>; ejemplos: string[] }> = {};
   for (let page = 1; page <= 40; page++) {
-    const j = await llamar(`/comprobantes?${new URLSearchParams({ date_from: desde, date_to: hasta, per_page: '50', page: String(page) })}`);
+    const j = await llamar(`/comprobantes?${new URLSearchParams({ date_from: desde, date_to: hasta, per_page: '50', page: String(page), sort: 'fecha_desc' })}`);
     const data: { invoice?: { full_number?: string; sales_channel?: string }; customer?: { document_number?: string; first_name?: string; last_name?: string } }[] =
       Array.isArray(j.data?.items) ? j.data.items : Array.isArray(j.data) ? j.data : [];
     for (const c of data) {
@@ -227,6 +228,9 @@ async function puntosDeVenta() {
       const x = (g[pv] ||= { facturas: 0, aMayoristas: 0, canales: {}, ejemplos: [] });
       x.facturas++;
       const canal = c.invoice?.sales_channel || '—'; x.canales[canal] = (x.canales[canal] || 0) + 1;
+      if (canal !== 'mercadolibre' && canal !== 'empretienda' && canal !== 'mercadopago' && manuales.length < 40)
+        manuales.push({ numero: c.invoice?.full_number, fecha: (c.invoice as { issue_date?: string })?.issue_date, canal, cliente: [c.customer?.first_name, c.customer?.last_name].filter(Boolean).join(' '),
+          total: (c as { amounts?: { total?: number } }).amounts?.total, tipo: (c.invoice as { type?: { letra?: string } })?.type?.letra });
       if (cuits.has(String(c.customer?.document_number ?? ''))) {
         x.aMayoristas++;
         if (x.ejemplos.length < 5) x.ejemplos.push([c.customer?.first_name, c.customer?.last_name].filter(Boolean).join(' '));
@@ -235,5 +239,5 @@ async function puntosDeVenta() {
     const tp = Number(j.data?.pagination?.total_pages ?? j.pagination?.total_pages ?? 0);
     if (!data.length || (tp ? page >= tp : data.length < 50)) break;
   }
-  return { desde, hasta, clientesConCuit: cuits.size, puntos: g };
+  return { desde, hasta, clientesConCuit: cuits.size, puntos: g, manuales };
 }
