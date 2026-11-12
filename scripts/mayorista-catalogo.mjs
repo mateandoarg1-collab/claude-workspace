@@ -52,6 +52,7 @@ const ES = [
   [/imperial.*encerado/, 'Imperial algarrobo encerado'],
   [/imperial.*rustico/, 'Imperial algarrobo rústico'],
   [/imperial/, 'Imperial premium'],
+  [/mate mateando|base (de )?silicona/, 'Mate Mateando con base de silicona'],
   [/gota/, 'Mate gota'],
   [/acero|simil|vasito/, 'Mate de acero inoxidable'],
   [/camio.*encerado/, 'Camionero de algarrobo encerado'],
