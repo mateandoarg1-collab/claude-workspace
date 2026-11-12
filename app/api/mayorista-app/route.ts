@@ -149,6 +149,8 @@ export async function POST(req: Request) {
       const { i, p } = buscar(b.nro);
       if (p.factura) return ok({ ok: true, factura: p.factura, yaExistia: true });
       if (p.anulado) return ok({ error: 'El pedido está anulado' }, 400);
+      // los importados del Excel ya se facturaban a mano en Ecomm-App: no volver a facturarlos
+      if (p.origen !== 'app') return ok({ error: 'Pedido importado del Excel: se facturó a mano por fuera de la app' }, 400);
       if (p.estado === 'Presupuesto') return ok({ error: 'Primero aprobá el presupuesto' }, 400);
       if (!p.conIva) return ok({ error: 'Este pedido está cargado sin factura. Editalo y marcá "Con IVA" si hay que facturarlo.' }, 400);
       if (p.items.some((x) => !x.precio)) return ok({ error: 'Hay productos sin precio' }, 400);
