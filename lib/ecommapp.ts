@@ -2,7 +2,9 @@
 // Token en env ECOMMAPP_TOKEN (clave "Caja local", solo permisos de comprobantes: emitir y consultar).
 const BASE = 'https://admin.ecomm-app.com/api/v3/public/facturacion';
 
-export type FacturaLocal = { numero: string; tipo: string; cae: string; vence: string; pdf: string; total: number; origen: 'mp' | 'caja'; doc?: string; nombre?: string };
+export type NotaCredito = { numero: string; cae: string; pdf: string; total: number };
+// nc: nota de crédito que anuló esta factura · reemplaza: N° de la factura anulada que esta reemplaza (factura A de un pago MP)
+export type FacturaLocal = { numero: string; tipo: string; cae: string; vence: string; pdf: string; total: number; origen: 'mp' | 'caja'; doc?: string; nombre?: string; nc?: NotaCredito; reemplaza?: string };
 
 export type Comprobante = {
   invoice?: { id?: number; type?: { letra?: string; description?: string }; full_number?: string; issue_date?: string; sales_channel?: string; client_reference?: string; notes?: string; anulado?: boolean; fecha_ultima_modificacion?: string };
@@ -79,6 +81,24 @@ export async function emitirFactura(p: { clave: string; documento: string; items
       client_reference: p.referencia, notes: p.notas, ...(p.email ? { email: p.email } : {}), items: p.items }),
   });
   return aFactura(j.data ?? j, 'caja', p.documento);
+}
+
+// Nota de crédito TOTAL de una factura (Ecomm-App copia ítems, cliente y punto de venta de la original). Se usa para
+// pasar a factura A una venta cobrada con Mercado Pago, que Ecomm-App ya facturó sola como B a consumidor final.
+// La factura original se busca por número entre los comprobantes de esos días para tomar su id interno.
+export async function notaDeCreditoTotal(p: { clave: string; numero: string; tipo: string; cae: string; dias: string[] }): Promise<NotaCredito> {
+  const letra = String(p.tipo).match(/\b([ABCM])\b/)?.[1] ?? 'B';
+  const tipoNC: Record<string, number> = { A: 3, B: 8, C: 13, M: 53 };
+  const orig = (await Promise.all(p.dias.map(comprobantesDelDia))).flat().find((c) => c.invoice?.full_number === p.numero);
+  if (orig?.invoice?.anulado) throw new Error(`La factura ${p.numero} ya figura anulada en Ecomm-App`);
+  const hoy = new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
+  const j = await llamar('/emitir', {
+    method: 'POST',
+    headers: { 'Idempotency-Key': p.clave },
+    body: JSON.stringify({ invoice_type_id: tipoNC[letra], issue_date: hoy, ...(orig?.invoice?.id ? { related_invoice_id: orig.invoice.id } : { related_invoice: { cae: p.cae } }) }),
+  });
+  const f = aFactura(j.data ?? j, 'caja');
+  return { numero: f.numero, cae: f.cae, pdf: f.pdf, total: f.total };
 }
 
 // CUIT/CUIL válido (dígito verificador).
