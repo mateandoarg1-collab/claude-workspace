@@ -9,17 +9,20 @@ export const maxDuration = 60;
 //   - Lo cobrado con Mercado Pago (Débito, Crédito, QR MP) lo factura SOLO Ecomm-App por el canal Mercado Pago. Acá
 //     solo se busca esa factura (GET ?nro=) para imprimirla o mandarla. Nunca se emite otra.
 //   - Efectivo / transferencia / USD / EUR no se factura, SALVO que el cliente la pida a su CUIT/CUIL: POST {nro,
-//     documento, email?} emite por la API de Ecomm-App en el punto de venta 5 (Local Mateando – calle Costa Rica).
+//     documento, email?} emite por la API de Ecomm-App (punto de venta PUNTO_VENTA_LOCAL).
 //   - Factura A de una venta cobrada con Mercado Pago (12-nov-2026, pedido 77): Ecomm-App ya la facturó sola como B a
 //     consumidor final, así que POST {nro, documento, email?, cambiar: true} hace la nota de crédito total de esa B y
-//     después la factura nueva al CUIT (punto de venta 5; sale A o B según el padrón de ARCA). Cada paso queda guardado
+//     después la factura nueva al CUIT (sale A o B según el padrón de ARCA). Cada paso queda guardado
 //     en la columna T, así un reintento no repite la nota de crédito ni la factura.
 // Precios: Ecomm-App toma unit_price CON IVA y el descuento como bonificación % (probado con un presupuesto el 10-nov).
 // La factura queda guardada en la columna T de "Ventas Caja" (JSON) para no buscarla ni emitirla dos veces.
 const CORS = { 'access-control-allow-origin': 'https://mateando-local.vercel.app', 'access-control-allow-methods': 'GET,POST,OPTIONS', 'access-control-allow-headers': 'content-type' };
 const ID = '1Gy8M6ccHZr-BX86bC2CHW5M2Ryzz8LX7EmHaZvX57wc';
 const HOJA = 'Ventas Caja';
-const PUNTO_VENTA_LOCAL = 5;
+// Punto de venta 4 ("Mateando", Av 37 1272): el habilitado en ARCA para web services, el mismo de las facturas de
+// Mercado Pago y las A mayoristas. El 5 ("Local Mateando – calle Costa Rica") está cargado en Ecomm-App pero ARCA lo
+// rechaza para WS (error 11002, 12-nov-2026). Si el contador lo habilita como "RECE / web services", se puede volver al 5.
+const PUNTO_VENTA_LOCAL = 4;
 const CON_MP = new Set(['Débito', 'Crédito', 'QR MP']);
 const json = (b: unknown, status = 200) => Response.json(b, { status, headers: { ...CORS, 'cache-control': 'no-store' } });
 const sheets = () => google.sheets({ version: 'v4', auth: getAuth() });
@@ -110,7 +113,7 @@ export async function POST(req: Request) {
     const sub = items.reduce((s, i) => s + i.precio * i.cant, 0), total = Number(x.f[10]) || sub;
     const desc = sub > 0 && total < sub ? Math.round((1 - total / sub) * 1e6) / 1e4 : 0;
     const fa = await emitirFactura({
-      clave: `mateando-local-${nro}-${documento}`, documento, puntoVenta: PUNTO_VENTA_LOCAL,
+      clave: `mateando-local-${nro}-${documento}-pv${PUNTO_VENTA_LOCAL}`, documento, puntoVenta: PUNTO_VENTA_LOCAL,
       referencia: `LOCAL-${nro}`, notas: `Local Costa Rica 5651 · Pedido N° ${nro}`, email: /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email) ? email : undefined,
       items: items.map((i) => ({ description: i.nombre.replace(/ \[.*?\]/g, '').slice(0, 200), quantity: i.cant, unit_price: i.precio, vat_rate_id: 5, ...(desc ? { discount_percentage: desc } : {}) })),
     });
