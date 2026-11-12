@@ -8,6 +8,7 @@
 #   {"Shop": {"Termo 1 L|Rosa": [sep, oct], ...}, "May": {...}}
 # Los kits se desarman en piezas: Set 1 L = Termo 1 L + Mate; Set 750 = Termo 750 + Mate.
 import collections, json, re, subprocess, sys, time, urllib.error, urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 import openpyxl
@@ -104,6 +105,20 @@ def ml_get(token, path):
             time.sleep(2 ** intento)  # MeLi limita pedidos por minuto: esperar y reintentar
 
 
+
+def ml_items(token, ids, attributes):
+    """MeLi dio de baja el multiget /items?ids= (403 ResourceDeprecated, 12-nov-2026): de a una, 10 en paralelo."""
+    def uno(i):
+        try:
+            return ml_get(token, f'/items/{i}?attributes={attributes}')
+        except urllib.error.HTTPError as e:
+            if e.code == 404:  # publicación borrada: se saltea, como hacía el multiget
+                return {}
+            raise
+    with ThreadPoolExecutor(10) as ex:
+        return list(ex.map(uno, ids))
+
+
 def meli(token, ventas):
     hoy = datetime.now(timezone(timedelta(hours=-3))).date()
     orders, a = [], datetime.fromisoformat(DESDE).date()
@@ -121,10 +136,8 @@ def meli(token, ventas):
     orders = [o for o in orders if o['status'] in ('paid', 'confirmed')]
     ids = sorted({it['item']['id'] for o in orders for it in o['order_items']})
     meta = {}
-    for i in range(0, len(ids), 20):
-        for r in ml_get(token, '/items?ids=' + ','.join(ids[i:i + 20]) + '&attributes=id,family_id,attributes'):
-            b = r.get('body') or {}
-            meta[b.get('id')] = (b.get('family_id'), next((x['value_name'] for x in b.get('attributes') or [] if x['id'] == 'COLOR'), None))
+    for b in ml_items(token, ids, 'id,family_id,attributes'):
+        meta[b.get('id')] = (b.get('family_id'), next((x['value_name'] for x in b.get('attributes') or [] if x['id'] == 'COLOR'), None))
     for o in orders:
         for it in o['order_items']:
             fam, c = meta.get(it['item']['id'], (None, None))
@@ -138,9 +151,8 @@ def meli(token, ventas):
 def stock_full(token):
     ids = [i for d in FULL.values() for i in d.values()]
     inv = {}
-    for k in range(0, len(ids), 20):
-        for r in ml_get(token, '/items?ids=' + ','.join(ids[k:k + 20]) + '&attributes=id,inventory_id'):
-            inv[r['body']['id']] = r['body']['inventory_id']
+    for b in ml_items(token, ids, 'id,inventory_id'):
+        inv[b['id']] = b['inventory_id']
     crudo = {(p, c): ml_get(token, f'/inventories/{inv[i]}/stock/fulfillment')['available_quantity']
              for p, d in FULL.items() for c, i in d.items()}
     piezas = collections.Counter()

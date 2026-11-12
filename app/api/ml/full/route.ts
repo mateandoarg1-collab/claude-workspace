@@ -1,4 +1,4 @@
-import { CHINA_FAMILY_IDS, mlFetch, ML_USER_ID } from '@/lib/ml';
+import { CHINA_FAMILY_IDS, mlFetch, mlItems, ML_USER_ID } from '@/lib/ml';
 
 export const maxDuration = 60;
 
@@ -52,15 +52,9 @@ export async function GET(req: Request) {
         scroll = r.scroll_id;
       }
     }
-    const chunks: string[][] = [];
-    for (let i = 0; i < ids.length; i += 20) chunks.push(ids.slice(i, i + 20));
-    const items = (
-      await pool(chunks, 5, (c) =>
-        mlFetch<Array<{ body: Item }>>(
-          `/items?ids=${c.join(',')}&attributes=id,title,status,inventory_id,family_id,shipping,variations,permalink,thumbnail_id`,
-        ),
-      )
-    ).flat();
+    const items = await mlItems<Item>(ids, 'id,title,status,inventory_id,family_id,shipping,variations,permalink,thumbnail_id', 20);
+    const fallidas = items.filter((x) => x.code !== 200 && x.code !== 404).length;
+    if (fallidas) throw new Error(`MeLi: no se pudieron leer ${fallidas} de ${ids.length} publicaciones`);
 
     const units: Array<{ item_id: string; variation_id: number | null; inventory_id: string; title: string; variant: string; status: string; china: boolean; permalink: string; thumbnail: string }> = [];
     for (const { body: it } of items) {

@@ -1,4 +1,4 @@
-import { mlFetch, ML_USER_ID } from '@/lib/ml';
+import { mlFetch, mlItems, ML_USER_ID } from '@/lib/ml';
 
 type Question = {
   id: number;
@@ -24,23 +24,11 @@ type MultigetResult = { code: number; body: ItemBody };
 
 async function fetchItems(ids: string[]): Promise<Map<string, ItemBody>> {
   const map = new Map<string, ItemBody>();
-  const chunks: string[][] = [];
-  for (let i = 0; i < ids.length; i += 20) chunks.push(ids.slice(i, i + 20));
-
-  await Promise.all(
-    chunks.map(async (chunk) => {
-      try {
-        const results = await mlFetch<MultigetResult[]>(
-          `/items?ids=${chunk.join(',')}&attributes=id,title,price,permalink,available_quantity,thumbnail,secure_thumbnail`,
-        );
-        results.forEach((r) => {
-          if (r.code === 200 && r.body) map.set(r.body.id, r.body);
-        });
-      } catch {
-        // producto no encontrado: seguimos sin sus datos
-      }
-    }),
-  );
+  // producto no encontrado: seguimos sin sus datos
+  const results: MultigetResult[] = await mlItems<ItemBody>(ids, 'id,title,price,permalink,available_quantity,thumbnail,secure_thumbnail');
+  results.forEach((r) => {
+    if (r.code === 200 && r.body) map.set(r.body.id, r.body);
+  });
   return map;
 }
 

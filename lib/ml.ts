@@ -72,6 +72,39 @@ export async function mlFetch<T = unknown>(path: string, init?: RequestInit): Pr
   return (await res.json()) as T;
 }
 
+// MeLi dio de baja el multiget /items?ids= para esta app (403 "ResourceDeprecated", 12-nov-2026). Las publicaciones se
+// piden de a una (/items/{id}?attributes=…), varias en paralelo, y se devuelven con la forma del multiget ({ code, body })
+// para que el resto del código no cambie. Si una falla, queda con su código de error y body null.
+export async function mlItems<T>(ids: string[], attributes?: string, paralelo = 15): Promise<Array<{ code: number; body: T }>> {
+  const unicos = [...new Set(ids)];
+  const q = attributes ? `?attributes=${attributes}` : '';
+  const out: Array<{ code: number; body: T }> = new Array(unicos.length);
+  let next = 0;
+  const uno = async (id: string): Promise<{ code: number; body: T }> => {
+    for (let intento = 0; ; intento++) {
+      try {
+        return { code: 200, body: await mlFetch<T>(`/items/${id}${q}`) };
+      } catch (e) {
+        const code = Number(String(e).match(/: (\d{3}) /)?.[1] ?? 500);
+        if ((code === 429 || code >= 500) && intento < 4) {
+          await new Promise((r) => setTimeout(r, 500 * 2 ** intento)); // MeLi limita pedidos por minuto
+          continue;
+        }
+        return { code, body: null as T };
+      }
+    }
+  };
+  await Promise.all(
+    Array.from({ length: Math.min(paralelo, unicos.length) }, async () => {
+      while (next < unicos.length) {
+        const i = next++;
+        out[i] = await uno(unicos[i]);
+      }
+    }),
+  );
+  return out;
+}
+
 export const ML_USER_ID = () => ENV.user_id;
 
 export type MLOrder = {
@@ -107,26 +140,14 @@ type MultigetResult = { code: number; body: ItemThumbBody };
 
 export async function fetchThumbnails(ids: string[]): Promise<Map<string, string>> {
   const map = new Map<string, string>();
-  const chunks: string[][] = [];
-  for (let i = 0; i < ids.length; i += 20) chunks.push(ids.slice(i, i + 20));
-
-  await Promise.all(
-    chunks.map(async (chunk) => {
-      try {
-        const results = await mlFetch<MultigetResult[]>(
-          `/items?ids=${chunk.join(',')}&attributes=id,thumbnail,secure_thumbnail`,
-        );
-        results.forEach((r) => {
-          if (r.code === 200 && r.body) {
-            const url = r.body.secure_thumbnail || r.body.thumbnail || '';
-            map.set(r.body.id, url.replace(/^http:\/\//, 'https://'));
-          }
-        });
-      } catch {
-        // los thumbnails son "nice to have": si falla un lote, seguimos sin esas fotos
-      }
-    }),
-  );
+  // los thumbnails son "nice to have": si falla una publicación, seguimos sin esa foto
+  const results: MultigetResult[] = await mlItems<ItemThumbBody>(ids, 'id,thumbnail,secure_thumbnail');
+  results.forEach((r) => {
+    if (r.code === 200 && r.body) {
+      const url = r.body.secure_thumbnail || r.body.thumbnail || '';
+      map.set(r.body.id, url.replace(/^http:\/\//, 'https://'));
+    }
+  });
   return map;
 }
 
@@ -147,30 +168,18 @@ type ItemMeta = { color: string | null; isChina: boolean };
 // El color se usa cuando la orden no trae variation_attributes (pasa en algunos user products).
 export async function fetchItemMeta(ids: string[]): Promise<Map<string, ItemMeta>> {
   const map = new Map<string, ItemMeta>();
-  const chunks: string[][] = [];
-  for (let i = 0; i < ids.length; i += 20) chunks.push(ids.slice(i, i + 20));
-
-  await Promise.all(
-    chunks.map(async (chunk) => {
-      try {
-        const results = await mlFetch<
-          Array<{
-            code: number;
-            body: { id: string; family_id?: number | null; attributes?: Array<{ id: string; value_name: string | null }> };
-          }>
-        >(`/items?ids=${chunk.join(',')}&attributes=id,family_id,attributes`);
-        results.forEach((r) => {
-          if (r.code !== 200 || !r.body) return;
-          map.set(r.body.id, {
-            color: r.body.attributes?.find((a) => a.id === 'COLOR')?.value_name ?? null,
-            isChina: r.body.family_id != null && CHINA_FAMILY_IDS.has(r.body.family_id),
-          });
-        });
-      } catch {
-        // igual que los thumbnails: si falla un lote, esas filas quedan sin color ni bandera
-      }
-    }),
+  // igual que los thumbnails: si falla una publicación, esas filas quedan sin color ni bandera
+  const results = await mlItems<{ id: string; family_id?: number | null; attributes?: Array<{ id: string; value_name: string | null }> }>(
+    ids,
+    'id,family_id,attributes',
   );
+  results.forEach((r) => {
+    if (r.code !== 200 || !r.body) return;
+    map.set(r.body.id, {
+      color: r.body.attributes?.find((a) => a.id === 'COLOR')?.value_name ?? null,
+      isChina: r.body.family_id != null && CHINA_FAMILY_IDS.has(r.body.family_id),
+    });
+  });
   return map;
 }
 

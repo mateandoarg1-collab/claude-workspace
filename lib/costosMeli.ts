@@ -4,7 +4,7 @@
 // - costos_adicionales: costos fuera de la orden (fijos por mes o variables), que restan en la ganancia final.
 import { google } from 'googleapis';
 import { getAuth } from './sheets';
-import { mlFetch, ML_USER_ID } from './ml';
+import { mlFetch, mlItems, ML_USER_ID } from './ml';
 import type { BaseVariable, Canal, CostoAdicional } from './costosAdicionales';
 
 export { adicionalDelDia, type CostoAdicional } from './costosAdicionales';
@@ -102,17 +102,8 @@ export async function getPublicaciones(): Promise<Publicacion[]> {
     ids.push(...r.results);
     if (offset + 100 >= r.paging.total) break;
   }
-  const lotes: string[][] = [];
-  for (let i = 0; i < ids.length; i += 20) lotes.push(ids.slice(i, i + 20));
-  const items = (
-    await Promise.all(
-      lotes.map((l) =>
-        mlFetch<Array<{ code: number; body: ItemML }>>(`/items?ids=${l.join(',')}&attributes=id,title,secure_thumbnail,thumbnail,variations`),
-      ),
-    )
-  )
-    .flat()
-    .filter((r) => r.code === 200)
+  const items = (await mlItems<ItemML>(ids, 'id,title,secure_thumbnail,thumbnail,variations', 20))
+    .filter((r) => r.code === 200 && r.body)
     .map((r) => r.body);
 
   const [costos, ventas] = await Promise.all([leerCostos(), ventas30()]);

@@ -60,23 +60,29 @@ async function fullListings() {
   }
 
   const units = []; // una fila por inventory_id (publicación o variante)
-  for (let i = 0; i < ids.length; i += 20) {
-    const chunk = ids.slice(i, i + 20).join(',');
-    const rows = await ml(
-      `/items?ids=${chunk}&attributes=id,title,status,sub_status,inventory_id,user_product_id,shipping,variations,permalink,thumbnail_id`,
-    );
-    for (const { body: it } of rows) {
-      if (it?.shipping?.logistic_type !== 'fulfillment') continue;
-      if (it.variations?.length) {
-        for (const v of it.variations) {
-          if (!v.inventory_id) continue;
-          const name = (v.attribute_combinations ?? []).map((a) => a.value_name).join(' / ');
-          const thumb = pic(v.picture_ids?.[0] ?? it.thumbnail_id);
-          units.push({ item_id: it.id, variation_id: v.id, inventory_id: v.inventory_id, user_product_id: v.user_product_id, title: it.title, variant: name, status: it.status, sub_status: it.sub_status, permalink: it.permalink, thumbnail: thumb });
-        }
-      } else if (it.inventory_id) {
-        units.push({ item_id: it.id, variation_id: null, inventory_id: it.inventory_id, user_product_id: it.user_product_id, title: it.title, variant: '', status: it.status, sub_status: it.sub_status, permalink: it.permalink, thumbnail: pic(it.thumbnail_id) });
+  // MeLi dio de baja el multiget /items?ids= (403 ResourceDeprecated, 12-nov-2026): de a una, 15 en paralelo.
+  const attrs = 'id,title,status,sub_status,inventory_id,user_product_id,shipping,variations,permalink,thumbnail_id';
+  const items = new Array(ids.length);
+  let next = 0;
+  await Promise.all(
+    Array.from({ length: 15 }, async () => {
+      while (next < ids.length) {
+        const i = next++;
+        items[i] = await ml(`/items/${ids[i]}?attributes=${attrs}`);
       }
+    }),
+  );
+  for (const it of items) {
+    if (it?.shipping?.logistic_type !== 'fulfillment') continue;
+    if (it.variations?.length) {
+      for (const v of it.variations) {
+        if (!v.inventory_id) continue;
+        const name = (v.attribute_combinations ?? []).map((a) => a.value_name).join(' / ');
+        const thumb = pic(v.picture_ids?.[0] ?? it.thumbnail_id);
+        units.push({ item_id: it.id, variation_id: v.id, inventory_id: v.inventory_id, user_product_id: v.user_product_id, title: it.title, variant: name, status: it.status, sub_status: it.sub_status, permalink: it.permalink, thumbnail: thumb });
+      }
+    } else if (it.inventory_id) {
+      units.push({ item_id: it.id, variation_id: null, inventory_id: it.inventory_id, user_product_id: it.user_product_id, title: it.title, variant: '', status: it.status, sub_status: it.sub_status, permalink: it.permalink, thumbnail: pic(it.thumbnail_id) });
     }
   }
   return units;

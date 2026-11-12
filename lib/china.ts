@@ -2,7 +2,7 @@ import { google } from 'googleapis';
 import { getOrdenes, ACORDAR, PAGO } from './empretiendaOrdenes';
 import { getAuth } from './sheets';
 import { getShopifyLineas } from './shopify';
-import { mlFetch, ML_USER_ID, isValidOrder, fmtTZ, type MLOrder } from './ml';
+import { mlFetch, mlItems, ML_USER_ID, isValidOrder, fmtTZ, type MLOrder } from './ml';
 import { factor, FACTORES, eventosDel, iso, NOMBRE_EVENTO, sumarDias, type Ajustes, type Evento } from './chinaProyeccion';
 
 // Productos importados de China (container que llegó en sep-2026): ventas de todos los canales desde el 1/9 y stock
@@ -203,14 +203,16 @@ async function ventasMeli(): Promise<Venta[]> {
   const ordenes = await ordenesMeli();
   const ids = [...new Set(ordenes.flatMap((o) => o.order_items.map((it) => it.item.id)))];
   const meta = new Map<string, { familia: number | null; color: string | null }>();
-  for (let i = 0; i < ids.length; i += 20) {
-    const r = await ml<Array<{ code: number; body: { id: string; family_id?: number | null; attributes?: Array<{ id: string; value_name: string | null }> } }>>(
-      `/items?ids=${ids.slice(i, i + 20).join(',')}&attributes=id,family_id,attributes`,
-    );
-    for (const x of r) {
-      if (x.code !== 200 || !x.body) continue;
-      meta.set(x.body.id, { familia: x.body.family_id ?? null, color: x.body.attributes?.find((a) => a.id === 'COLOR')?.value_name ?? null });
-    }
+  const r = await mlItems<{ id: string; family_id?: number | null; attributes?: Array<{ id: string; value_name: string | null }> }>(
+    ids,
+    'id,family_id,attributes',
+  );
+  // Sin la ficha no se sabe qué pieza es: mejor marcar el error que contar de menos sin avisar.
+  const fallidas = r.filter((x) => x.code !== 200 && x.code !== 404).length;
+  if (fallidas) throw new Error(`MeLi: no se pudieron leer ${fallidas} publicaciones vendidas`);
+  for (const x of r) {
+    if (x.code !== 200 || !x.body) continue;
+    meta.set(x.body.id, { familia: x.body.family_id ?? null, color: x.body.attributes?.find((a) => a.id === 'COLOR')?.value_name ?? null });
   }
   const out: Venta[] = [];
   for (const o of ordenes) {
@@ -231,14 +233,11 @@ async function stockFull(): Promise<{ stock: Record<string, number>; fotos: Reco
   const ids = Object.values(FULL).flatMap((d) => Object.values(d));
   const inv = new Map<string, string>();
   const portada = new Map<string, string>();
-  for (let i = 0; i < ids.length; i += 20) {
-    const r = await ml<Array<{ body: { id: string; inventory_id?: string; thumbnail_id?: string } }>>(
-      `/items?ids=${ids.slice(i, i + 20).join(',')}&attributes=id,inventory_id,thumbnail_id`,
-    );
-    for (const x of r) {
-      if (x.body?.inventory_id) inv.set(x.body.id, x.body.inventory_id);
-      if (x.body?.thumbnail_id) portada.set(x.body.id, `https://http2.mlstatic.com/D_${x.body.thumbnail_id}-O.jpg`);
-    }
+  const r = await mlItems<{ id: string; inventory_id?: string; thumbnail_id?: string }>(ids, 'id,inventory_id,thumbnail_id');
+  if (r.some((x) => x.code !== 200)) throw new Error(`MeLi: no se pudieron leer ${r.filter((x) => x.code !== 200).length} publicaciones de Full`);
+  for (const x of r) {
+    if (x.body?.inventory_id) inv.set(x.body.id, x.body.inventory_id);
+    if (x.body?.thumbnail_id) portada.set(x.body.id, `https://http2.mlstatic.com/D_${x.body.thumbnail_id}-O.jpg`);
   }
   const fotos: Record<string, string> = {};
   for (const [prod, colores] of Object.entries(FULL)) {

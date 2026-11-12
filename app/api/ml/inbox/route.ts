@@ -1,4 +1,4 @@
-import { mlFetch, ML_USER_ID } from '@/lib/ml';
+import { mlFetch, mlItems, ML_USER_ID } from '@/lib/ml';
 
 // Puente de Mercado Libre para la Bandeja Mateando (mateando-inbox.vercel.app, app aparte).
 // El token de ML vive acá: su refresh es de un solo uso, así que si la bandeja lo refrescara por su cuenta
@@ -81,12 +81,8 @@ async function preguntas(): Promise<Conversacion[]> {
   );
   const ids = [...new Set(r.questions.map((q) => q.item_id))];
   const titulos = new Map<string, string>();
-  for (let i = 0; i < ids.length; i += 20) {
-    const items = await mlFetch<Array<{ code: number; body: { id: string; title: string } }>>(
-      `/items?ids=${ids.slice(i, i + 20).join(',')}&attributes=id,title`,
-    ).catch(() => []);
-    items.forEach((it) => it.code === 200 && titulos.set(it.body.id, it.body.title));
-  }
+  const items = await mlItems<{ id: string; title: string }>(ids, 'id,title');
+  items.forEach((it) => it.code === 200 && it.body && titulos.set(it.body.id, it.body.title));
   return r.questions.map((q) => {
     const mensajes: Mensaje[] = [{ fecha: AR(q.date_created), quien: 'cliente', texto: q.text, archivo: '' }];
     if (q.answer) mensajes.push({ fecha: AR(q.answer.date_created), quien: 'equipo', texto: q.answer.text, archivo: '' });
