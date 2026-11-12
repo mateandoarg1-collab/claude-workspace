@@ -33,14 +33,18 @@ REGLAS = [
     (r'SET IMPERIAL ROSE QUARTZ \+ TERMO MATEANDO 1 L', lambda t: R('MATE-ACE-RQ', 'TER-MAT-5002', BOMB), 'ok'),
     (r'^BOX MAM. 4|IMPERIAL ACERO ROSE QUARTZ', lambda t: R('MATE-ACE-RQ', BOMB), 'ok'),
     (r'^BOX MAM. 1|IMPERIAL RUSTICO - MAM', lambda t: R('MATE-MAD-2008', BOMB), 'ok'),
-    (r'KIT MATERO MATEANDO - TERMO 1 L MATE (ROSA|BEIGE|NEGRO|BLANCO)', lambda t: R('MATE-KIT-1L'), 'ok'),
+    (r'KIT MATERO MATEANDO - TERMO 1 LT? MATE (ROSA|BEIGE|NEGRO|BLANCO)', lambda t: R('MATE-KIT-1L'), 'ok'),
     (r'KIT MATERO MATEANDO - TERMO 750 ML MATE (ROSA|BEIGE|NEGRO|BLANCO)', lambda t: R('MATE-KIT-750'), 'ok'),
     (r'SET VACA RANCHERO \+ TERMO MATEANDO BEIGE 1 L', lambda t: R('MATE-MAD-2003', 'TER-MAT-5004', BOMB), 'ok'),
     (r'SET MATE VACA RANCHERO ROSA \+ TERMO .*750', lambda t: R('MATE-MAD-2020', 'TER-MAT-5006', BOMB), 'ok'),
+    (r'SET MATE VACA RANCHERO BLACK \+ TERMO .*1 L', lambda t: R('MATE-MAD-2004', 'TER-MAT-5001', BOMB), 'ok'),
     (r'SET MATE VACA RANCHERO BLACK \+ TERMO .*750', lambda t: R('MATE-MAD-2004', 'TER-MAT-5005', BOMB), 'ok'),
     (r'SET MATE VACA RANCHERO \+ TERMO MATEANDO BEIGE 750', lambda t: R('MATE-MAD-2003', 'TER-MAT-5008', BOMB), 'ok'),
     (r'IMPERIAL PREMIUM CON PIEL', lambda t: R('MATE-PIEL'), 'ok'),
-    (r'KIT MATERO TOTE TERMO Y MATE ROSE QUARTZ', lambda t: R('BOLS-TOT-7016', 'TER-MAT-5002', 'MATE-MAD-2020', 'YERB-GAM-8008', BOMB), 'revisar'),
+    # Kit Tote (Juampi 12-nov-2026: rose quartz y beige cuestan igual): tote + termo 1 L + mate ranchero + yerbera gamuza + bombilla.
+    # Antes solo matcheaba el nombre rose quartz y los otros nombres caían en «YERBERA GAMUZA» ($2.800).
+    (r'KIT MATERO TOTE\s+TERMO.*ROSE\s+QUARTZ', lambda t: R('BOLS-TOT-7016', 'TER-MAT-5002', 'MATE-MAD-2020', 'YERB-GAM-8008', BOMB), 'ok'),
+    (r'KIT MATERO TOTE', lambda t: R('BOLS-TOT-7016', 'TER-MAT-5004', 'MATE-MAD-2003', 'YERB-GAM-8008', BOMB), 'ok'),  # beige (o sin color)
     (r'TOTE MATERA ROSE QUARTZ', lambda t: R('BOLS-TOT-7016'), 'revisar'),
     (r'IMPERIAL PREMIUM DOBLE CALADO', lambda t: R('MATE-CAL-1044'), 'ok'),
     (r'IMPERIAL PREMIUM - BASE ALPACA', lambda t: R('MATE-CAL-1042'), 'revisar'),
