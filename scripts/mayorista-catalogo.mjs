@@ -6,15 +6,15 @@ import { google } from 'googleapis';
 
 const ID = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
 const FOTO = (p) => `https://mateando-mayorista.vercel.app/fotos/p${p}.jpg`;
-// [nombre, precio neto, costo (de las ventas viejas), colores, página del PDF]
+// [nombre, precio neto, costo sin IVA (de scripts/cmv/costos_base.json, el mismo de la rentabilidad de tienda y MeLi), colores, página del PDF]
 const CAT = [
   ['Mate autocebante 750 ml', 45500, 16000, 'Negro,Blanco,Rosa', '04'],
   ['Kit matero corporativo', 29900, 0, '', '05'],
   ['Kit matero corporativo System', 31900, 0, '', '06'],
   ['Kit matero completo corporativo', 44900, 0, '', '07'],
   ['Mate Mateando con base de silicona', 27500, 0, 'Negro,Blanco,Rosa,Crema', '08'],
-  ['Termo Mateando 1 L', 53900, 37200, 'Negro,Blanco,Rosa,Crema', '09'],
-  ['Termo Mateando 750 ml', 41900, 22500, 'Negro,Blanco,Rosa,Crema', '10'],
+  ['Termo Mateando 1 L', 53900, 18000, 'Negro,Blanco,Rosa,Crema', '09'],
+  ['Termo Mateando 750 ml', 41900, 15965, 'Negro,Blanco,Rosa,Crema', '10'],
   ['Mate gota', 10000, 3400, 'Negro,Rojo,Blanco,Rosa,Amarillo', '11'],
   ['Camionero de algarrobo', 14990, 7500, 'Natural,Oscuro', '12'],
   ['Camionero de algarrobo encerado', 14990, 7500, '', '13'],
@@ -22,20 +22,20 @@ const CAT = [
   ['Imperial premium', 28990, 17000, 'Guarda pampa,Guarda abstracta', '15'],
   ['Camionero calabaza', 19490, 13500, 'Negro,Marrón', '16'],
   ['Mate de acero inoxidable', 11990, 3400, 'Negro,Rojo,Blanco,Rosa,Amarillo', '17'],
-  ['Ranchero', 24990, 17000, 'Natural,Negro,Marrón,Negro y natural,Blanco y natural', '18'],
+  ['Ranchero', 24990, 19700, 'Natural,Negro,Marrón,Negro y natural,Blanco y natural', '18'],
   ['Imperial algarrobo encerado', 23990, 10900, '', '19'],
   ['Bombilla pico loro', 4990, 1288, 'Corta,Larga', '20'],
   ['Termo media manija negro', 19990, 8917, '', '21'],
   ['Termo media manija plateado', 18990, 8700, '', '22'],
   ['Yerbera de gamuza', 8900, 2800, 'Marrón,Negra', '23'],
   ['Matera de eco cuero', 13500, 5300, 'Negro,Blanco,Marrón,Fucsia', '24'],
-  ['Matera de cuero 2x2', 23990, 0, 'Negro,Marrón,Suela', '25'],
-  ['Matera de cuero 4x4', 26900, 0, 'Negro,Marrón,Suela', '26'],
-  ['Mochila matera', 44700, 38000, '', '27'],
+  ['Matera de cuero 2x2', 23990, 24925, 'Negro,Marrón,Suela', '25'],
+  ['Matera de cuero 4x4', 26900, 29325, 'Negro,Marrón,Suela', '26'],
+  ['Mochila matera', 44700, 36300, '', '27'],
   ['Caja de presentación mediana', 6990, 4000, '', '28'],
   ['Caja de presentación XL', 8990, 8500, '', '29'],
   ['Termo Stanley', 0, 0, '', '30'],
-  ['Personalización (grabado láser)', 2250, 0, '', '31'],
+  ['Personalización (grabado láser)', 2250, 1100, '', '31'],
 ];
 // nombres viejos del Excel → producto del catálogo (la primera regla que coincide gana; sin regla = queda oculto suelto)
 const ES = [
@@ -83,7 +83,7 @@ for (const f of filas) {
 }
 for (const [nombre, precio, costo, colores, pag] of CAT) {
   const viejo = filas.find((f) => String(f[0]).toLowerCase() === nombre.toLowerCase());
-  salida.push([nombre, precio, costo || viejo?.[2] || 0, 'SI', FOTO(pag), colores, '']);
+  salida.push([nombre, precio, costo || (viejo ? viejo[2] : 0) || 0, 'SI', FOTO(pag), colores, '']);
 }
 for (const [n, l] of Object.entries(agrupados)) console.log(`${n} ← ${l.length}: ${l.slice(0, 6).join(' | ')}${l.length > 6 ? ' …' : ''}`);
 console.log(`Activos: ${CAT.length} · ocultos: ${salida.length - CAT.length} (${Object.values(agrupados).flat().length} agrupados en el catálogo)`);
