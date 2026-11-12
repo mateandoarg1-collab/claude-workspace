@@ -1,6 +1,11 @@
 import { leer, agregar, reemplazar, aPedido, dePedido, num, ahoraAR, hoyAR, type Item, type Pago } from '@/lib/mayoristaApp';
+import { cuitValido, emitirFactura, llamar } from '@/lib/ecommapp';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
+
+// Punto de venta de Ecomm-App para las facturas mayoristas (0 = todavía sin definir: el botón Facturar avisa).
+const PUNTO_VENTA_MAYORISTA = 0;
 
 // API de la app de pedidos mayoristas (mateando-mayorista.vercel.app). Cada vendedor entra con su PIN (header x-pin,
 // pestaña "App Vendedores"); MAYORISTA_ADMIN_PIN (env) entra siempre como admin aunque la pestaña esté vacía.
@@ -32,6 +37,9 @@ export async function GET(req: Request) {
   try {
     const yo = await quien(req);
     if (!yo) return ok({ error: 'PIN incorrecto' }, 401);
+    // ?puntos=1 (admin): puntos de venta usados en Ecomm-App los últimos 90 días, con cuántas facturas fueron a CUITs
+    // de clientes mayoristas. Sirve para elegir PUNTO_VENTA_MAYORISTA.
+    if (yo.admin && new URL(req.url).searchParams.get('puntos')) return ok(await puntosDeVenta());
     const [ped, cli, prod, ven] = await Promise.all([leer('pedidos'), leer('clientes'), leer('productos'), yo.admin ? leer('vendedores') : Promise.resolve([])]);
     let pedidos = ped.filter((f) => f[0]).map(aPedido);
     if (!yo.admin) pedidos = pedidos.filter((p) => p.vendedor.toLowerCase() === yo.nombre.toLowerCase())
@@ -64,6 +72,7 @@ export async function POST(req: Request) {
     };
 
     if (b.accion === 'pedido') {
+      if (b.nro && buscar(b.nro).p.factura) return ok({ error: 'El pedido ya está facturado: no se puede editar' }, 400);
       const prod = await leer('productos');
       const costoDe = new Map(prod.map((f) => [f[0].toLowerCase(), num(f[2])]));
       const items: Item[] = (Array.isArray(b.items) ? b.items : []).slice(0, 80).map((x: Record<string, unknown>) => ({
@@ -100,9 +109,10 @@ export async function POST(req: Request) {
         return ok({ ok: true, nro: p.nro });
       }
       const nro = Math.max(1000, ...ped.map((f) => num(f[0]))) + 1;
-      const pagos: Pago[] = num(b.pagoInicial?.monto) > 0 ? [{ fecha: hoyAR(), monto: num(b.pagoInicial.monto), medio: txt(b.pagoInicial.medio, 30) || 'Transferencia' }] : [];
+      const presupuesto = !!b.presupuesto;
+      const pagos: Pago[] = !presupuesto && num(b.pagoInicial?.monto) > 0 ? [{ fecha: hoyAR(), monto: num(b.pagoInicial.monto), medio: txt(b.pagoInicial.medio, 30) || 'Transferencia' }] : [];
       await agregar('pedidos', [dePedido({ nro, creado: ahoraAR(), fecha: txt(b.fecha, 10) || hoyAR(), vendedor: yo.admin && b.vendedor ? txt(b.vendedor, 40) : yo.nombre,
-        estado: 'Pendiente', pagos, origen: 'app', anulado: false, ...base })]);
+        estado: presupuesto ? 'Presupuesto' : 'Pendiente', pagos, origen: 'app', anulado: false, factura: null, ...base })]);
       return ok({ ok: true, nro });
     }
 
@@ -125,6 +135,40 @@ export async function POST(req: Request) {
       if (!ESTADOS.includes(b.estado)) return ok({ error: 'Estado inválido' }, 400);
       await reemplazar('pedidos', i, dePedido({ ...p, estado: b.estado, actualizado: ahoraAR() }));
       return ok({ ok: true });
+    }
+    if (b.accion === 'aprobar') {
+      // presupuesto aprobado → pedido: la fecha pasa a ser la de hoy (es cuando se vende)
+      const { i, p } = buscar(b.nro);
+      if (p.estado !== 'Presupuesto') return ok({ error: 'Ese pedido no es un presupuesto' }, 400);
+      await reemplazar('pedidos', i, dePedido({ ...p, estado: 'Pendiente', fecha: hoyAR(), actualizado: ahoraAR() }));
+      return ok({ ok: true });
+    }
+    if (b.accion === 'facturar') {
+      if (!yo.admin) return ok({ error: 'Solo el administrador puede facturar' }, 403);
+      const { i, p } = buscar(b.nro);
+      if (p.factura) return ok({ ok: true, factura: p.factura, yaExistia: true });
+      if (p.anulado) return ok({ error: 'El pedido está anulado' }, 400);
+      if (p.estado === 'Presupuesto') return ok({ error: 'Primero aprobá el presupuesto' }, 400);
+      if (!p.conIva) return ok({ error: 'Este pedido está cargado sin factura. Editalo y marcá "Con IVA" si hay que facturarlo.' }, 400);
+      if (p.items.some((x) => !x.precio)) return ok({ error: 'Hay productos sin precio' }, 400);
+      if (!PUNTO_VENTA_MAYORISTA) return ok({ error: 'Falta definir el punto de venta de Ecomm-App para mayorista' }, 400);
+      const documento = txt(b.documento, 20).replace(/\D/g, '');
+      if (!cuitValido(documento)) return ok({ error: 'El CUIT no es válido (son 11 números)' }, 400);
+      const email = txt(b.email, 120);
+      // Ecomm-App toma el precio unitario CON IVA (igual que en la caja del local) y elige A o B según el CUIT.
+      const fa = await emitirFactura({
+        clave: `mateando-mayorista-${p.nro}-${documento}`, documento, puntoVenta: PUNTO_VENTA_MAYORISTA,
+        referencia: `MAY-${p.nro}`, notas: `Pedido mayorista N° ${p.nro}`, email: /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(email) ? email : undefined,
+        items: p.items.map((x) => ({ description: (x.nombre + (x.color ? ' - ' + x.color : '') + (x.pers ? ' (personalizado)' : '')).slice(0, 200),
+          quantity: x.cant, unit_price: Math.round(x.precio * 121) / 100, vat_rate_id: 5 })),
+      });
+      const factura = { numero: fa.numero, tipo: fa.tipo, cae: fa.cae, vence: fa.vence, pdf: fa.pdf, total: fa.total, doc: documento, nombre: fa.nombre, fecha: hoyAR() };
+      await reemplazar('pedidos', i, dePedido({ ...p, factura, actualizado: ahoraAR() }));
+      // el CUIT queda en la ficha del cliente si no lo tenía
+      const cli = await leer('clientes');
+      const ci = cli.findIndex((f) => f[0].toLowerCase() === p.cliente.toLowerCase());
+      if (ci >= 0 && !cli[ci][1]) { const f = [...cli[ci]]; while (f.length < 6) f.push(''); f[1] = documento; if (!f[4] && email) f[4] = email; await reemplazar('clientes', ci, f); }
+      return ok({ ok: true, factura });
     }
     if (b.accion === 'anular') {
       const { i, p } = buscar(b.nro);
@@ -168,4 +212,28 @@ export async function POST(req: Request) {
   } catch (e) {
     return ok({ error: e instanceof Error ? e.message : String(e) }, 500);
   }
+}
+
+async function puntosDeVenta() {
+  const cuits = new Set((await leer('clientes')).map((f) => String(f[1] ?? '').replace(/\D/g, '')).filter((c) => c.length === 11));
+  const hasta = hoyAR(), desde = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10);
+  const g: Record<string, { facturas: number; aMayoristas: number; canales: Record<string, number>; ejemplos: string[] }> = {};
+  for (let page = 1; page <= 40; page++) {
+    const j = await llamar(`/comprobantes?${new URLSearchParams({ date_from: desde, date_to: hasta, per_page: '50', page: String(page) })}`);
+    const data: { invoice?: { full_number?: string; sales_channel?: string }; customer?: { document_number?: string; first_name?: string; last_name?: string } }[] =
+      Array.isArray(j.data?.items) ? j.data.items : Array.isArray(j.data) ? j.data : [];
+    for (const c of data) {
+      const pv = String(c.invoice?.full_number ?? '').split('-')[0] || '?';
+      const x = (g[pv] ||= { facturas: 0, aMayoristas: 0, canales: {}, ejemplos: [] });
+      x.facturas++;
+      const canal = c.invoice?.sales_channel || '—'; x.canales[canal] = (x.canales[canal] || 0) + 1;
+      if (cuits.has(String(c.customer?.document_number ?? ''))) {
+        x.aMayoristas++;
+        if (x.ejemplos.length < 5) x.ejemplos.push([c.customer?.first_name, c.customer?.last_name].filter(Boolean).join(' '));
+      }
+    }
+    const tp = Number(j.data?.pagination?.total_pages ?? j.pagination?.total_pages ?? 0);
+    if (!data.length || (tp ? page >= tp : data.length < 50)) break;
+  }
+  return { desde, hasta, clientesConCuit: cuits.size, puntos: g };
 }

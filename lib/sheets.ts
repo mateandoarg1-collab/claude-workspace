@@ -14,12 +14,12 @@ export function getAuth() {
 }
 
 // Mayorista: desde el 11-nov-2026 los pedidos se cargan en la app (mateando-mayorista.vercel.app), pestaña
-// "App Pedidos" de esta planilla (los de OCT 25–NOV 26 se migraron del Excel). Monto = total con IVA, sin anulados.
+// "App Pedidos" de esta planilla (los de OCT 25–NOV 26 se migraron del Excel). Monto = total con IVA, sin anulados ni presupuestos sin aprobar.
 export async function getPedidosMayoristaApp(desde: string, hasta: string) {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
   const r = await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'App Pedidos'!A2:T`, valueRenderOption: 'UNFORMATTED_VALUE' });
   return (r.data.values ?? [])
-    .filter((f) => f[0] && f[19] !== 'SI' && String(f[2]) >= desde && String(f[2]) <= hasta)
+    .filter((f) => f[0] && f[19] !== 'SI' && f[13] !== 'Presupuesto' && String(f[2]) >= desde && String(f[2]) <= hasta)
     .map((f) => ({ fecha: String(f[2]), total: Number(f[8]) || 0 }));
 }
 
