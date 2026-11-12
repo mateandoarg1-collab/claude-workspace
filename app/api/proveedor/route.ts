@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { conCache } from '@/lib/cache';
 import { getChina } from '@/lib/china';
-import { proyectar, UNIDADES_CAJA } from '@/lib/chinaProyeccion';
+import { COBERTURA, proyectar, UNIDADES_CAJA } from '@/lib/chinaProyeccion';
 
 export const maxDuration = 60;
 
@@ -12,7 +12,8 @@ const HASH = 'ba05a84e08e33739d9400f4fde485bee47136c5f32e82b0f8293f8ca3141479a';
 
 // Pedidos que ya están hechos y todavía no llegaron: se restan de la producción sugerida.
 const YA_PEDIDO: Record<string, number> = { 'Autocebante|Rosa': 1725 };
-const COBERTURA = 273; // la misma que usa por defecto la página China (9 meses desde que llega)
+// Producción sugerida para cubrir un año desde que llega (COBERTURA): es lo que más se parece a lo que se le pidió por
+// WhatsApp el 11-nov.
 
 const EN: Record<string, string> = {
   Autocebante: '500ml Autocebante', 'Termo 1 L': '1000ml Thermos', 'Termo 750': '750ml Slim Thermos', 'Mate Acero 236': '8oz Mate',
