@@ -42,27 +42,40 @@ const sheets = () => google.sheets({ version: 'v4', auth: getAuth() });
 const get = async (id: string, range: string) =>
   (await sheets().spreadsheets.values.get({ spreadsheetId: id, range, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [];
 
-async function local(desde: string, hasta: string) {
-  const filas = (await get(EFECTIVO, "'Rentabilidad Local'!A2:N")).filter((f) => {
+// Días del local antes del corte (Empretienda «Acordar»): la misma cuenta de Rentabilidad Tienda con canal=local.
+type TiendaLocal = { total: Record<string, number>; ventas: { numero: string; fecha: string; creada: string; venta: number; costo: number; packaging: number; neto: number; sin_costo: number }[] };
+async function empretiendaLocal(origen: string, desde: string, hasta: string): Promise<TiendaLocal | null> {
+  const fin = hasta < CORTE_CAJA ? hasta : '2026-11-08';
+  if (desde > fin) return null;
+  const r = await fetch(`${origen}/api/tienda/rentabilidad?canal=local&desde=${desde}&hasta=${fin}`, { cache: 'no-store' }).then((x) => x.json());
+  if (r.error) throw new Error(`Rentabilidad Tienda (local): ${r.error}`);
+  return r;
+}
+
+async function local(desde: string, hasta: string, origen: string) {
+  const [todas, emp] = await Promise.all([get(EFECTIVO, "'Rentabilidad Local'!A2:N"), empretiendaLocal(origen, desde, hasta)]);
+  const filas = todas.filter((f) => {
     const d = String(f[1] ?? '').slice(0, 10);
     return f[0] && d >= desde && d <= hasta;
   });
   const s = (i: number) => filas.reduce((t, f) => t + (Number(f[i]) || 0), 0);
+  const e = (k: string) => Number(emp?.total[k] ?? 0);
   const venta = s(3), iva = s(7);
+  const partes = [filas.length ? `${filas.length} de la caja` : '', emp?.ventas.length ? `${emp.ventas.length} de Empretienda (hasta el 8-nov)` : ''].filter(Boolean).join(' + ');
   const lineas: Linea[] = [
-    { clave: 'venta', nombre: 'Venta neta', monto: venta - iva, nota: `lo cobrado ${fmt(venta)} − IVA ${fmt(iva)} (solo se factura tarjeta y QR)` },
-    { clave: 'comision', nombre: 'Comisión Mercado Pago', monto: -s(6), nota: 'la real de cada pago (tarjeta y QR)' },
-    { clave: 'financiera', nombre: 'Financiera (transferencias)', monto: -s(10), nota: '3,25%' },
-    { clave: 'iibb', nombre: 'IIBB', monto: -s(8), nota: '5% de lo facturado sin IVA' },
-    { clave: 'debcred', nombre: 'Imp. débitos y créditos', monto: -s(9), nota: '1,2% de lo facturado' },
-    { clave: 'cmv', nombre: 'Costo de producto', monto: -s(4) },
-    { clave: 'pack', nombre: 'Bolsa', monto: -s(5), nota: 'una por pedido' },
+    { clave: 'venta', nombre: 'Venta neta', monto: venta - iva + e('venta'), nota: 'sin IVA lo facturado (tarjeta y QR); efectivo y transferencias enteros' },
+    { clave: 'comision', nombre: 'Comisión de cobro', monto: -(s(6) + s(10) + e('comision')), nota: 'Mercado Pago real de cada pago; transferencias 3,25% de la financiera' },
+    { clave: 'iibb', nombre: 'IIBB', monto: -(s(8) + e('impuestos')), nota: '5% de lo facturado sin IVA' },
+    { clave: 'debcred', nombre: 'Imp. débitos y créditos', monto: -(s(9) + e('deb_cred')), nota: '1,2% de lo facturado' },
+    { clave: 'cmv', nombre: 'Costo de producto', monto: -(s(4) + e('costo')) },
+    { clave: 'pack', nombre: 'Bolsa', monto: -(s(5) + e('packaging')), nota: 'una por pedido' },
   ];
   const ordenes: Orden[] = filas.map((f) => ({
-    id: `N° ${f[0]}`, fecha: String(f[1]), detalle: '', venta: Number(f[3]) || 0, costo: (Number(f[4]) || 0) + (Number(f[5]) || 0),
+    id: `N° ${f[0]}`, fecha: String(f[1]), detalle: 'caja', venta: Number(f[3]) || 0, costo: (Number(f[4]) || 0) + (Number(f[5]) || 0),
     ganancia: Number(f[11]) || 0, sinCosto: !!f[12],
   }));
-  return { lineas, ordenes, ventaBruta: venta, nota: desde < CORTE_CAJA ? 'Antes del 9-nov el local se cargaba en Empretienda: esos días están en Rentabilidad › Tienda (filtro Local).' : '' };
+  for (const v of emp?.ventas ?? []) ordenes.push({ id: `#${v.numero}`, fecha: v.fecha, detalle: 'Empretienda (Acordar)', venta: v.venta, costo: v.costo + v.packaging, ganancia: v.neto, sinCosto: v.sin_costo > 0 });
+  return { lineas, ordenes, ventaBruta: venta + e('venta'), nota: partes ? `Pedidos: ${partes}. Desde el 9-nov el local sale de la caja; antes, de los pedidos «Acordar» de Empretienda.` : '' };
 }
 
 async function pautaMayorista(desde: string, hasta: string) {
@@ -107,7 +120,7 @@ async function obtener(req: Request) {
     const q = new URL(req.url).searchParams;
     const canal = q.get('canal') === 'mayorista' ? 'mayorista' : 'local';
     const { desde, hasta } = rango(q.get('periodo') ?? 'mes');
-    const r = canal === 'local' ? await local(desde, hasta) : await mayorista(desde, hasta);
+    const r = canal === 'local' ? await local(desde, hasta, new URL(req.url).origin) : await mayorista(desde, hasta);
     const ganancia = r.lineas.reduce((s, l) => s + l.monto, 0);
     const ventaNeta = r.lineas[0].monto;
     return Response.json({ canal, desde, hasta, ...r, ganancia, margen: ventaNeta ? ganancia / ventaNeta : null, pedidos: r.ordenes.length,

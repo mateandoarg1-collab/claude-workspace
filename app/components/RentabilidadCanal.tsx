@@ -48,11 +48,11 @@ export default function RentabilidadCanal({ canal, titulo }: { canal: 'local' | 
         {!d && !err && <div className={`${caja} text-slate-400 text-sm`}>Cargando…</div>}
         {d && (
           <>
-            {d.nota && <div className="text-xs text-amber-300/90">{d.nota}</div>}
+            {d.nota && <div className="text-xs text-slate-400">{d.nota}</div>}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
                 ['Pedidos', d.pedidos.toLocaleString('es-AR'), d.sinCosto ? `${d.sinCosto} sin costo cargado` : ''],
-                ['Venta neta', fmt(venta), `cobrado ${fmt(d.ventaBruta)}`],
+                ['Venta neta', fmt(venta), 'sin IVA lo facturado'],
                 ['Ganancia', fmt(d.ganancia), 'variable, antes de costos fijos'],
                 ['Margen', pct(d.margen), 'ganancia ÷ venta neta'],
               ].map(([t, v, n]) => (
