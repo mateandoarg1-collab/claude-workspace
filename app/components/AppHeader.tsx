@@ -15,7 +15,9 @@ const NAV: Array<Item & { sub?: Item[] }> = [
     label: 'Rentabilidad',
     sub: [
       { href: '/rentabilidad-tienda', label: 'Tienda' },
-      { href: '/rentabilidad-meli', label: 'Mercado Libre' },
+      { href: '/rentabilidad-local', label: 'Local' },
+      { href: '/rentabilidad-meli', label: 'Meli' },
+      { href: '/rentabilidad-mayorista', label: 'Mayorista' },
     ],
   },
   {
