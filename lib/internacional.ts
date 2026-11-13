@@ -199,7 +199,8 @@ export async function internacional() {
       const netoUsd = cobradoUsd - devueltoUsd - comisionUsd;
       const envioArs = e?.ars ?? null;
       return {
-        id: c.id, fecha, cliente, pais, origen: pagina ? 'pagina' : 'aparte', pedido, productos,
+        // Los cobros viejos (2025) no traen metadata de Shopify: si Leo lo anotó con n° de pedido de la tienda, es de la página.
+        id: c.id, fecha, cliente, pais, origen: pagina || /^\d{4}$/.test(e?.pedido ?? '') ? 'pagina' : 'aparte', pedido: pedido ?? (e && /^\d{4}$/.test(e.pedido) ? `#${e.pedido}` : null), productos,
         cobradoUsd, comisionUsd, devueltoUsd, dolar,
         cobradoArs: Math.round((cobradoUsd - devueltoUsd) * dolar),
         comisionArs: Math.round(comisionUsd * dolar),
