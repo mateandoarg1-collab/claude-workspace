@@ -54,6 +54,16 @@ export default function Page() {
     [d, meses, origen],
   );
   const sueltos = (d?.sueltos ?? []).filter((s) => mes === 'todo' || s.fecha.startsWith(mes));
+  const paises = useMemo(() => {
+    const nom = new Intl.DisplayNames(['es'], { type: 'region' });
+    const m = new Map<string, Venta[]>();
+    for (const v of filtradas) { const k = v.pais || '—'; m.set(k, [...(m.get(k) ?? []), v]); }
+    return [...m].map(([k, vs]) => {
+      let n = k;
+      try { if (/^[A-Z]{2}$/.test(k)) n = nom.of(k) ?? k; } catch { /* código raro */ }
+      return { k, n, ...resumen(vs) };
+    }).sort((a, b) => b.cobradoUsd - a.cobradoUsd);
+  }, [filtradas]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -136,6 +146,35 @@ export default function Page() {
                           <td className={`py-1.5 text-right tabular-nums ${x.antesMerca < 0 ? 'text-rose-400' : 'text-emerald-300'}`}>{fmt(x.antesMerca)}<div className="text-xs text-slate-500">{x.cobrado ? pct(x.antesMerca / x.cobrado) : ''}</div></td>
                         </tr>
                       ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {!!paises.length && (
+              <div className={caja}>
+                <h2 className="text-sm font-semibold mb-3">Ranking de países</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead><tr className="text-xs text-slate-500 text-left">
+                      <th className="pb-2 font-normal">País</th><th className="pb-2 font-normal text-right">Pedidos</th>
+                      <th className="pb-2 font-normal text-right">Cobrado</th><th className="pb-2 font-normal text-right hidden sm:table-cell">Envío prom.</th>
+                      <th className="pb-2 font-normal text-right">Antes de merca.</th>
+                    </tr></thead>
+                    <tbody>
+                      {paises.map((p, i) => {
+                        const conEnvio = p.pedidos - p.sinEnvio;
+                        return (
+                          <tr key={p.k} className="border-t border-slate-800">
+                            <td className="py-1.5"><span className="text-slate-500 tabular-nums mr-2">{i + 1}</span>{p.n}</td>
+                            <td className="py-1.5 text-right tabular-nums">{p.pedidos}</td>
+                            <td className="py-1.5 text-right tabular-nums">{usd(p.cobradoUsd)}<div className="text-xs text-slate-500">{r.cobradoUsd ? pct(p.cobradoUsd / r.cobradoUsd) : ''} del total</div></td>
+                            <td className="py-1.5 text-right tabular-nums text-slate-400 hidden sm:table-cell">{conEnvio ? fmt(p.envio / conEnvio) : '–'}</td>
+                            <td className={`py-1.5 text-right tabular-nums ${p.antesMerca < 0 ? 'text-rose-400' : 'text-emerald-300'}`}>{fmt(p.antesMerca)}<div className="text-xs text-slate-500">{p.cobrado ? pct(p.antesMerca / p.cobrado) : ''}</div></td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
