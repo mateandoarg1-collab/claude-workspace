@@ -1,0 +1,523 @@
+{
+ "BOLSO MATERO BALI": {
+  "skus": [
+   "BOLS-BAL-7020"
+  ],
+  "costo_ars": 44670,
+  "duda": null
+ },
+ "BOLSO MATERO IBIZA": {
+  "skus": [
+   "BOLS-IBI-7021"
+  ],
+  "costo_ars": 41376,
+  "duda": null
+ },
+ "BOLSO MATERO TULUM": {
+  "skus": [
+   "BOLS-TUL-7022"
+  ],
+  "costo_ars": 40809,
+  "duda": null
+ },
+ "BOMBILLA CINCELADA": {
+  "skus": [
+   "BOMB-CIN-12014"
+  ],
+  "costo_ars": 2000,
+  "duda": null
+ },
+ "BOMBILLA PICO LORO - acero": {
+  "skus": [
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 1288,
+  "duda": null
+ },
+ "BOMBILLON DE ALPACA CINCELADO": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "No tengo costo del bombillón alpaca cincelado"
+ },
+ "BOMBILLON PICO REY": {
+  "skus": [
+   "BOMB-ALP-12004"
+  ],
+  "costo_ars": 17500,
+  "duda": null
+ },
+ "BOMBILLON RECTO DELUXE": {
+  "skus": [
+   "BOMB-ALP-12006"
+  ],
+  "costo_ars": 20000,
+  "duda": null
+ },
+ "CAJA DE REGALO": {
+  "skus": [
+   "PACK-CAJ-11003"
+  ],
+  "costo_ars": 4400,
+  "duda": null
+ },
+ "COMBO BOSTERO: CAMIONERO PERSONALIZADO": {
+  "skus": [
+   "MATE-CAL-1001",
+   "PERS-LAS-11017",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 15888,
+  "duda": null
+ },
+ "COMBO GALLINA: CAMIONERO PERSONALIZADO": {
+  "skus": [
+   "MATE-CAL-1001",
+   "PERS-LAS-11017",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 15888,
+  "duda": null
+ },
+ "COMBO MARADONA": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "¿Qué lleva el combo Maradona?"
+ },
+ "COMBO RACING CLUB + BOMBILLA DE REGALO": {
+  "skus": [
+   "MATE-CAL-1001",
+   "PERS-LAS-11017",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 15888,
+  "duda": null
+ },
+ "IMPERIAL DELUXE CROCO BLANCO + BOMBILLA DE REGALO": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "¿Qué mate es y cuánto cuesta? (no está en el maestro)"
+ },
+ "LATA YERBERA ALBA NUEVA BEIGE": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "No tengo costo de la lata yerbera Alba Nueva"
+ },
+ "LATA YERBERA ALBA NUEVA VERDE": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "No tengo costo de la lata yerbera Alba Nueva"
+ },
+ "MATE ACERO TÉRMICO + BOMBILLA DE REGALO": {
+  "skus": [
+   "MATE-ACE-3002",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 11288,
+  "duda": "Supuse Imperial Deluxe Acero ($10.000)"
+ },
+ "MATE ALGARROBO SOL DE MAYO ARGENTINO + BOMBILLA + CAJA DE REGALO": {
+  "skus": [
+   "MATE-MAD-2016",
+   "BOMB-ACE-12001",
+   "PACK-CAJ-11003"
+  ],
+  "costo_ars": 20688,
+  "duda": null
+ },
+ "MATE ARGENTINA CAMPEÓN DEL MUNDO": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "¿Qué mate es? (no está en el maestro)"
+ },
+ "MATE CAMIONERO DE ALGARROBO + BOMBILLA DE REGALO": {
+  "skus": [
+   "MATE-MAD-2001",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 8588,
+  "duda": null
+ },
+ "MATE CAMIONERO DELUXE CROCO MARRON OSCURO": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "No tengo costo del camionero deluxe croco"
+ },
+ "MATE CAMIONERO PREMIUM  MARRON SUELA + BOMBILLA DE REGALO": {
+  "skus": [
+   "MATE-CAL-1002",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 14788,
+  "duda": null
+ },
+ "MATE CAMIONERO PREMIUM + BOMBILLA DE REGALO": {
+  "skus": [
+   "MATE-CAL-1001",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 14788,
+  "duda": null
+ },
+ "MATE CAMIONERO PREMIUM - CAMINO A LA COPA DEL MUNDO": {
+  "skus": [
+   "MATE-CAL-1001",
+   "PERS-LAS-11017",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 15888,
+  "duda": null
+ },
+ "MATE CAMIONERO PREMIUM PERSONALIZADO + BOMBILLA DE REGALO": {
+  "skus": [
+   "MATE-CAL-1001",
+   "PERS-LAS-11017",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 15888,
+  "duda": null
+ },
+ "MATE DE ALGARROBO MUU + BOMBILLA PICO LORO": {
+  "skus": [
+   "DISC-MUU-ORIG",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 41500,
+  "duda": null
+ },
+ "MATE DE CERÁMICA ESMALTADA": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "No tengo costo del mate de cerámica esmaltada"
+ },
+ "MATE GALLETA CUERO CROCO PREMIUM + BOMBILLA DE REGALO": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "No tengo costo del galleta croco"
+ },
+ "MATE IMPERIAL ALGARROBO ENCERADO + BOMBILLA DE REGALO": {
+  "skus": [
+   "MATE-MAD-2010",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 12188,
+  "duda": null
+ },
+ "MATE IMPERIAL DELUXE LISO + BOMBILLA DE REGALO": {
+  "skus": [
+   "MATE-ACE-3002",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 11288,
+  "duda": null
+ },
+ "MATE IMPERIAL DELUXE ROSA": {
+  "skus": [
+   "MATE-ACE-3002"
+  ],
+  "costo_ars": 10000,
+  "duda": "Usé el costo del Imperial Deluxe negro ($10.000)"
+ },
+ "MATE IMPERIAL PREMIUM CINCELADO + BOMBILLA DE REGALO": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "No tengo costo del imperial cincelado"
+ },
+ "MATE IMPERIAL PREMIUM LISO (GUARDA PAMPA) + BOMBILLA DE REGALO": {
+  "skus": [
+   "MATE-CAL-1019",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 18288,
+  "duda": null
+ },
+ "MATE IMPERIAL PREMIUM PERSONALIZADO + BOMBILLA DE REGALO": {
+  "skus": [
+   "MATE-CAL-1019",
+   "PERS-LAS-11017",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 19388,
+  "duda": null
+ },
+ "MATE IMPERIAL SOL DE MAYO PREMIUM + BOMBILLA PICO DE LORO": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "No tengo costo del Imperial Sol de Mayo cuero"
+ },
+ "MATE LISTO AUTOCEBANTE": {
+  "skus": [
+   "AUTO-MAT-6001"
+  ],
+  "costo_ars": 15295,
+  "duda": null
+ },
+ "MATE TORPEDO CROCO CINCELADO MARRÓN + BOMBILLA PICO LORO": {
+  "skus": [
+   "MATE-CAL-1034",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 24500,
+  "duda": null
+ },
+ "MATE TORPEDO CROCO CINCELADO NEGRO + BOMBILLA PICO LORO": {
+  "skus": [
+   "MATE-CAL-1033",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 24500,
+  "duda": null
+ },
+ "MATE TORPEDO PREMIUM + BOMBILLA PICO LORO": {
+  "skus": [
+   "MATE-CAL-1004",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 14788,
+  "duda": null
+ },
+ "MATE VACA RANCHERO + BOMBILLA PICO LORO": {
+  "skus": [
+   "MATE-MAD-2003",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 19188,
+  "duda": null
+ },
+ "MATE VACA RANCHERO 4.0 ROSE QUARTZ + BOMBILLA PICO LORO": {
+  "skus": [
+   "MATE-MAD-2015",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 20688,
+  "duda": null
+ },
+ "MATERA DE CUERO GRUESO ALTA CALIDAD 4x4": {
+  "skus": [
+   "CANA-4x4-7006"
+  ],
+  "costo_ars": 29325,
+  "duda": null
+ },
+ "MOCHILA MATEANDO OUTDOOR": {
+  "skus": [
+   "MOCHI-NEG-7012"
+  ],
+  "costo_ars": 36300,
+  "duda": null
+ },
+ "Mate Imperial PREMIUM LISO (GUARDA ABSTRACTA) + BOMBILLA DE REGALO": {
+  "skus": [
+   "MATE-CAL-1019",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 18288,
+  "duda": null
+ },
+ "PORTA MATE RUTERO": {
+  "skus": [
+   "RUTE-NEG-7023"
+  ],
+  "costo_ars": 10640,
+  "duda": null
+ },
+ "SET ALGARROBO: CAMIONERO + TERMO MEDIA MANIJA + BOMBILLA DE REGALO": {
+  "skus": [
+   "MATE-MAD-2001",
+   "TER-ACE-5009",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 19088,
+  "duda": null
+ },
+ "SET DE MATE ACERO + TERMO MEDIA MANIJA": {
+  "skus": [
+   "MATE-ACE-3002",
+   "TER-ACE-5009"
+  ],
+  "costo_ars": 20500,
+  "duda": null
+ },
+ "SET DE MATE IMPERIAL + TERMO MEDIA MANIJA + BOMBILLA DE REGALO": {
+  "skus": [
+   "MATE-CAL-1019",
+   "TER-ACE-5009",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 28788,
+  "duda": null
+ },
+ "SET DE MATE TORPEDO + TERMO MEDIA MANIJA": {
+  "skus": [
+   "MATE-CAL-1004",
+   "TER-ACE-5009",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 25288,
+  "duda": "Supuse que lleva bombilla"
+ },
+ "SET MATE CAMIONERO + TERMO MEDIA MANIJA + BOMBILLA DE REGALO": {
+  "skus": [
+   "MATE-CAL-1001",
+   "TER-ACE-5009",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 25288,
+  "duda": null
+ },
+ "SET MATERO ARGENTINO": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "¿Qué lleva el Set Matero Argentino?"
+ },
+ "SET MATERO MEGACOMPLETO MATEANDO - CON TORPEDO-": {
+  "skus": [
+   "MATE-CAL-1004",
+   "TER-ACE-5009",
+   "BOMB-ACE-12001",
+   "CANA-4x4-7006",
+   "YERB-CUE-8001"
+  ],
+  "costo_ars": 62613,
+  "duda": "Supuse mate + termo MM + bombilla + canasta 4x4 + yerbera cuero"
+ },
+ "SET MATERO MEGACOMPLETO MATEANDO -CON CAMIONERO-": {
+  "skus": [
+   "MATE-CAL-1001",
+   "TER-ACE-5009",
+   "BOMB-ACE-12001",
+   "CANA-4x4-7006",
+   "YERB-CUE-8001"
+  ],
+  "costo_ars": 62613,
+  "duda": "Ídem megacompleto"
+ },
+ "SET MATERO MEGACOMPLETO MATEANDO IMPERIAL": {
+  "skus": [
+   "MATE-CAL-1019",
+   "TER-ACE-5009",
+   "BOMB-ACE-12001",
+   "CANA-4x4-7006",
+   "YERB-CUE-8001"
+  ],
+  "costo_ars": 66113,
+  "duda": "Ídem megacompleto"
+ },
+ "SET MEGACOMPLETO OUTDOOR - CON IMPERIAL -": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "¿Qué lleva el Set Megacompleto Outdoor?"
+ },
+ "SET MEGACOMPLETO OUTDOOR -CON CAMIONERO-": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "¿Qué lleva el Set Megacompleto Outdoor?"
+ },
+ "SET MEGACOMPLETO OUTDOOR -CON MATE ACÉRO TÉRMICO-": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "¿Qué lleva el Set Megacompleto Outdoor?"
+ },
+ "SET MEGACOMPLETO OUTDOOR -CON MATE ALGARROBO-": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "¿Qué lleva el Set Megacompleto Outdoor?"
+ },
+ "SET MEGACOMPLETO OUTDOOR -CON TORPEDO-": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "¿Qué lleva el Set Megacompleto Outdoor?"
+ },
+ "SET VACA RANCHERO 4.0 ROSE QUARTZ + TERMO MATEANDO 1 L + BOMBILLA": {
+  "skus": [
+   "MATE-MAD-2015",
+   "TER-MAT-5002",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 38688,
+  "duda": null
+ },
+ "SUPERCOMBO BOSTERO: MATE, TERMO y BOMBILLA": {
+  "skus": [
+   "MATE-CAL-1001",
+   "PERS-LAS-11017",
+   "TER-ACE-5009",
+   "BOMB-ACE-12001"
+  ],
+  "costo_ars": 26388,
+  "duda": "Supuse camionero grabado + termo MM + bombilla"
+ },
+ "TAPON CEBADOR STANLEY": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "No tengo costo del tapón cebador Stanley"
+ },
+ "TERMO MATEANDO MEDIA MANIJA": {
+  "skus": [
+   "TER-ACE-5009"
+  ],
+  "costo_ars": 10500,
+  "duda": null
+ },
+ "TERMO TERMOLAR REVOLUTION 1LT ACERO INOXIDABLE": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "No tengo costo del Termolar Revolution"
+ },
+ "TORPEDO CINCELADO": {
+  "skus": [
+   "MATE-CAL-1033"
+  ],
+  "costo_ars": 23212,
+  "duda": null
+ },
+ "TOTE MATERA MATEANDO CAMPEONES DEL MUNDO": {
+  "skus": [
+   "BOLS-TOT-7016"
+  ],
+  "costo_ars": 35550,
+  "duda": null
+ },
+ "YERBA ALBA NUEVA SUAVE": {
+  "skus": [
+   "ALBA-SUA-13014"
+  ],
+  "costo_ars": 1500,
+  "duda": null
+ },
+ "YERBA ALBA NUEVA TRADICIONAL": {
+  "skus": [
+   "ALBA-TRA-13013"
+  ],
+  "costo_ars": 1500,
+  "duda": null
+ },
+ "YERBA CANARIAS 500gr.": {
+  "skus": [
+   "CANA-TRA-13003"
+  ],
+  "costo_ars": 3566,
+  "duda": null
+ },
+ "YERBA PLAYADITO 500 GR X 10 PAQUETES": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "No tengo costo de Playadito x10"
+ },
+ "YERBA TARAGUI 500 GR X 10 PAQUETES": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "No tengo costo de Taragüi x10"
+ },
+ "YERBERA PREMIUM CUERO": {
+  "skus": [
+   "YERB-CUE-8001"
+  ],
+  "costo_ars": 8000,
+  "duda": null
+ },
+ "YERBERA TAMBO": {
+  "skus": [],
+  "costo_ars": null,
+  "duda": "No tengo costo de la yerbera Tambo"
+ }
+}

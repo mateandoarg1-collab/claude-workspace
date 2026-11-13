@@ -18,6 +18,7 @@ const NAV: Array<Item & { sub?: Item[] }> = [
       { href: '/rentabilidad-local', label: 'Local' },
       { href: '/rentabilidad-meli', label: 'Meli' },
       { href: '/rentabilidad-mayorista', label: 'Mayorista' },
+      { href: '/internacional', label: 'Internacional' },
     ],
   },
   {
