@@ -33,7 +33,7 @@ export type Venta = {
   gananciaArs: number | null;
 };
 
-export type EnvioSuelto = { fecha: string; pedido: string; cliente: string; pais: string; envioArs: number };
+export type EnvioSuelto = { fecha: string; pedido: string; cliente: string; pais: string; envioArs: number; motivo?: string };
 
 const norm = (s: string) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z ]/g, ' ').split(/\s+/).filter((w) => w.length > 2);
@@ -211,7 +211,11 @@ export async function internacional() {
   // Envíos de Leo sin cobro en Stripe (ventas cobradas por otro lado, regalos, China, etc.)
   const sueltos: EnvioSuelto[] = env
     .filter((x) => !x.usado)
-    .map((x) => ({ fecha: x.fecha, pedido: x.pedido, cliente: x.cliente, pais: x.pais, envioArs: x.ars }));
+    .map((x) => ({
+      fecha: x.fecha, pedido: x.pedido, cliente: x.cliente, pais: x.pais, envioArs: x.ars,
+      // Lo que va a China son muestras para la fábrica (Tim / Claire), no ventas (Juampi, 13-nov-2026).
+      motivo: /china/i.test(x.pais) ? 'Muestras para la fábrica' : undefined,
+    }));
 
   return { ventas: ventas.reverse(), sueltos: sueltos.reverse(), dolarHoy: dol.hoy, actualizado: new Date().toISOString() };
 }

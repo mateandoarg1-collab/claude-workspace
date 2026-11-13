@@ -222,7 +222,8 @@ export default function Page() {
                   <table className="w-full text-sm"><tbody>
                     {sueltos.map((s, i) => (
                       <tr key={i} className="border-t border-slate-800 first:border-0">
-                        <td className="py-1.5 pr-2">{s.cliente || '—'} <span className="text-xs text-slate-500">{ddmm(s.fecha)} · {s.pais}{s.pedido ? ` · ${s.pedido}` : ''}</span></td>
+                        <td className="py-1.5 pr-2">{s.cliente || '—'} <span className="text-xs text-slate-500">{ddmm(s.fecha)} · {s.pais}{s.pedido && !/china/i.test(s.pedido) ? ` · ${s.pedido}` : ''}</span>
+                          {s.motivo && <span className="ml-1 text-[10px] uppercase tracking-wide rounded bg-violet-500/15 text-violet-300 px-1.5 py-0.5">{s.motivo}</span>}</td>
                         <td className="py-1.5 text-right tabular-nums text-slate-400">{fmt(s.envioArs)}</td>
                       </tr>
                     ))}
