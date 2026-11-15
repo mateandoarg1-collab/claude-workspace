@@ -3,7 +3,8 @@ import { resumen, agregarFilas, catalogo, parsearSkus, ahoraAR, MOV, MOV_COLS, E
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
-// API del stock del depósito (/stock). Acceso libre (pedido de Juampi, 15-nov-2026).
+// API del stock del depósito. La usa la app aparte mateando-stock.vercel.app (repo mateandoarg1-collab/mateando-stock,
+// rewrite de /api/stock a esta ruta). Acceso libre (pedido de Juampi, 15-nov-2026).
 // GET → stock por SKU, últimos movimientos y ventas sin traducir.
 // POST {accion:'mov', tipo, quien, nota, items:[{sku, cant}]} → carga movimientos.
 // POST {accion:'eq', canal, clave, descripcion, skus} → guarda una equivalencia (publicación → SKUs).

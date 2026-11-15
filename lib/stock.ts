@@ -2,7 +2,7 @@ import { google } from 'googleapis';
 import { getAuth } from './sheets';
 import { getToken } from './shopify';
 
-// Stock del depósito (/stock). Todo vive en la planilla "Costos JP - meli" de Juampi:
+// Stock del depósito (app aparte mateando-stock.vercel.app → /api/stock). Todo vive en la planilla "Costos JP - meli" de Juampi:
 // - Catálogo: una pestaña por categoría (col A nombre, col F SKU maestro).
 // - "Stock Movimientos": lo que cargan los chicos (Conteo, Ingreso, Salida Full, Ajuste).
 // - "Stock Equivalencias": publicación de MeLi / Shopify / producto mayorista → SKUs (los completa la página).
