@@ -15,7 +15,7 @@ const API_VERSION = '2026-10';
 
 let cached: { token: string; expires: number } | null = null;
 
-async function getToken() {
+export async function getToken() {
   if (cached && cached.expires > Date.now() + 60_000) return cached.token;
   const r = await fetch(`https://${SHOP}/admin/oauth/access_token`, {
     method: 'POST',

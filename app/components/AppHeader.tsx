@@ -37,6 +37,7 @@ const NAV: Array<Item & { sub?: Item[] }> = [
     label: 'Logística',
     sub: [
       { href: '/envios', label: 'Envíos' },
+      { href: '/stock', label: 'Stock depósito' },
       { href: '/despacho', label: 'Despacho' },
       { href: '/posventa', label: 'Posventa' },
     ],
