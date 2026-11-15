@@ -176,44 +176,20 @@ export type FilaStock = Producto & {
   stock: number | null; ritmo: number; dias: number | null; ultimoIngreso: string;
 };
 
-// Foto de cada SKU (pestaña "Stock Fotos": sku | foto | origen). Se completa con actualizarFotos(); lo que se
-// cargue a mano (origen "manual" o cualquier otro que no sea automático) no se pisa.
+// Foto de cada SKU (pestaña "Stock Fotos": sku | foto | origen). El 15-nov-2026 se cargaron las de Shopify (la app del
+// panel no tiene read_products: se bajaron con el conector de Shopify de Claude) y las de las publicaciones de Empretienda
+// (emp_productos traducidas con scripts/cmv/reglas.py). Las que faltan las sacan los chicos desde la app ("manual").
 async function fotos(): Promise<Map<string, string>> {
   return new Map((await leer(STOCK_ID, `'${FOTOS}'!A2:B`)).filter((f) => f[0] && f[1]).map((f) => [skuExcel(String(f[0])), String(f[1])]));
 }
 
-async function fotosShopify(): Promise<Map<string, string>> {
-  const token = await getToken();
-  const query = `query($after: String) { productVariants(first: 250, after: $after) { pageInfo { hasNextPage endCursor }
-    nodes { sku media(first: 1) { nodes { preview { image { url(transform: {maxWidth: 240}) } } } }
-      product { featuredMedia { preview { image { url(transform: {maxWidth: 240}) } } } } } } }`;
-  const out = new Map<string, string>();
-  let after: string | null = null;
-  do {
-    const r: Response = await fetch('https://mateando-argentina.myshopify.com/admin/api/2026-10/graphql.json', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': token }, body: JSON.stringify({ query, variables: { after } }), cache: 'no-store',
-    });
-    const d = await r.json();
-    if (d.errors) throw new Error(`Shopify fotos: ${JSON.stringify(d.errors).slice(0, 300)}`);
-    for (const v of d.data.productVariants.nodes) {
-      if (!v.sku) continue;
-      const url = v.media?.nodes?.[0]?.preview?.image?.url ?? v.product?.featuredMedia?.preview?.image?.url;
-      const k = skuExcel(v.sku);
-      if (url && (!out.has(k) || v.media?.nodes?.length)) out.set(k, url); // la foto de la variante le gana a la del producto
-    }
-    after = d.data.productVariants.pageInfo.hasNextPage ? d.data.productVariants.pageInfo.endCursor : null;
-  } while (after);
-  return out;
-}
-
-export async function actualizarFotos() {
-  const [cat, previas, shop] = await Promise.all([catalogo(), leer(STOCK_ID, `'${FOTOS}'!A2:C`), fotosShopify()]);
-  const manual = new Map(previas.filter((f) => f[0] && f[1] && f[2] !== 'shopify').map((f) => [skuExcel(String(f[0])), [String(f[1]), String(f[2] || 'manual')]]));
-  const filas = cat.map((p) => manual.has(p.sku) ? [p.sku, ...manual.get(p.sku)!] : shop.has(p.sku) ? [p.sku, shop.get(p.sku)!, 'shopify'] : [p.sku, '', '']);
+// Guarda la foto de un SKU: URL o imagen chica (data:image/jpeg;base64, la achica el celular a ~240 px) sacada desde la app.
+export async function guardarFoto(sku: string, foto: string) {
   await asegurar(FOTOS, FOTOS_COLS);
-  await sheets().spreadsheets.values.clear({ spreadsheetId: STOCK_ID, range: `'${FOTOS}'!A2:C` });
-  await sheets().spreadsheets.values.update({ spreadsheetId: STOCK_ID, range: `'${FOTOS}'!A2`, valueInputOption: 'RAW', requestBody: { values: filas } });
-  return { total: filas.length, conFoto: filas.filter((f) => f[1]).length, sinFoto: filas.filter((f) => !f[1]).map((f) => f[0]) };
+  const filas = await leer(STOCK_ID, `'${FOTOS}'!A2:A`);
+  const i = filas.findIndex((f) => skuExcel(String(f[0] ?? '')) === sku);
+  if (i < 0) return agregarFilas(FOTOS, FOTOS_COLS, [[sku, foto, 'manual']]);
+  await sheets().spreadsheets.values.update({ spreadsheetId: STOCK_ID, range: `'${FOTOS}'!A${i + 2}:C${i + 2}`, valueInputOption: 'RAW', requestBody: { values: [[sku, foto, 'manual']] } });
 }
 
 export async function resumen() {

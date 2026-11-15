@@ -1,4 +1,4 @@
-import { resumen, actualizarFotos, agregarFilas, catalogo, parsearSkus, skuExcel, ahoraAR, MOV, MOV_COLS, EQ, EQ_COLS, TIPOS } from '@/lib/stock';
+import { resumen, guardarFoto, agregarFilas, catalogo, parsearSkus, skuExcel, ahoraAR, MOV, MOV_COLS, EQ, EQ_COLS, TIPOS } from '@/lib/stock';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -8,13 +8,12 @@ export const maxDuration = 60;
 // GET → stock por SKU, últimos movimientos y ventas sin traducir.
 // POST {accion:'mov', tipo, quien, nota, items:[{sku, cant}]} → carga movimientos.
 // POST {accion:'eq', canal, clave, descripcion, skus} → guarda una equivalencia (publicación → SKUs).
+// POST {accion:'foto', sku, foto} → guarda la foto de un producto (imagen chica en base64 o URL).
 const txt = (x: unknown, max = 200) => String(x ?? '').trim().slice(0, max);
 const no = (error: string) => Response.json({ error }, { status: 400 });
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    // ?fotos=actualizar → vuelve a buscar en Shopify la foto de cada SKU (pestaña "Stock Fotos"; no pisa las manuales)
-    if (new URL(req.url).searchParams.get('fotos') === 'actualizar') return Response.json(await actualizarFotos(), { headers: { 'cache-control': 'no-store' } });
     return Response.json(await resumen(), { headers: { 'cache-control': 'no-store' } });
   } catch (e) {
     return Response.json({ error: String((e as Error).message ?? e) }, { status: 500 });
@@ -54,6 +53,15 @@ export async function POST(req: Request) {
     const falta = lista.find(([s]) => !cat.has(skuExcel(s)));
     if (falta) return no(`SKU desconocido: ${falta[0]}`);
     await agregarFilas(EQ, EQ_COLS, [[canal, txt(b.clave, 300), txt(b.descripcion, 300), skus, ahoraAR()]]);
+    return Response.json({ ok: true });
+  }
+  if (b.accion === 'foto') {
+    const sku = txt(b.sku, 40).toUpperCase();
+    const foto = String(b.foto ?? '');
+    if (!(await catalogo()).some((p) => p.sku === sku)) return no(`SKU desconocido: ${sku}`);
+    if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(foto) && !/^https:\/\/\S+$/.test(foto)) return no('Foto inválida');
+    if (foto.length > 45000) return no('La foto es muy pesada');
+    await guardarFoto(sku, foto);
     return Response.json({ ok: true });
   }
   return no('Acción inválida');
