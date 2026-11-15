@@ -23,7 +23,14 @@ const ventas = crudas
   .map((r) => ({ id: String(r[col.order_id]), dia: diaAR(r[col.fecha]), local: Number(r[col.pago_metodo]) === 3, productos: JSON.parse(r[col.productos] || '[]') }));
 const primerDia = ventas.reduce((m, v) => (v.dia < m ? v.dia : m), '9999-12-31');
 
-const out = JSON.parse(execFileSync('python3', [new URL('./cmv/piezas_orden.py', import.meta.url).pathname], { input: JSON.stringify(ventas), encoding: 'utf8', maxBuffer: 64 << 20 }));
+// Equivalencias canal Tienda revisadas en mateando-stock (pestaña "Stock Equivalencias"): mandan sobre las reglas del CMV.
+const eq = {};
+for (const f of (await sheets.spreadsheets.values.get({ spreadsheetId: STOCK, range: "'Stock Equivalencias'!A2:D" })).data.values ?? []) {
+  if (f[0] !== 'Tienda' || !f[3]) continue;
+  const t = String(f[3]).trim().toUpperCase();
+  eq[f[1]] = t === '-' ? [] : t.split('+').map((p) => { const m = p.trim().match(/^(\S+?)(?:\s*\*\s*(\d+))?$/); return [m[1], Number(m[2] ?? 1)]; });
+}
+const out = JSON.parse(execFileSync('python3', [new URL('./cmv/piezas_orden.py', import.meta.url).pathname], { input: JSON.stringify({ ventas, eq }), encoding: 'utf8', maxBuffer: 64 << 20 }));
 
 async function tab(nombre, encabezado) {
   const hojas = (await sheets.spreadsheets.get({ spreadsheetId: STOCK, fields: 'sheets.properties.title' })).data.sheets.map((h) => h.properties.title);
@@ -50,7 +57,7 @@ const viejas = previas.filter((r) => String(r[0]) < primerDia);
 await escribir(TAB, ENC, [...viejas, ...out.piezas]);
 
 const TAB_REV = 'stock_revisar_emp';
-const ENC_REV = ['canal', 'publicacion', 'variante', 'unidades'];
+const ENC_REV = ['canal', 'publicacion', 'variante', 'unidades', 'clave'];
 await tab(TAB_REV, ENC_REV);
 await escribir(TAB_REV, ENC_REV, out.revisar.sort((a, b) => b[3] - a[3]));
 console.log(`stock_salidas_emp: ${viejas.length} filas viejas + ${out.piezas.length} desde ${primerDia}; sin regla: ${out.revisar.length}`);

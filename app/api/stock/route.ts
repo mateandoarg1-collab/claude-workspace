@@ -1,21 +1,22 @@
-import { resumen, guardarFoto, editarProducto, agregarFilas, catalogo, parsearSkus, skuExcel, ahoraAR, MOV, MOV_COLS, EQ, EQ_COLS, TIPOS } from '@/lib/stock';
+import { resumen, guardarFoto, editarProducto, agregarFilas, catalogo, parsearSkus, skuExcel, ahoraAR, listaEquivalencias, guardarEquivalencia, MOV, MOV_COLS, TIPOS, CANALES_EQ } from '@/lib/stock';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 // API del stock del depósito. La usa la app aparte mateando-stock.vercel.app (repo mateandoarg1-collab/mateando-stock,
 // rewrite de /api/stock a esta ruta). Acceso libre (pedido de Juampi, 15-nov-2026).
-// GET → stock por SKU, últimos movimientos y ventas sin traducir.
+// GET → stock por SKU, últimos movimientos y ventas sin traducir. GET ?vista=eq → todas las equivalencias + catálogo con fotos.
 // POST {accion:'mov', tipo, quien, nota, items:[{sku, cant}]} → carga movimientos.
-// POST {accion:'eq', canal, clave, descripcion, skus} → guarda una equivalencia (publicación → SKUs).
+// POST {accion:'eq', canal, clave, descripcion, skus, quien} → crea o corrige una equivalencia (publicación → SKUs) y la marca revisada por quien.
 // POST {accion:'producto', sku, costo?, proveedores?:[p1,p2], quien} → cambia costo/proveedores en el Excel (log en "Stock Cambios").
 // POST {accion:'foto', sku, foto} → guarda la foto de un producto (imagen chica en base64 o URL).
 const txt = (x: unknown, max = 200) => String(x ?? '').trim().slice(0, max);
 const no = (error: string) => Response.json({ error }, { status: 400 });
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    return Response.json(await resumen(), { headers: { 'cache-control': 'no-store' } });
+    const vista = new URL(req.url).searchParams.get('vista');
+    return Response.json(vista === 'eq' ? await listaEquivalencias() : await resumen(), { headers: { 'cache-control': 'no-store' } });
   } catch (e) {
     return Response.json({ error: String((e as Error).message ?? e) }, { status: 500 });
   }
@@ -46,14 +47,18 @@ export async function POST(req: Request) {
   }
   if (b.accion === 'eq') {
     const canal = txt(b.canal, 20);
-    if (!['MeLi', 'Shopify', 'Mayorista'].includes(canal)) return no('Canal inválido');
+    if (!CANALES_EQ.includes(canal)) return no('Canal inválido');
+    const quien = txt(b.quien, 40);
+    if (!quien) return no('Falta quién revisa');
     const skus = txt(b.skus, 300).toUpperCase();
     const lista = parsearSkus(skus);
     if (!lista) return no('Formato: SKU o SKU + SKU*2, o "-" si no descuenta');
     const cat = new Set((await catalogo()).map((p) => p.sku));
     const falta = lista.find(([s]) => !cat.has(skuExcel(s)));
     if (falta) return no(`SKU desconocido: ${falta[0]}`);
-    await agregarFilas(EQ, EQ_COLS, [[canal, txt(b.clave, 300), txt(b.descripcion, 300), skus, ahoraAR()]]);
+    const clave = txt(b.clave, 300);
+    if (!clave) return no('Falta la publicación');
+    await guardarEquivalencia({ canal, clave, descripcion: txt(b.descripcion, 300), skus: lista.map(([s, c]) => (c === 1 ? s : `${s}*${c}`)).join(' + ') || '-', revisado: quien });
     return Response.json({ ok: true });
   }
   if (b.accion === 'producto') {

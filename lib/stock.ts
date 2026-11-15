@@ -16,7 +16,11 @@ const NO_CATALOGO = new Set(['BASE scalify', 'Hoja 22']);
 export const MOV = 'Stock Movimientos';
 export const MOV_COLS = ['fecha', 'tipo', 'sku', 'producto', 'cant', 'quien', 'nota'];
 export const EQ = 'Stock Equivalencias';
-export const EQ_COLS = ['canal', 'clave', 'descripcion', 'skus', 'actualizado'];
+// revisado = quién la confirmó (vacío = sugerencia automática de scripts/stock/sugerir.py, igual se usa); dudoso = la sugerencia adivinó algo.
+// Canal Tienda = publicaciones de Empretienda (online + local), clave NOMBRE|VARIANTE sin opciones de bombilla/caja/bolsa/grabado
+// (esas las suma reglas.extras). La usa scripts/cmv/piezas_orden.py antes que las reglas.
+export const EQ_COLS = ['canal', 'clave', 'descripcion', 'skus', 'actualizado', 'revisado', 'dudoso', 'ventas90', 'foto', 'link'];
+export const CANALES_EQ = ['MeLi', 'Tienda', 'Shopify', 'Mayorista'];
 export const TIPOS = ['Conteo', 'Ingreso', 'Salida Full', 'Ajuste'] as const;
 export const FOTOS = 'Stock Fotos';
 export const FOTOS_COLS = ['sku', 'foto', 'origen'];
@@ -204,7 +208,7 @@ async function ventas(desde: string, skus: Set<string>) {
     }
   }
   for (const l of shop) traducir(l.dia, 'Shopify', l.sku || l.desc, l.desc, l.cant, l.sku && skuExcel(l.sku));
-  const empRev = (await leer(STOCK_ID, "'stock_revisar_emp'!A2:D")).map((f) => ({ canal: `${f[0]} (regla)`, clave: '', descripcion: [f[1], f[2]].filter(Boolean).join(' — '), unidades: Number(f[3]) || 0 }));
+  const empRev = (await leer(STOCK_ID, "'stock_revisar_emp'!A2:E")).map((f) => ({ canal: 'Tienda', clave: String(f[4] ?? ''), descripcion: [f[1], f[2]].filter(Boolean).join(' — '), unidades: Number(f[3]) || 0 }));
   return { ventas: out, sinTraducir: [...sin.values(), ...empRev].sort((a, b) => b.unidades - a.unidades), errores };
 }
 
@@ -266,4 +270,27 @@ export async function resumen() {
   });
   const proveedores = [...new Set(cat.flatMap((p) => p.proveedores))].sort((a, b) => a.localeCompare(b));
   return { actualizado: ahoraAR(), proveedores, filas, ultimos: movs.slice(-40).reverse(), sinTraducir: v.sinTraducir.slice(0, 150), errores: v.errores };
+}
+
+export type Equivalencia = { fila: number; canal: string; clave: string; descripcion: string; skus: string; actualizado: string; revisado: string; dudoso: boolean; ventas90: number; foto: string; link: string };
+
+// Todas las equivalencias (para la pestaña Equivalencias de la app) + las ventas que no tienen ninguna.
+export async function listaEquivalencias() {
+  const [filas, cat, fts] = await Promise.all([leer(STOCK_ID, `'${EQ}'!A2:J`), catalogo(), fotos()]);
+  const eq: Equivalencia[] = filas.map((f, i) => ({ fila: i + 2, canal: String(f[0] ?? ''), clave: String(f[1] ?? ''), descripcion: String(f[2] ?? ''), skus: String(f[3] ?? ''),
+    actualizado: String(f[4] ?? ''), revisado: String(f[5] ?? ''), dudoso: f[6] === 'SI', ventas90: Number(f[7]) || 0, foto: String(f[8] ?? ''), link: String(f[9] ?? '') })).filter((e) => e.canal);
+  const productos = cat.map((p) => ({ sku: p.sku, nombre: p.nombre, categoria: p.categoria, foto: fts.get(p.sku) ?? '' }));
+  return { eq, productos };
+}
+
+// Crea o actualiza (misma fila) la equivalencia canal|clave. revisado = quién la confirma.
+export async function guardarEquivalencia(e: { canal: string; clave: string; descripcion: string; skus: string; revisado: string }) {
+  await asegurar(EQ, EQ_COLS);
+  const filas = await leer(STOCK_ID, `'${EQ}'!A2:J`);
+  const i = filas.findIndex((f) => String(f[0]) === e.canal && String(f[1]) === e.clave);
+  const ahora = ahoraAR();
+  if (i < 0) return agregarFilas(EQ, EQ_COLS, [[e.canal, e.clave, e.descripcion, e.skus, ahora, e.revisado ? `${e.revisado} ${ahora}` : '', '', '', '', '']]);
+  const f = filas[i];
+  await sheets().spreadsheets.values.update({ spreadsheetId: STOCK_ID, range: `'${EQ}'!A${i + 2}:G${i + 2}`, valueInputOption: 'RAW',
+    requestBody: { values: [[e.canal, e.clave, String(f[2] || e.descripcion), e.skus, ahora, e.revisado ? `${e.revisado} ${ahora}` : '', '']] } });
 }
