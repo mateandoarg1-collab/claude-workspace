@@ -276,7 +276,8 @@ export type Equivalencia = { fila: number; canal: string; clave: string; descrip
 
 // Todas las equivalencias (para la pestaña Equivalencias de la app) + las ventas que no tienen ninguna.
 export async function listaEquivalencias() {
-  const [filas, cat, fts] = await Promise.all([leer(STOCK_ID, `'${EQ}'!A2:J`), catalogo(), fotos()]);
+  // lectura directa (sin el catch de leer): si Google corta por cuota, mejor un error que mostrar la lista vacía
+  const [filas, cat, fts] = await Promise.all([sheets().spreadsheets.values.get({ spreadsheetId: STOCK_ID, range: `'${EQ}'!A2:J`, valueRenderOption: 'UNFORMATTED_VALUE' }).then((r) => r.data.values ?? []), catalogo(), fotos()]);
   const eq: Equivalencia[] = filas.map((f, i) => ({ fila: i + 2, canal: String(f[0] ?? ''), clave: String(f[1] ?? ''), descripcion: String(f[2] ?? ''), skus: String(f[3] ?? ''),
     actualizado: String(f[4] ?? ''), revisado: String(f[5] ?? ''), dudoso: f[6] === 'SI', ventas90: Number(f[7]) || 0, foto: String(f[8] ?? ''), link: String(f[9] ?? '') })).filter((e) => e.canal);
   const productos = cat.map((p) => ({ sku: p.sku, nombre: p.nombre, categoria: p.categoria, foto: fts.get(p.sku) ?? '' }));
