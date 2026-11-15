@@ -1,4 +1,4 @@
-import { resumen, agregarFilas, catalogo, parsearSkus, ahoraAR, MOV, MOV_COLS, EQ, EQ_COLS, TIPOS } from '@/lib/stock';
+import { resumen, agregarFilas, catalogo, parsearSkus, skuExcel, ahoraAR, MOV, MOV_COLS, EQ, EQ_COLS, TIPOS } from '@/lib/stock';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     const lista = parsearSkus(skus);
     if (!lista) return no('Formato: SKU o SKU + SKU*2, o "-" si no descuenta');
     const cat = new Set((await catalogo()).map((p) => p.sku));
-    const falta = lista.find(([s]) => !cat.has(s) && s !== 'BOMB-ACE-12002');
+    const falta = lista.find(([s]) => !cat.has(skuExcel(s)));
     if (falta) return no(`SKU desconocido: ${falta[0]}`);
     await agregarFilas(EQ, EQ_COLS, [[canal, txt(b.clave, 300), txt(b.descripcion, 300), skus, ahoraAR()]]);
     return Response.json({ ok: true });

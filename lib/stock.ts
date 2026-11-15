@@ -19,7 +19,10 @@ export const EQ = 'Stock Equivalencias';
 export const EQ_COLS = ['canal', 'clave', 'descripcion', 'skus', 'actualizado'];
 export const TIPOS = ['Conteo', 'Ingreso', 'Salida Full', 'Ajuste'] as const;
 const VENTANA = 30; // días para el ritmo de venta
-const SKU_RX = /^[A-Z]+-[A-Z0-9]+-\d+$/i;
+const SKU_RX = /^[A-Z]+-[A-Z0-9]+(-[A-Z0-9]+)?$/i; // MATE-CAL-1001, y también MATE-PIEL o MATE-KIT-1L
+// SKUs de las reglas / Shopify que en el Excel de Juampi tienen otro código (mismo producto). Todo en mayúsculas.
+const ALIAS: Record<string, string> = { 'BOMB-ACE-12002': 'BOMB-ACE-12001', 'ACCE-ALM-10008': 'ACCE-ALM-10009', 'ACCE-KIT-10009': 'ACCE-KIT-10010' };
+export const skuExcel = (s: string) => { const u = s.trim().toUpperCase(); return ALIAS[u] ?? u; };
 
 const sheets = () => google.sheets({ version: 'v4', auth: getAuth() });
 const hoyAR = () => new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10);
@@ -80,7 +83,7 @@ export function parsearSkus(txt: string): [string, number][] | null {
   if (t === '-') return [];
   const out: [string, number][] = [];
   for (const p of t.split('+')) {
-    const m = p.trim().match(/^([A-Z]+-[A-Z0-9]+-\d+)\s*(?:[*X]\s*(\d+))?$/);
+    const m = p.trim().match(/^([A-Z]+-[A-Z0-9]+(?:-[A-Z0-9]+)?)\s*(?:\*\s*(\d+))?$/);
     if (!m) return null;
     out.push([m[1], Number(m[2] ?? 1)]);
   }
@@ -134,7 +137,7 @@ async function ventas(desde: string, skus: Set<string>) {
       sin.set(k, x);
       return;
     }
-    for (const [sku, c] of lista) out.push({ dia, canal, sku: sku === 'BOMB-ACE-12002' ? 'BOMB-ACE-12001' : sku, cant: c * cant });
+    for (const [sku, c] of lista) out.push({ dia, canal, sku: skuExcel(sku), cant: c * cant });
   };
 
   const [emp, meli, mayo, shop] = await Promise.all([
@@ -143,7 +146,7 @@ async function ventas(desde: string, skus: Set<string>) {
     leer(EMP, "'App Pedidos'!A2:T"),
     ventasShopify(desde).catch((e) => { errores.push(String(e.message ?? e)); return []; }),
   ]);
-  for (const f of emp) if (String(f[0]) >= desde) out.push({ dia: String(f[0]), canal: String(f[1]), sku: String(f[2]), cant: Number(f[3]) || 0 });
+  for (const f of emp) if (String(f[0]) >= desde) out.push({ dia: String(f[0]), canal: String(f[1]), sku: skuExcel(String(f[2])), cant: Number(f[3]) || 0 });
   for (const f of meli) {
     const dia = String(f[0]);
     if (dia < desde || f[4] === 'full' || Number(f[18]) || Number(f[20])) continue;
@@ -159,7 +162,7 @@ async function ventas(desde: string, skus: Set<string>) {
       traducir(dia, 'Mayorista', clave, clave, Number(it.cant) || 0);
     }
   }
-  for (const l of shop) traducir(l.dia, 'Shopify', l.sku || l.desc, l.desc, l.cant, l.sku);
+  for (const l of shop) traducir(l.dia, 'Shopify', l.sku || l.desc, l.desc, l.cant, l.sku && skuExcel(l.sku));
   const empRev = (await leer(STOCK_ID, "'stock_revisar_emp'!A2:D")).map((f) => ({ canal: `${f[0]} (regla)`, clave: '', descripcion: [f[1], f[2]].filter(Boolean).join(' — '), unidades: Number(f[3]) || 0 }));
   return { ventas: out, sinTraducir: [...sin.values(), ...empRev].sort((a, b) => b.unidades - a.unidades), errores };
 }
