@@ -1,4 +1,4 @@
-import { resumen, agregarFilas, catalogo, parsearSkus, skuExcel, ahoraAR, MOV, MOV_COLS, EQ, EQ_COLS, TIPOS } from '@/lib/stock';
+import { resumen, actualizarFotos, agregarFilas, catalogo, parsearSkus, skuExcel, ahoraAR, MOV, MOV_COLS, EQ, EQ_COLS, TIPOS } from '@/lib/stock';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -11,8 +11,10 @@ export const maxDuration = 60;
 const txt = (x: unknown, max = 200) => String(x ?? '').trim().slice(0, max);
 const no = (error: string) => Response.json({ error }, { status: 400 });
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    // ?fotos=actualizar → vuelve a buscar en Shopify la foto de cada SKU (pestaña "Stock Fotos"; no pisa las manuales)
+    if (new URL(req.url).searchParams.get('fotos') === 'actualizar') return Response.json(await actualizarFotos(), { headers: { 'cache-control': 'no-store' } });
     return Response.json(await resumen(), { headers: { 'cache-control': 'no-store' } });
   } catch (e) {
     return Response.json({ error: String((e as Error).message ?? e) }, { status: 500 });

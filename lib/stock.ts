@@ -18,6 +18,8 @@ export const MOV_COLS = ['fecha', 'tipo', 'sku', 'producto', 'cant', 'quien', 'n
 export const EQ = 'Stock Equivalencias';
 export const EQ_COLS = ['canal', 'clave', 'descripcion', 'skus', 'actualizado'];
 export const TIPOS = ['Conteo', 'Ingreso', 'Salida Full', 'Ajuste'] as const;
+export const FOTOS = 'Stock Fotos';
+export const FOTOS_COLS = ['sku', 'foto', 'origen'];
 const VENTANA = 30; // días para el ritmo de venta
 const SKU_RX = /^[A-Z]+-[A-Z0-9]+(-[A-Z0-9]+)?$/i; // MATE-CAL-1001, y también MATE-PIEL o MATE-KIT-1L
 // SKUs de las reglas / Shopify que en el Excel de Juampi tienen otro código (mismo producto). Todo en mayúsculas.
@@ -168,14 +170,55 @@ async function ventas(desde: string, skus: Set<string>) {
 }
 
 export type FilaStock = Producto & {
+  foto: string;
   conteo: { fecha: string; cant: number } | null;
   ingresos: number; ajustes: number; full: number; vendido: number; porCanal: Record<string, number>;
   stock: number | null; ritmo: number; dias: number | null; ultimoIngreso: string;
 };
 
+// Foto de cada SKU (pestaña "Stock Fotos": sku | foto | origen). Se completa con actualizarFotos(); lo que se
+// cargue a mano (origen "manual" o cualquier otro que no sea automático) no se pisa.
+async function fotos(): Promise<Map<string, string>> {
+  return new Map((await leer(STOCK_ID, `'${FOTOS}'!A2:B`)).filter((f) => f[0] && f[1]).map((f) => [skuExcel(String(f[0])), String(f[1])]));
+}
+
+async function fotosShopify(): Promise<Map<string, string>> {
+  const token = await getToken();
+  const query = `query($after: String) { productVariants(first: 250, after: $after) { pageInfo { hasNextPage endCursor }
+    nodes { sku media(first: 1) { nodes { preview { image { url(transform: {maxWidth: 240}) } } } }
+      product { featuredMedia { preview { image { url(transform: {maxWidth: 240}) } } } } } } }`;
+  const out = new Map<string, string>();
+  let after: string | null = null;
+  do {
+    const r: Response = await fetch('https://mateando-argentina.myshopify.com/admin/api/2026-10/graphql.json', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': token }, body: JSON.stringify({ query, variables: { after } }), cache: 'no-store',
+    });
+    const d = await r.json();
+    if (d.errors) throw new Error(`Shopify fotos: ${JSON.stringify(d.errors).slice(0, 300)}`);
+    for (const v of d.data.productVariants.nodes) {
+      if (!v.sku) continue;
+      const url = v.media?.nodes?.[0]?.preview?.image?.url ?? v.product?.featuredMedia?.preview?.image?.url;
+      const k = skuExcel(v.sku);
+      if (url && (!out.has(k) || v.media?.nodes?.length)) out.set(k, url); // la foto de la variante le gana a la del producto
+    }
+    after = d.data.productVariants.pageInfo.hasNextPage ? d.data.productVariants.pageInfo.endCursor : null;
+  } while (after);
+  return out;
+}
+
+export async function actualizarFotos() {
+  const [cat, previas, shop] = await Promise.all([catalogo(), leer(STOCK_ID, `'${FOTOS}'!A2:C`), fotosShopify()]);
+  const manual = new Map(previas.filter((f) => f[0] && f[1] && f[2] !== 'shopify').map((f) => [skuExcel(String(f[0])), [String(f[1]), String(f[2] || 'manual')]]));
+  const filas = cat.map((p) => manual.has(p.sku) ? [p.sku, ...manual.get(p.sku)!] : shop.has(p.sku) ? [p.sku, shop.get(p.sku)!, 'shopify'] : [p.sku, '', '']);
+  await asegurar(FOTOS, FOTOS_COLS);
+  await sheets().spreadsheets.values.clear({ spreadsheetId: STOCK_ID, range: `'${FOTOS}'!A2:C` });
+  await sheets().spreadsheets.values.update({ spreadsheetId: STOCK_ID, range: `'${FOTOS}'!A2`, valueInputOption: 'RAW', requestBody: { values: filas } });
+  return { total: filas.length, conFoto: filas.filter((f) => f[1]).length, sinFoto: filas.filter((f) => !f[1]).map((f) => f[0]) };
+}
+
 export async function resumen() {
   const hoy = hoyAR();
-  const [cat, movs] = await Promise.all([catalogo(), movimientos()]);
+  const [cat, movs, fts] = await Promise.all([catalogo(), movimientos(), fotos()]);
   const conteos = new Map<string, Movimiento>();
   for (const m of movs) if (m.tipo === 'Conteo' && (!conteos.has(m.sku) || m.fecha >= conteos.get(m.sku)!.fecha)) conteos.set(m.sku, m);
   const primerConteo = [...conteos.values()].reduce((d, m) => (m.fecha.slice(0, 10) < d ? m.fecha.slice(0, 10) : d), hoy);
@@ -203,7 +246,7 @@ export async function resumen() {
     }
     const ritmo = enVentana / VENTANA;
     const stock = c ? c.cant + ingresos + ajustes - full - vendido : null;
-    return { ...p, conteo: c ? { fecha: c.fecha, cant: c.cant } : null, ingresos, ajustes, full, vendido, porCanal, stock, ritmo,
+    return { ...p, foto: fts.get(p.sku) ?? '', conteo: c ? { fecha: c.fecha, cant: c.cant } : null, ingresos, ajustes, full, vendido, porCanal, stock, ritmo,
       dias: stock != null && ritmo > 0 ? Math.floor(Math.max(0, stock) / ritmo) : null, ultimoIngreso };
   });
   return { actualizado: ahoraAR(), filas, ultimos: movs.slice(-40).reverse(), sinTraducir: v.sinTraducir.slice(0, 150), errores: v.errores };
