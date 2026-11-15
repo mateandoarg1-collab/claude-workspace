@@ -32,9 +32,14 @@ async function tab(nombre, encabezado) {
     await sheets.spreadsheets.values.update({ spreadsheetId: STOCK, range: `'${nombre}'!A1`, valueInputOption: 'RAW', requestBody: { values: [encabezado] } });
   }
 }
+// Escribe encima y después borra solo las filas que sobran: si se borrara todo primero, la app (/api/stock) que lee
+// justo en ese momento vería la pestaña vacía y mostraría el stock sin las ventas.
 async function escribir(nombre, encabezado, filas) {
-  await sheets.spreadsheets.values.clear({ spreadsheetId: STOCK, range: `'${nombre}'!A:Z` });
-  await sheets.spreadsheets.values.update({ spreadsheetId: STOCK, range: `'${nombre}'!A1`, valueInputOption: 'RAW', requestBody: { values: [encabezado, ...filas] } });
+  const valores = [encabezado, ...filas];
+  await sheets.spreadsheets.values.update({ spreadsheetId: STOCK, range: `'${nombre}'!A1`, valueInputOption: 'RAW', requestBody: { values: valores } });
+  const filasHoja = (await sheets.spreadsheets.get({ spreadsheetId: STOCK, fields: 'sheets.properties' })).data.sheets
+    .find((h) => h.properties.title === nombre).properties.gridProperties.rowCount;
+  if (filasHoja > valores.length) await sheets.spreadsheets.values.clear({ spreadsheetId: STOCK, range: `'${nombre}'!A${valores.length + 1}:Z` });
 }
 
 const TAB = 'stock_salidas_emp';
