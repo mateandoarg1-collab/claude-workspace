@@ -31,7 +31,10 @@ const hoyAR = () => new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 10)
 const restarDias = (d: string, n: number) => new Date(Date.parse(`${d}T12:00:00Z`) - n * 864e5).toISOString().slice(0, 10);
 export const ahoraAR = () => new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ');
 
-export type Producto = { sku: string; nombre: string; categoria: string };
+// costo = col G "COSTO NETO" del Excel; proveedores = cols H y I ("PROVEEDOR 1", "PROVEEDOR 2"). fila = fila en su pestaña.
+export type Producto = { sku: string; nombre: string; categoria: string; fila: number; costo: number | null; proveedores: string[] };
+export const CAMBIOS = 'Stock Cambios';
+export const CAMBIOS_COLS = ['fecha', 'sku', 'producto', 'campo', 'antes', 'despues', 'quien'];
 export type Movimiento = { fila: number; fecha: string; tipo: string; sku: string; producto: string; cant: number; quien: string; nota: string };
 type Venta = { dia: string; canal: string; sku: string; cant: number };
 type SinTraducir = { canal: string; clave: string; descripcion: string; unidades: number };
@@ -48,21 +51,57 @@ export async function agregarFilas(t: string, cols: string[], filas: (string | n
   await sheets().spreadsheets.values.append({ spreadsheetId: STOCK_ID, range: `'${t}'!A1`, valueInputOption: 'RAW', insertDataOption: 'INSERT_ROWS', requestBody: { values: filas } });
 }
 
+// "$13.500", "1288,18", 7500 → número (los costos del Excel vienen escritos de varias formas)
+function aNumero(x: unknown): number | null {
+  if (typeof x === 'number') return x;
+  const t = String(x ?? '').replace(/[$\s]/g, '');
+  if (!t) return null;
+  const n = Number(/,/.test(t) ? t.replace(/\./g, '').replace(',', '.') : t.replace(/\.(?=\d{3}(\D|$))/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+
+// Cambia costo (col G) o proveedores (cols H-I) de un producto en su pestaña del Excel y lo anota en "Stock Cambios".
+export async function editarProducto(sku: string, cambios: { costo?: number; proveedores?: string[] }, quien: string) {
+  const p = (await catalogo()).find((x) => x.sku === sku);
+  if (!p) throw new Error(`SKU desconocido: ${sku}`);
+  const data: { range: string; values: (string | number)[][] }[] = [];
+  const log: (string | number)[][] = [];
+  const fecha = ahoraAR();
+  if (cambios.costo != null && cambios.costo !== p.costo) {
+    data.push({ range: `'${p.categoria}'!G${p.fila}`, values: [[cambios.costo]] });
+    log.push([fecha, sku, p.nombre, 'costo', p.costo ?? '', cambios.costo, quien]);
+  }
+  if (cambios.proveedores) {
+    const nuevos = [cambios.proveedores[0] ?? '', cambios.proveedores[1] ?? ''];
+    if (nuevos.join('|') !== [p.proveedores[0] ?? '', p.proveedores[1] ?? ''].join('|')) {
+      data.push({ range: `'${p.categoria}'!H${p.fila}:I${p.fila}`, values: [nuevos] });
+      log.push([fecha, sku, p.nombre, 'proveedores', p.proveedores.join(' / '), nuevos.filter(Boolean).join(' / '), quien]);
+    }
+  }
+  if (!data.length) return 0;
+  // las pestañas CALABAZA y MADERA no tenían encabezado de proveedores
+  data.push({ range: `'${p.categoria}'!H1:I1`, values: [['PROVEEDOR 1', 'PROVEEDOR 2']] });
+  await sheets().spreadsheets.values.batchUpdate({ spreadsheetId: STOCK_ID, requestBody: { valueInputOption: 'USER_ENTERED', data } });
+  await agregarFilas(CAMBIOS, CAMBIOS_COLS, log);
+  return log.length;
+}
+
 export async function catalogo(): Promise<Producto[]> {
   const s = sheets();
   const tabs = ((await s.spreadsheets.get({ spreadsheetId: STOCK_ID, fields: 'sheets.properties.title' })).data.sheets ?? [])
     .map((h) => h.properties?.title ?? '')
     .filter((t) => t && !NO_CATALOGO.has(t) && !/^stock/i.test(t));
-  const r = await s.spreadsheets.values.batchGet({ spreadsheetId: STOCK_ID, ranges: tabs.map((t) => `'${t}'!A2:F`) });
+  const r = await s.spreadsheets.values.batchGet({ spreadsheetId: STOCK_ID, ranges: tabs.map((t) => `'${t}'!A2:I`), valueRenderOption: 'UNFORMATTED_VALUE' });
   const vistos = new Set<string>();
   const out: Producto[] = [];
   (r.data.valueRanges ?? []).forEach((vr, i) => {
-    for (const f of vr.values ?? []) {
+    (vr.values ?? []).forEach((f, j) => {
       const sku = String(f[5] ?? '').trim().toUpperCase();
-      if (!SKU_RX.test(sku) || vistos.has(sku)) continue;
+      if (!SKU_RX.test(sku) || vistos.has(sku)) return;
       vistos.add(sku);
-      out.push({ sku, nombre: String(f[0] ?? '').replace(/\s+/g, ' ').trim(), categoria: tabs[i] });
-    }
+      out.push({ sku, nombre: String(f[0] ?? '').replace(/\s+/g, ' ').trim(), categoria: tabs[i], fila: j + 2, costo: aNumero(f[6]),
+        proveedores: [f[7], f[8]].map((x) => String(x ?? '').trim()).filter(Boolean) });
+    });
   });
   return out;
 }
@@ -225,5 +264,6 @@ export async function resumen() {
     return { ...p, foto: fts.get(p.sku) ?? '', conteo: c ? { fecha: c.fecha, cant: c.cant } : null, ingresos, ajustes, full, vendido, porCanal, stock, ritmo,
       dias: stock != null && ritmo > 0 ? Math.floor(Math.max(0, stock) / ritmo) : null, ultimoIngreso };
   });
-  return { actualizado: ahoraAR(), filas, ultimos: movs.slice(-40).reverse(), sinTraducir: v.sinTraducir.slice(0, 150), errores: v.errores };
+  const proveedores = [...new Set(cat.flatMap((p) => p.proveedores))].sort((a, b) => a.localeCompare(b));
+  return { actualizado: ahoraAR(), proveedores, filas, ultimos: movs.slice(-40).reverse(), sinTraducir: v.sinTraducir.slice(0, 150), errores: v.errores };
 }

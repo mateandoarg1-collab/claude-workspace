@@ -1,4 +1,4 @@
-import { resumen, guardarFoto, agregarFilas, catalogo, parsearSkus, skuExcel, ahoraAR, MOV, MOV_COLS, EQ, EQ_COLS, TIPOS } from '@/lib/stock';
+import { resumen, guardarFoto, editarProducto, agregarFilas, catalogo, parsearSkus, skuExcel, ahoraAR, MOV, MOV_COLS, EQ, EQ_COLS, TIPOS } from '@/lib/stock';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -8,6 +8,7 @@ export const maxDuration = 60;
 // GET → stock por SKU, últimos movimientos y ventas sin traducir.
 // POST {accion:'mov', tipo, quien, nota, items:[{sku, cant}]} → carga movimientos.
 // POST {accion:'eq', canal, clave, descripcion, skus} → guarda una equivalencia (publicación → SKUs).
+// POST {accion:'producto', sku, costo?, proveedores?:[p1,p2], quien} → cambia costo/proveedores en el Excel (log en "Stock Cambios").
 // POST {accion:'foto', sku, foto} → guarda la foto de un producto (imagen chica en base64 o URL).
 const txt = (x: unknown, max = 200) => String(x ?? '').trim().slice(0, max);
 const no = (error: string) => Response.json({ error }, { status: 400 });
@@ -54,6 +55,20 @@ export async function POST(req: Request) {
     if (falta) return no(`SKU desconocido: ${falta[0]}`);
     await agregarFilas(EQ, EQ_COLS, [[canal, txt(b.clave, 300), txt(b.descripcion, 300), skus, ahoraAR()]]);
     return Response.json({ ok: true });
+  }
+  if (b.accion === 'producto') {
+    const quien = txt(b.quien, 40);
+    if (!quien) return no('Falta quién hace el cambio');
+    const cambios: { costo?: number; proveedores?: string[] } = {};
+    if (b.costo !== undefined && b.costo !== '') {
+      const c = Number(b.costo);
+      if (!Number.isFinite(c) || c < 0 || c > 10_000_000) return no('Costo inválido');
+      cambios.costo = Math.round(c * 100) / 100;
+    }
+    if (Array.isArray(b.proveedores)) cambios.proveedores = b.proveedores.slice(0, 2).map((x: unknown) => txt(x, 60));
+    try {
+      return Response.json({ ok: true, cambios: await editarProducto(txt(b.sku, 40).toUpperCase(), cambios, quien) });
+    } catch (e) { return no(String((e as Error).message)); }
   }
   if (b.accion === 'foto') {
     const sku = txt(b.sku, 40).toUpperCase();
