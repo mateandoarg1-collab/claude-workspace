@@ -208,7 +208,7 @@ async function ventas(desde: string, skus: Set<string>) {
     }
   }
   for (const l of shop) traducir(l.dia, 'Shopify', l.sku || l.desc, l.desc, l.cant, l.sku && skuExcel(l.sku));
-  const empRev = (await leer(STOCK_ID, "'stock_revisar_emp'!A2:E")).map((f) => ({ canal: 'Tienda', clave: String(f[4] ?? ''), descripcion: [f[1], f[2]].filter(Boolean).join(' — '), unidades: Number(f[3]) || 0 }));
+  const empRev = (await leer(STOCK_ID, "'stock_revisar_emp'!A2:E")).map((f) => ({ canal: 'Tienda', clave: String(f[3] ?? ''), descripcion: [f[1], f[2]].filter(Boolean).join(' — '), unidades: Number(f[4]) || 0 }));
   return { ventas: out, sinTraducir: [...sin.values(), ...empRev].sort((a, b) => b.unidades - a.unidades), errores };
 }
 

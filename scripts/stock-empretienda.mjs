@@ -57,7 +57,7 @@ const viejas = previas.filter((r) => String(r[0]) < primerDia);
 await escribir(TAB, ENC, [...viejas, ...out.piezas]);
 
 const TAB_REV = 'stock_revisar_emp';
-const ENC_REV = ['canal', 'publicacion', 'variante', 'unidades', 'clave'];
+const ENC_REV = ['canal', 'publicacion', 'variante', 'clave', 'unidades'];
 await tab(TAB_REV, ENC_REV);
-await escribir(TAB_REV, ENC_REV, out.revisar.sort((a, b) => b[3] - a[3]));
+await escribir(TAB_REV, ENC_REV, out.revisar.sort((a, b) => b[4] - a[4]));
 console.log(`stock_salidas_emp: ${viejas.length} filas viejas + ${out.piezas.length} desde ${primerDia}; sin regla: ${out.revisar.length}`);
