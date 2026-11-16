@@ -272,7 +272,6 @@ export default function Canales() {
                   <tr className={general ? 'font-bold' : 'font-semibold bg-slate-950/40'}>
                     <td className="py-3 pl-2">
                       {i + 1}. {b.titulo}
-                      <div className="text-xs font-normal text-slate-500">{b.detalle}</div>
                     </td>
                     <td className="text-right tabular-nums">{fmt(b.ventas)}</td>
                     <td className="text-right tabular-nums pl-4">{gasto === undefined ? '…' : fmt(gasto)}</td>
@@ -282,7 +281,7 @@ export default function Canales() {
                     <tr key={x.nombre} className="text-slate-400">
                       <td className="py-1.5 pl-6 text-xs">
                         {x.nombre}
-                        <span className="text-slate-500"> · {x.pauta === null ? <span className="text-amber-400">{x.falta}</span> : x.extra ?? x.detalle}</span>
+                        {x.pauta === null && <span className="text-amber-400"> · {x.falta}</span>}
                       </td>
                       <td />
                       <td className="text-right tabular-nums pl-4 text-xs">{x.pauta === undefined ? '…' : x.pauta === null ? '—' : fmt(x.pauta)}</td>
@@ -293,11 +292,6 @@ export default function Canales() {
               );
             })}
           </table>
-          <p className="text-xs text-slate-500 mt-3">
-            ROAS = ventas ÷ gasto en pauta del mismo período. Cada bloque mide sus ventas contra toda su pauta: Meta, Google y TikTok
-            empujan las mismas ventas de la Tienda Online, por eso se suman en el bloque y no se miden por separado (Google muestra
-            aparte lo que se atribuye). El General suma la venta de todos los canales, también el Local, contra toda la pauta.
-          </p>
 
           <h3 className="text-sm font-semibold text-slate-200 mt-6 mb-2">Visitas y conversión</h3>
           <table className="w-full text-sm">
