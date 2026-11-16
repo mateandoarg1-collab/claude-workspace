@@ -107,12 +107,24 @@ export default function Canales() {
     { nombre: 'Google Ads', canal: 'online' as CanalId, detalle: googleDetalle, ventas: googleVentas, pauta: gads.data ? gads.data.spend : undefined, falta: gads.data?.motivo ?? '' },
     { nombre: 'TikTok Ads', canal: 'online' as CanalId, detalle: `Tienda Online (Empretienda) · ANDOMAT 611 SRL${tiktok.data?.fuente ? ` · ${tiktok.data.fuente}` : ''}`, ventas: monto('online'), pauta: tiktok.data ? tiktok.data.spend : undefined, falta: tiktok.data?.motivo ?? '' },
   ];
-  const pautaTotal = roas.reduce((s, r) => s + (r.pauta ?? 0), 0);
-  // ventas de cada canal una sola vez (Meta y Google empujan las mismas ventas de la Tienda Online)
-  const ventasConPauta = [...new Set(roas.filter((r) => r.pauta != null).map((r) => r.canal))].reduce((s, c) => s + monto(c), 0);
   // Tienda Online junta: Meta + Google + TikTok contra las mismas ventas
   const pautaOnline = roas.filter((r) => r.canal === 'online' && r.pauta != null).reduce((s, r) => s + (r.pauta ?? 0), 0);
   const fmtRoas = (v: number, p: number | null | undefined) => (p ? `${(v / p).toFixed(1)}x` : '—');
+  // Pauta y ROAS en 5 bloques (Juampi, 16-nov-2026): Meta + Empretienda, Ecommerce total, Mercado Libre, Mayorista y
+  // General. En cada bloque: sus ventas contra la suma de su pauta; abajo, el gasto de cada cuenta.
+  const fila = (nombre: string) => roas.find((r) => r.nombre === nombre)!;
+  type Pieza = { nombre: string; detalle: string; pauta: number | null | undefined; falta: string; extra?: string };
+  const pieza = (nombre: string, extra?: string): Pieza => { const r = fila(nombre); return { nombre: r.nombre, detalle: r.detalle, pauta: r.pauta, falta: r.falta, extra }; };
+  const sumaPauta = (ps: Pieza[]) => (ps.some((x) => x.pauta === undefined) ? undefined : ps.reduce((t, x) => t + (x.pauta ?? 0), 0));
+  const ventaTotal = canales.reduce((t, c) => t + c.monto, 0);
+  const bloques: { titulo: string; detalle: string; ventas: number; piezas: Pieza[] }[] = [
+    { titulo: 'Meta + Empretienda', detalle: 'Venta de la Tienda Online contra la pauta de Meta (2 cuentas)', ventas: monto('online'), piezas: [pieza('Meta Ads')] },
+    { titulo: 'Ecommerce total', detalle: 'Tienda Online + Shopify contra Meta, Meta Shopify, Google y TikTok', ventas: monto('online') + monto('shopify'),
+      piezas: [pieza('Meta Ads'), pieza('Meta Shopify'), pieza('Google Ads', `${fmt(googleVentas)} atribuidas por Google · ROAS ${fmtRoas(googleVentas, fila('Google Ads').pauta)}`), pieza('TikTok Ads')] },
+    { titulo: 'Mercado Libre', detalle: 'Venta de Meli contra Mercado Libre Ads', ventas: monto('ml'), piezas: [pieza('Mercado Libre')] },
+    { titulo: 'Mayorista', detalle: 'Venta mayorista contra la pauta de Meta Mayorista', ventas: monto('mayorista'), piezas: [pieza('Meta Mayorista')] },
+    { titulo: 'General Mateando', detalle: 'Toda la venta (todos los canales, también el Local) contra toda la pauta', ventas: ventaTotal, piezas: roas.map((r) => pieza(r.nombre)) },
+  ];
   // Visitas y conversión: Tienda Online = sesiones de GA4; Meli = visitas a las publicaciones. Conversión = ventas ÷ visitas.
   const cantidad = (id: CanalId) => canales.find((c) => c.id === id)?.cantidad ?? 0;
   const filasVisitas = [
@@ -252,37 +264,39 @@ export default function Canales() {
                 <th className="text-right pl-4">ROAS</th>
               </tr>
             </thead>
-            <tbody>
-              {roas.map((r) => (
-                <tr key={r.nombre} className="border-t border-slate-900">
-                  <td className="py-3 font-medium">
-                    {r.nombre}
-                    <div className="text-xs font-normal text-slate-500">{r.pauta === null ? <span className="text-amber-400">{r.falta}</span> : r.detalle}</div>
-                  </td>
-                  <td className="text-right tabular-nums">{fmt(r.ventas)}</td>
-                  <td className="text-right tabular-nums pl-4">{r.pauta === undefined ? '…' : r.pauta === null ? '—' : fmt(r.pauta)}</td>
-                  <td className="text-right tabular-nums pl-4 font-bold text-emerald-300">{fmtRoas(r.ventas, r.pauta)}</td>
-                </tr>
-              ))}
-              <tr className="border-t border-slate-800 bg-slate-950/40 font-semibold">
-                <td className="py-3 pl-2">
-                  Tienda Online
-                  <div className="text-xs font-normal text-slate-500">Meta + Google + TikTok juntos</div>
-                </td>
-                <td className="text-right tabular-nums">{fmt(monto('online'))}</td>
-                <td className="text-right tabular-nums pl-4">{fmt(pautaOnline)}</td>
-                <td className="text-right tabular-nums pl-4 text-emerald-300">{fmtRoas(monto('online'), pautaOnline)}</td>
-              </tr>
-              <tr className="border-t-2 border-slate-700 font-bold">
-                <td className="py-3">Total con pauta</td>
-                <td className="text-right tabular-nums">{fmt(ventasConPauta)}</td>
-                <td className="text-right tabular-nums pl-4">{fmt(pautaTotal)}</td>
-                <td className="text-right tabular-nums pl-4 text-emerald-300">{fmtRoas(ventasConPauta, pautaTotal)}</td>
-              </tr>
-            </tbody>
+            {bloques.map((b, i) => {
+              const gasto = sumaPauta(b.piezas);
+              const general = i === bloques.length - 1;
+              return (
+                <tbody key={b.titulo} className={general ? 'border-t-2 border-slate-700' : 'border-t border-slate-800'}>
+                  <tr className={general ? 'font-bold' : 'font-semibold bg-slate-950/40'}>
+                    <td className="py-3 pl-2">
+                      {i + 1}. {b.titulo}
+                      <div className="text-xs font-normal text-slate-500">{b.detalle}</div>
+                    </td>
+                    <td className="text-right tabular-nums">{fmt(b.ventas)}</td>
+                    <td className="text-right tabular-nums pl-4">{gasto === undefined ? '…' : fmt(gasto)}</td>
+                    <td className="text-right tabular-nums pl-4 text-emerald-300">{fmtRoas(b.ventas, gasto)}</td>
+                  </tr>
+                  {(b.piezas.length > 1 || b.piezas[0].pauta === null) && b.piezas.map((x) => (
+                    <tr key={x.nombre} className="text-slate-400">
+                      <td className="py-1.5 pl-6 text-xs">
+                        {x.nombre}
+                        <span className="text-slate-500"> · {x.pauta === null ? <span className="text-amber-400">{x.falta}</span> : x.extra ?? x.detalle}</span>
+                      </td>
+                      <td />
+                      <td className="text-right tabular-nums pl-4 text-xs">{x.pauta === undefined ? '…' : x.pauta === null ? '—' : fmt(x.pauta)}</td>
+                      <td />
+                    </tr>
+                  ))}
+                </tbody>
+              );
+            })}
           </table>
           <p className="text-xs text-slate-500 mt-3">
-            ROAS = ventas ÷ gasto en pauta del mismo período. Meta, Google y TikTok se miden contra las mismas ventas de la Tienda Online (en el total cuentan una vez). Meta Shopify se mide contra las ventas de Shopify y Meta Mayorista contra las Mayorista. Local no entra.
+            ROAS = ventas ÷ gasto en pauta del mismo período. Cada bloque mide sus ventas contra toda su pauta: Meta, Google y TikTok
+            empujan las mismas ventas de la Tienda Online, por eso se suman en el bloque y no se miden por separado (Google muestra
+            aparte lo que se atribuye). El General suma la venta de todos los canales, también el Local, contra toda la pauta.
           </p>
 
           <h3 className="text-sm font-semibold text-slate-200 mt-6 mb-2">Visitas y conversión</h3>
