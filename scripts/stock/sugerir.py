@@ -208,6 +208,8 @@ def _bombilla(t):
 
 
 def _stanley(t):
+    if 'YERBERA' in t:
+        return color(t, [(ROS, 'STAN-YER-14028'), (r'VERDE', 'STAN-YER-14029')], 'STAN-YER-14027')
     if 'QUENCHER' in t or 'VASO' in t or 'TUMBLER' in t:
         return ('STAN-QUE-14026', False) if '887' in t else ('STAN-QUE-14025', False)
     if 'POLAR' in t:
