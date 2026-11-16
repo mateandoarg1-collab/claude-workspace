@@ -40,7 +40,11 @@ def main():
                 k = (canal, p.get('n') or '', p.get('v') or '', k_eq)
                 revisar[k] = revisar.get(k, 0) + q
                 continue
-            for s, c in base + reglas.extras(nombre, variante):
+            ex = reglas.extras(nombre, variante)
+            if estado == 'eq':  # si la equivalencia ya trae el grabado o la bombilla fijos, no sumarlos dos veces
+                ya = {sk for sk, _ in base}
+                ex = [(sk, c) for sk, c in ex if sk not in ya or sk == reglas.CAJA]
+            for s, c in base + ex:
                 s = reglas.ALIAS.get(s, s)
                 if s.startswith('PERS-') or s.startswith('DESP-'):
                     continue
