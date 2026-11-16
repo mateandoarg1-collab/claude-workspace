@@ -19,7 +19,7 @@ export const EQ = 'Stock Equivalencias';
 // revisado = quién la confirmó (vacío = sugerencia automática de scripts/stock/sugerir.py, igual se usa); dudoso = la sugerencia adivinó algo.
 // Canal Tienda = publicaciones de Empretienda (online + local), clave NOMBRE|VARIANTE sin opciones de bombilla/caja/bolsa/grabado
 // (esas las suma reglas.extras). La usa scripts/cmv/piezas_orden.py antes que las reglas.
-export const EQ_COLS = ['canal', 'clave', 'descripcion', 'skus', 'actualizado', 'revisado', 'dudoso', 'ventas90', 'foto', 'link'];
+export const EQ_COLS = ['canal', 'clave', 'descripcion', 'skus', 'actualizado', 'revisado', 'dudoso', 'ventas90', 'foto', 'link', 'opciones'];
 export const CANALES_EQ = ['MeLi', 'Tienda', 'Shopify', 'Mayorista'];
 export const TIPOS = ['Conteo', 'Ingreso', 'Salida Full', 'Ajuste'] as const;
 export const FOTOS = 'Stock Fotos';
@@ -272,14 +272,14 @@ export async function resumen() {
   return { actualizado: ahoraAR(), proveedores, filas, ultimos: movs.slice(-40).reverse(), sinTraducir: v.sinTraducir.slice(0, 150), errores: v.errores };
 }
 
-export type Equivalencia = { fila: number; canal: string; clave: string; descripcion: string; skus: string; actualizado: string; revisado: string; dudoso: boolean; ventas90: number; foto: string; link: string };
+export type Equivalencia = { fila: number; canal: string; clave: string; descripcion: string; skus: string; actualizado: string; revisado: string; dudoso: boolean; ventas90: number; foto: string; link: string; opciones: string };
 
 // Todas las equivalencias (para la pestaña Equivalencias de la app) + las ventas que no tienen ninguna.
 export async function listaEquivalencias() {
   // lectura directa (sin el catch de leer): si Google corta por cuota, mejor un error que mostrar la lista vacía
-  const [filas, cat, fts] = await Promise.all([sheets().spreadsheets.values.get({ spreadsheetId: STOCK_ID, range: `'${EQ}'!A2:J`, valueRenderOption: 'UNFORMATTED_VALUE' }).then((r) => r.data.values ?? []), catalogo(), fotos()]);
+  const [filas, cat, fts] = await Promise.all([sheets().spreadsheets.values.get({ spreadsheetId: STOCK_ID, range: `'${EQ}'!A2:K`, valueRenderOption: 'UNFORMATTED_VALUE' }).then((r) => r.data.values ?? []), catalogo(), fotos()]);
   const eq: Equivalencia[] = filas.map((f, i) => ({ fila: i + 2, canal: String(f[0] ?? ''), clave: String(f[1] ?? ''), descripcion: String(f[2] ?? ''), skus: String(f[3] ?? ''),
-    actualizado: String(f[4] ?? ''), revisado: String(f[5] ?? ''), dudoso: f[6] === 'SI', ventas90: Number(f[7]) || 0, foto: String(f[8] ?? ''), link: String(f[9] ?? '') })).filter((e) => e.canal);
+    actualizado: String(f[4] ?? ''), revisado: String(f[5] ?? ''), dudoso: f[6] === 'SI', ventas90: Number(f[7]) || 0, foto: String(f[8] ?? ''), link: String(f[9] ?? ''), opciones: String(f[10] ?? '') })).filter((e) => e.canal);
   const productos = cat.map((p) => ({ sku: p.sku, nombre: p.nombre, categoria: p.categoria, foto: fts.get(p.sku) ?? '' }));
   return { eq, productos };
 }
@@ -290,7 +290,7 @@ export async function guardarEquivalencia(e: { canal: string; clave: string; des
   const filas = await leer(STOCK_ID, `'${EQ}'!A2:J`);
   const i = filas.findIndex((f) => String(f[0]) === e.canal && String(f[1]) === e.clave);
   const ahora = ahoraAR();
-  if (i < 0) return agregarFilas(EQ, EQ_COLS, [[e.canal, e.clave, e.descripcion, e.skus, ahora, e.revisado ? `${e.revisado} ${ahora}` : '', '', '', '', '']]);
+  if (i < 0) return agregarFilas(EQ, EQ_COLS, [[e.canal, e.clave, e.descripcion, e.skus, ahora, e.revisado ? `${e.revisado} ${ahora}` : '', '', '', '', '', '']]);
   const f = filas[i];
   await sheets().spreadsheets.values.update({ spreadsheetId: STOCK_ID, range: `'${EQ}'!A${i + 2}:G${i + 2}`, valueInputOption: 'RAW',
     requestBody: { values: [[e.canal, e.clave, String(f[2] || e.descripcion), e.skus, ahora, e.revisado ? `${e.revisado} ${ahora}` : '', '']] } });
