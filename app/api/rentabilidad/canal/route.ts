@@ -1,7 +1,6 @@
 import { google } from 'googleapis';
 import { conCache } from '@/lib/cache';
 import { getAuth } from '@/lib/sheets';
-import { aPedido } from '@/lib/mayoristaApp';
 import { RECARGO } from '@/lib/anuncios';
 import { CORTE_CAJA } from '@/lib/localCajaPeriodo';
 
@@ -12,9 +11,7 @@ export const dynamic = 'force-dynamic';
 //  - Local: pestaña "Rentabilidad Local" (la arma scripts/local-rentabilidad.mjs cada hora en DonWeb), venta por venta
 //    de la caja propia (desde el 9-nov-2026). Tarjeta/QR: IVA, comisión real de MP, IIBB 5%, deb/cred 1,2%.
 //    Transferencia: 3,25% financiera. Efectivo/USD/EUR: nada. Costo de producto + una bolsa por pedido.
-//  - Mayorista: pedidos de la app mayorista (App Pedidos), sin anulados ni presupuestos. Venta = neto sin IVA; costo =
-//    costo de los productos cargado en el pedido; con factura: IIBB 5% del neto y deb/cred 1,2% del total; pauta de
-//    Meta Mayorista (con el recargo de la cuenta).
+//  - Mayorista: del Excel mayorista (ver mayorista() abajo) y la pauta de Meta Mayorista (con el recargo de la cuenta).
 const EFECTIVO = '1Gy8M6ccHZr-BX86bC2CHW5M2Ryzz8LX7EmHaZvX57wc';
 const MAYORISTA = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
 const IIBB = 0.05, DEB_CRED = 0.012;
@@ -91,29 +88,85 @@ async function pautaMayorista(desde: string, hasta: string) {
   return g.reduce((a, b) => a + b, 0);
 }
 
+// Mayorista (Juampi, 18-nov-2026): del Excel, pestaña de cada mes ("NOV 26", "SEPT 26", "FEB 26."), porque los
+// vendedores siguen cargando ahí. Cada pedido empieza en la fila con fecha (dd/mm) en A; sus filas siguientes suman
+// productos (C unidades, D producto, E personalizado) y montos (K neto, L IVA, M total). Venta neta = M − L. Con IVA =
+// facturado: IIBB 5% del neto y deb/cred 1,2% del total. Costo = unidades × costo del producto en App Productos (los
+// nombres viejos del Excel ya están ahí con su costo; si no, el del producto del catálogo al que equivalen) +
+// grabado ($1.100 por unidad) si es personalizado.
+const MES_TAB = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+const plata = (x: unknown) => {
+  const t = String(x ?? '').replace(/[$\s]/g, '');
+  if (!t) return 0;
+  // «$1.234.567,89», «$608.000» (puntos de miles sin decimales) o «734530,5»
+  return Number(t.includes(',') || /^-?\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '').replace(',', '.') : t) || 0;
+};
 async function mayorista(desde: string, hasta: string) {
-  const [filas, pauta] = await Promise.all([get(MAYORISTA, "'App Pedidos'!A2:U"), pautaMayorista(desde, hasta)]);
-  const ps = filas.filter((f) => f[0]).map((f) => aPedido(f.map(String)))
-    .filter((p) => !p.anulado && p.estado !== 'Presupuesto' && p.fecha >= desde && p.fecha <= hasta);
-  let neto = 0, costo = 0, iibb = 0, debcred = 0, sinCosto = 0;
-  const ordenes: Orden[] = ps.map((p) => {
-    const ib = p.conIva ? p.neto * IIBB : 0, dc = p.conIva ? p.total * DEB_CRED : 0;
-    neto += p.neto; costo += p.costo; iibb += ib; debcred += dc;
-    if (!p.costo) sinCosto++;
-    return { id: `N° ${p.nro}`, fecha: p.fecha, detalle: `${p.cliente}${p.vendedor ? ` · ${p.vendedor}` : ''}${p.conIva ? '' : ' · sin factura'}`,
-      venta: p.neto, costo: p.costo, ganancia: p.neto - p.costo - ib - dc, sinCosto: !p.costo };
+  const s = sheets();
+  const [meta, prod, pauta] = await Promise.all([
+    s.spreadsheets.get({ spreadsheetId: MAYORISTA, fields: 'sheets.properties.title' }),
+    get(MAYORISTA, "'App Productos'!A2:G"),
+    pautaMayorista(desde, hasta),
+  ]);
+  const titulos = (meta.data.sheets ?? []).map((h) => String(h.properties?.title ?? ''));
+  const costoDe = new Map(prod.map((f) => [String(f[0]).trim().toLowerCase(), Number(f[2]) || 0]));
+  const costo = (nombre: string) => {
+    const k = nombre.trim().toLowerCase();
+    const f = prod.find((x) => String(x[0]).trim().toLowerCase() === k);
+    const c = costoDe.get(k) ?? 0;
+    return c || (f?.[6] ? costoDe.get(String(f[6]).trim().toLowerCase()) ?? 0 : 0);
+  };
+  const GRABADO = costoDe.get('personalización (grabado láser)') ?? 1100;
+  // meses del rango → pestañas
+  const meses: string[] = [];
+  for (let d = new Date(`${desde.slice(0, 7)}-01T12:00:00Z`); d.toISOString().slice(0, 7) <= hasta.slice(0, 7); d.setUTCMonth(d.getUTCMonth() + 1)) meses.push(d.toISOString().slice(0, 7));
+  type P = { nro: string; fecha: string; cliente: string; vendedor: string; total: number; iva: number; costo: number; sinCosto: string[] };
+  const ps: P[] = [];
+  for (const mes of meses) {
+    const [y, m] = mes.split('-').map(Number);
+    const tab = titulos.find((t) => t.toUpperCase().startsWith(MES_TAB[m - 1]) && t.replace(/\D/g, '') === String(y).slice(2));
+    if (!tab) continue;
+    // con formato: la fecha «2/11» sin formato vendría como número de serie
+    const filas = (await s.spreadsheets.values.get({ spreadsheetId: MAYORISTA, range: `'${tab}'!A3:M` })).data.values ?? [];
+    let actual: P | null = null;
+    for (const r of filas) {
+      const a = String(r[0] ?? '').trim().match(/^(\d{1,2})\/?(\d{2})$/) ?? String(r[0] ?? '').trim().match(/^(\d{1,2})\/(\d{1})$/);
+      if (a) {
+        actual = { nro: '', fecha: `${y}-${a[2].padStart(2, '0')}-${a[1].padStart(2, '0')}`, cliente: String(r[1] ?? '').trim(), vendedor: '', total: 0, iva: 0, costo: 0, sinCosto: [] };
+        ps.push(actual);
+      }
+      if (!actual) continue;
+      if (!a && !actual.vendedor && r[1] && !r[3]) actual.vendedor = String(r[1]).trim();
+      const q = Number(String(r[2] ?? '').replace(/\D/g, '')) || 0, nombre = String(r[3] ?? '').trim();
+      if (q && nombre) {
+        const c = costo(nombre);
+        if (!c) actual.sinCosto.push(nombre);
+        actual.costo += q * (c + (String(r[4]).toUpperCase() === 'TRUE' ? GRABADO : 0));
+      }
+      actual.total += plata(r[12]);
+      actual.iva += plata(r[11]);
+    }
+  }
+  const sel = ps.filter((p) => p.fecha >= desde && p.fecha <= hasta && p.total > 0);
+  let neto = 0, costoT = 0, iibb = 0, debcred = 0, sinCosto = 0;
+  const ordenes: Orden[] = sel.map((p, i) => {
+    const n = p.total - p.iva, fact = p.iva > 0;
+    const ib = fact ? n * IIBB : 0, dc = fact ? p.total * DEB_CRED : 0;
+    neto += n; costoT += p.costo; iibb += ib; debcred += dc;
+    if (p.sinCosto.length) sinCosto++;
+    return { id: p.cliente || `Pedido ${i + 1}`, fecha: p.fecha, detalle: `${p.vendedor ? `${p.vendedor} · ` : ''}${fact ? 'con factura' : 'sin factura'}${p.sinCosto.length ? ` · sin costo: ${p.sinCosto.join(', ')}` : ''}`,
+      venta: n, costo: p.costo, ganancia: n - p.costo - ib - dc, sinCosto: p.sinCosto.length > 0 };
   });
   const lineas: Linea[] = [
-    { clave: 'venta', nombre: 'Venta neta', monto: neto, nota: 'sin IVA' },
-    { clave: 'iibb', nombre: 'IIBB', monto: -iibb, nota: '5% del neto, solo pedidos con factura' },
-    { clave: 'debcred', nombre: 'Imp. débitos y créditos', monto: -debcred, nota: '1,2% del total, solo con factura' },
-    { clave: 'cmv', nombre: 'Costo de producto', monto: -costo, nota: sinCosto ? `${sinCosto} pedidos sin costo cargado` : 'el cargado en cada pedido' },
+    { clave: 'venta', nombre: 'Venta neta', monto: neto, nota: 'monto total − IVA del Excel mayorista' },
+    { clave: 'iibb', nombre: 'IIBB', monto: -iibb, nota: '5% del neto, solo pedidos con IVA (facturados)' },
+    { clave: 'debcred', nombre: 'Imp. débitos y créditos', monto: -debcred, nota: '1,2% del total, solo facturados' },
+    { clave: 'cmv', nombre: 'Costo de producto', monto: -costoT, nota: `unidades × costo de cada producto (App Productos) + grabado${sinCosto ? ` · ${sinCosto} pedidos con productos sin costo` : ''}` },
     { clave: 'pauta', nombre: 'Publicidad', monto: -pauta, nota: 'Meta Mayorista' },
   ];
-  return { lineas, ordenes, ventaBruta: ps.reduce((s, p) => s + p.total, 0), nota: '' };
+  return { lineas, ordenes, ventaBruta: sel.reduce((t, p) => t + p.total, 0), nota: '' };
 }
 
-const fmt = (n: number) => '$' + Math.round(n).toLocaleString('es-AR');
 
 async function obtener(req: Request) {
   try {
