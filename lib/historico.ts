@@ -19,11 +19,12 @@ export type FilaHist = { mes: string; canal: string; monto: number; ventas: numb
 const parseMonto = (v: unknown) =>
   typeof v === 'number' ? v : Number(String(v ?? '').replace(/[$\s.]/g, '').replace(',', '.')) || 0;
 
-export async function getHistorico(): Promise<FilaHist[]> {
+// estricto = si no se puede leer, error (para guardar: con una lectura fallida se reescribía la pestaña vacía, 18-nov-2026).
+export async function getHistorico(estricto = false): Promise<FilaHist[]> {
   const sheets = google.sheets({ version: 'v4', auth: getAuth() });
   const r = await sheets.spreadsheets.values
     .get({ spreadsheetId: SPREADSHEET_ID, range: `'${TAB}'!A2:F`, valueRenderOption: 'UNFORMATTED_VALUE' })
-    .catch(() => null);
+    .catch((e) => { if (estricto) throw e; return null; });
   return (r?.data.values ?? []).map((x) => ({
     mes: String(x[0]),
     canal: String(x[1]),
@@ -43,9 +44,12 @@ export async function upsertHistorico(nuevas: FilaHist[]) {
   }
   const clave = (f: { mes: string; canal: string }) => `${f.mes}|${f.canal}`;
   const reemplazar = new Set(nuevas.map(clave));
-  const todas = [...(await getHistorico()).filter((f) => !reemplazar.has(clave(f))), ...nuevas].sort(
+  const previas = await getHistorico(true);
+  // red de seguridad: nunca reescribir con menos filas de las que había
+  const todas = [...previas.filter((f) => !reemplazar.has(clave(f))), ...nuevas].sort(
     (a, b) => a.mes.localeCompare(b.mes) || a.canal.localeCompare(b.canal),
   );
+  if (todas.length < previas.length) throw new Error('El histórico quedaría con menos filas: no lo guardo');
   await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `'${TAB}'!A:F` });
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
