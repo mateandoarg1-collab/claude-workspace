@@ -12,6 +12,7 @@ despacho (la más cara de las que pedirían sus productos); local (retiro), una 
 import json, re, sys
 import reglas
 from cmv import despacho
+from piezas_orden import clave as clave_eq
 
 BOLSA_LOCAL = 'PACK-BOL-11001'
 
@@ -20,28 +21,40 @@ def calcular(costos, v):
     out = {'id': v['id'], 'cmv': 0, 'empaque': 0, 'despacho': 0, 'sin_costo': 0, 'sin_regla': [], 'sin_costo_n': []}
     cajas = []
     manuales = costos.get('_productos', {})
+    # Equivalencias canal Tienda (mateando-stock → Equivalencias, desde 18-nov-2026): mandan sobre las reglas; las revisadas
+    # también sobre el costo cargado a mano por producto. costos['_eq'] = {clave: [[sku, cant], ...]}, costos['_eq_rev'] = [claves].
+    eqs, eq_rev = costos.get('_eq', {}), set(costos.get('_eq_rev', []))
     historial = costos.get('_productos_hist', {})
     fecha = str(v.get('fecha') or '')[:10]
     for p in v['productos']:
         nombre, variante, q = str(p['n'] or '').upper(), str(p['v'] or '').upper(), p['q'] or 0
         clave = re.sub(r'\s+', ' ', nombre).strip()
-        try:
-            base, estado = reglas.resolver(nombre, variante)
-        except (TypeError, ValueError):  # regla que necesita el color y la variante no lo dice
-            base, estado = None, 'FALTA'
-        manual = manuales.get(clave)
+        k_eq = clave_eq(p['n'] or '', p['v'] or '')
+        if k_eq in eqs:
+            base, estado = [tuple(x) for x in eqs[k_eq]], 'eq'
+        else:
+            try:
+                base, estado = reglas.resolver(nombre, variante)
+            except (TypeError, ValueError):  # regla que necesita el color y la variante no lo dice
+                base, estado = None, 'FALTA'
+        manual = None if k_eq in eq_rev else manuales.get(clave)
         if fecha and clave in historial:
             # el costo a mano vigente en la fecha de la venta (cada fila vale desde su fecha; sin fecha = desde siempre).
             # Antes del primer cambio: la regla; si no hay regla, el costo a mano más viejo.
             previos = [c for d, c in historial[clave] if d <= fecha]
             manual = previos[-1] if previos else (None if base else historial[clave][0][1])
+        if k_eq in eq_rev:
+            manual = None
         extras = reglas.extras(nombre, variante)
+        if estado == 'eq':  # grabado o bombilla fijos de la equivalencia: no sumarlos dos veces
+            ya = {s for s, _ in base}
+            extras = [(s, c) for s, c in extras if s not in ya or s == reglas.CAJA]
         comps = (base or []) + extras
         if manual is not None:
             out['cmv'] += manual * q
             pack = despacho(nombre, comps) if base else [('DESP-SIMPLE', 1)]
             for s, c in extras + ([] if v['local'] else pack):
-                s = reglas.ALIAS.get(s, s)
+                s = reglas.ALIAS.get(s, s).upper()
                 if s.startswith('DESP-'):
                     cajas.append(s)
                 elif s in costos:
@@ -53,7 +66,7 @@ def calcular(costos, v):
             out['sin_costo'] += q
             continue
         for s, c in comps + ([] if v['local'] else despacho(nombre, comps)):
-            s = reglas.ALIAS.get(s, s)
+            s = reglas.ALIAS.get(s, s).upper()
             if s.startswith('DESP-'):
                 cajas.append(s)
                 continue
@@ -72,6 +85,14 @@ def calcular(costos, v):
     return out
 
 
+def mayusculas(costos):
+    """El Excel tiene SKUs con minúscula (CANA-2x2-7010) y las equivalencias van en mayúscula: se buscan sin distinguir."""
+    for k in list(costos):
+        if not k.startswith('_'):
+            costos.setdefault(k.upper(), costos[k])
+    return costos
+
+
 if __name__ == '__main__':
-    costos = json.load(open(sys.argv[1]))
+    costos = mayusculas(json.load(open(sys.argv[1])))
     print(json.dumps([calcular(costos, v) for v in json.load(sys.stdin)], ensure_ascii=False))

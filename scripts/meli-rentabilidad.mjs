@@ -1,5 +1,5 @@
 // Rentabilidad de Mercado Libre por orden, con las mismas reglas que usaba Escalafy (data/escalafy/REGLAS-MELI.md):
-// venta, comisión y envío de ML sin IVA (÷1,21), impuestos 5% de la venta, Flex por cordón, costo de la pestaña costos_meli.
+// venta, comisión y envío de ML sin IVA (÷1,21), impuestos 5% de la venta, Flex por cordón, costo = equivalencia × Excel Costos JP (o la pestaña costos_meli si la publicación no tiene equivalencia).
 // Escribe la pestaña rentabilidad_meli (una fila por orden) y rentabilidad_meli_ads (pauta de ML Ads por día)
 // en la planilla MATEANDO MAYORISTA 2026, que lee /api/ml/rentabilidad.
 // Recalcula los últimos N días porque las órdenes cambian (reembolsos, envíos que ML recotiza):
@@ -145,8 +145,50 @@ async function costosMeli(sheets) {
     historial.set(k, [...(historial.get(k) ?? []), { desde: String(desde ?? ''), hasta: String(hasta), tipo: String(tipo ?? ''), costo: Number(costo) || 0 }]);
   }
   const buscar = (k, fecha) => historial.get(k)?.find((v) => (!v.desde || v.desde <= fecha) && fecha < v.hasta) ?? actual.get(k);
+  // Desde 18-nov-2026 (pedido de Juampi): si la publicación tiene equivalencia (mateando-stock → Equivalencias), el costo
+  // sale de lo que lleva × costo de cada SKU en su Excel "Costos JP" (col G) + $500 de packaging si lleva un mate sin caja
+  // de regalo (cartulina + caja de despacho, como hacía Escalafy). costos_meli queda solo para lo que no tiene equivalencia.
+  const eq = await costosPorEquivalencia(sheets);
+  const deEq = (item, variacion) => (variacion ? eq.get(`${item}|${variacion}`) : undefined) ?? eq.get(`${item}|`);
   // Una variación sin costo propio usa el de la publicación.
-  return (item, variacion, fecha) => (variacion ? buscar(`${item}|${variacion}`, fecha) : undefined) ?? buscar(String(item), fecha);
+  return (item, variacion, fecha) => deEq(item, variacion) ?? (variacion ? buscar(`${item}|${variacion}`, fecha) : undefined) ?? buscar(String(item), fecha);
+}
+
+const COSTOS_JP = '1VP12eqQsJpZdOA6crIUMZccqpPobVZzxc8jev2iUkF8';
+const ALIAS_SKU = { 'BOMB-ACE-12002': 'BOMB-ACE-12001', 'ACCE-ALM-10008': 'ACCE-ALM-10009', 'ACCE-KIT-10009': 'ACCE-KIT-10010' };
+const PACKAGING_MATE = 500;
+// "$13.500", "1288,18", 7500 → número
+function aNumero(x) {
+  if (typeof x === 'number') return x;
+  const t = String(x ?? '').replace(/[$\s]/g, '');
+  if (!t) return null;
+  const n = Number(/,/.test(t) ? t.replace(/\./g, '').replace(',', '.') : t.replace(/\.(?=\d{3}(\D|$))/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+// item|variante → { tipo: 'LOCAL$', costo } para las publicaciones con equivalencia cuyos SKUs tienen todos costo.
+async function costosPorEquivalencia(sheets) {
+  const hojas = (await sheets.spreadsheets.get({ spreadsheetId: COSTOS_JP, fields: 'sheets.properties.title' })).data.sheets.map((h) => h.properties.title)
+    .filter((t) => !/^(Stock |stock_|BASE scalify|Hoja 22)/.test(t));
+  const res = await sheets.spreadsheets.values.batchGet({ spreadsheetId: COSTOS_JP, ranges: [...hojas.map((h) => `'${h}'!F2:G`), "'Stock Equivalencias'!A2:D"], valueRenderOption: 'UNFORMATTED_VALUE' });
+  const rangos = res.data.valueRanges ?? [];
+  const costoSku = new Map();
+  for (const r of rangos.slice(0, -1)) for (const [sku, c] of r.values ?? []) { const n = aNumero(c); if (sku && n > 0) costoSku.set(String(sku).trim().toUpperCase(), n); }
+  const out = new Map();
+  for (const [canal, clave, , skus] of rangos.at(-1).values ?? []) {
+    const t = String(skus ?? '').trim().toUpperCase();
+    if (canal !== 'MeLi' || !t || t === '-') continue;
+    let costo = 0, ok = true;
+    for (const p of t.split('+')) {
+      const m = p.trim().match(/^(\S+?)(?:\s*\*\s*(\d+))?$/);
+      const sku = m && (ALIAS_SKU[m[1]] ?? m[1]);
+      if (!sku || !costoSku.has(sku)) { ok = false; break; }
+      costo += costoSku.get(sku) * Number(m[2] ?? 1);
+    }
+    if (!ok) continue;
+    if (/MATE-(CAL|MAD|ACE|CER|PIEL)/.test(t) && !/PACK-CAJ/.test(t)) costo += PACKAGING_MATE;
+    out.set(String(clave), { tipo: 'LOCAL$', costo: Math.round(costo * 100) / 100 });
+  }
+  return out;
 }
 
 // Envío de la devolución de un reclamo: lo que ML le cobra al vendedor, solo si la devolución ya se despachó.

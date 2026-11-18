@@ -10,7 +10,8 @@
 //     Transferencia: 3% de lo transferido, que cobra la financiera.
 //   - Impuestos de lo facturado: IIBB 5% de la venta sin IVA e impuesto a los débitos y créditos 1,2% de lo cobrado
 //     (con IVA y envío). Las transferencias no se facturan: solo pagan el 3% de la financiera (Juampi, 25-oct-2026).
-//   - Costo de producto y packaging: reglas de scripts/cmv (las mismas del CMV de /canales), venta por venta.
+//   - Costo de producto y packaging: lo que lleva cada publicación según Stock Equivalencias (mateando-stock) × costo del
+//     Excel Costos JP; si no tiene equivalencia, reglas de scripts/cmv (las mismas del CMV de /canales), venta por venta.
 // Solo cuentan las ventas pagadas. canal = local si se pagó "a acordar" (retiro en el local).
 //   node scripts/tienda-rentabilidad.mjs               → 60 días a las 6 de la mañana, 10 días el resto de las horas
 //   node scripts/tienda-rentabilidad.mjs --dias 30
@@ -112,6 +113,15 @@ async function costosSku() {
     }
   }
   Object.assign(costos, await costosProducto());
+  // Equivalencias canal Tienda (mateando-stock): lo que lleva cada publicación; las revisadas mandan sobre el costo a mano.
+  const eq = (await sheets.spreadsheets.values.get({ spreadsheetId: COSTOS_JP, range: "'Stock Equivalencias'!A2:F" }).catch(() => null))?.data.values ?? [];
+  costos._eq = {}; costos._eq_rev = [];
+  for (const [canal, clave, , skus, , revisado] of process.env.SIN_EQUIVALENCIAS ? [] : eq) { // SIN_EQUIVALENCIAS=1: para comparar con las reglas viejas
+    const t = String(skus ?? '').trim().toUpperCase();
+    if (canal !== 'Tienda' || !t) continue;
+    costos._eq[clave] = t === '-' ? [] : t.split('+').map((p) => { const m = p.trim().match(/^(\S+?)(?:\s*\*\s*(\d+))?$/); return [m[1], Number(m[2] ?? 1)]; });
+    if (revisado) costos._eq_rev.push(clave);
+  }
   return costos;
 }
 
@@ -267,6 +277,7 @@ const ventas = crudas
 const costos = await costosSku();
 const archivoCostos = join(tmpdir(), `costos-tienda-${process.pid}.json`);
 writeFileSync(archivoCostos, JSON.stringify(costos));
+if (process.env.GUARDAR_COSTOS) writeFileSync(process.env.GUARDAR_COSTOS, JSON.stringify(costos)); // para comparar a mano
 const entrada = ventas.map((v) => ({ id: String(v.order_id), fecha: diaAR(v.fecha), local: Number(v.pago_metodo) === 3, productos: JSON.parse(v.productos || '[]') }));
 const cmv = new Map(
   JSON.parse(execFileSync('python3', [new URL('./cmv/cmv_orden.py', import.meta.url).pathname, archivoCostos], { input: JSON.stringify(entrada), encoding: 'utf8', maxBuffer: 64 << 20 }))
