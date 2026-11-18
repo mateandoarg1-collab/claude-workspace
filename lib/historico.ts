@@ -5,7 +5,7 @@
 //   (scripts/historico-empretienda.mjs).
 // - Mercado Libre, Shopify y Mayorista: guardarMes() (cron diario de Vercel, el mes de "ayer": el día 1 cierra el mes).
 import { google } from 'googleapis';
-import { getAuth, getPedidosMayoristaApp } from './sheets';
+import { getAuth } from './sheets';
 import { fetchOrdersInRange, isValidOrder } from './ml';
 import { getShopifyVentasRango } from './shopify';
 
@@ -76,11 +76,6 @@ export async function guardarMes(mes: string) {
     }),
     getShopifyVentasRango(desde, hasta).catch(() => null),
     (async () => {
-      // Desde nov-2026 los pedidos están en la app mayorista (pestaña App Pedidos).
-      if (mes >= '2026-11') {
-        const ps = await getPedidosMayoristaApp(desde, hasta);
-        return { monto: ps.reduce((s, p) => s + p.total, 0), ventas: ps.length, tab: 'App Pedidos' };
-      }
       // Pestaña del mes ("SEPT 26"; febrero 2026 quedó como "FEB 26."). Fila 1 = títulos, fila 2 = totales (A = pedidos).
       // La columna del total se busca por su título: hasta marzo 2026 "MONTO TOTAL" es la L y la M es "COSTO";
       // desde abril se agregó "CMV" y el total pasó a la M.
