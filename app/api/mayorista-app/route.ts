@@ -44,7 +44,7 @@ export async function GET(req: Request) {
     const [ped, cli, prod, ven] = await Promise.all([leer('pedidos'), leer('clientes'), leer('productos'), yo.admin ? leer('vendedores') : Promise.resolve([])]);
     let pedidos = ped.filter((f) => f[0]).map(aPedido);
     if (!yo.admin) pedidos = pedidos.filter((p) => p.vendedor.toLowerCase() === yo.nombre.toLowerCase())
-      .map((p) => ({ ...p, costo: 0, items: p.items.map((i) => ({ ...i, costo: 0 })) }));
+      .map((p) => ({ ...p, costo: 0, packaging: 0, items: p.items.map((i) => ({ ...i, costo: 0 })) }));
     pedidos.sort((a, b) => (b.fecha + b.nro).localeCompare(a.fecha + a.nro) || b.nro - a.nro);
     const clientes = cli.filter((f) => f[0]).map((f) => ({ nombre: f[0], cuit: f[1], telefono: f[2], direccion: f[3], email: f[4] }));
     const productos = prod.filter((f) => f[0] && f[3] !== 'NO').map((f) => ({ nombre: f[0], precio: num(f[1]), costo: yo.admin ? num(f[2]) : 0, foto: f[4] ?? '',
@@ -106,14 +106,14 @@ export async function POST(req: Request) {
 
       if (b.nro) {
         const { i, p } = buscar(b.nro);
-        await reemplazar('pedidos', i, dePedido({ ...p, ...base, fecha: txt(b.fecha, 10) || p.fecha }));
+        await reemplazar('pedidos', i, dePedido({ ...p, ...base, fecha: txt(b.fecha, 10) || p.fecha, packaging: yo.admin && b.packaging !== undefined ? num(b.packaging) : p.packaging }));
         return ok({ ok: true, nro: p.nro });
       }
       const nro = Math.max(1000, ...ped.map((f) => num(f[0]))) + 1;
       const presupuesto = !!b.presupuesto;
       const pagos: Pago[] = !presupuesto && num(b.pagoInicial?.monto) > 0 ? [{ fecha: hoyAR(), monto: num(b.pagoInicial.monto), medio: txt(b.pagoInicial.medio, 30) || 'Transferencia' }] : [];
       await agregar('pedidos', [dePedido({ nro, creado: ahoraAR(), fecha: txt(b.fecha, 10) || hoyAR(), vendedor: yo.admin && b.vendedor ? txt(b.vendedor, 40) : yo.nombre,
-        estado: presupuesto ? 'Presupuesto' : 'Pendiente', pagos, origen: 'app', anulado: false, factura: null, ...base })]);
+        estado: presupuesto ? 'Presupuesto' : 'Pendiente', pagos, origen: 'app', anulado: false, factura: null, packaging: yo.admin ? num(b.packaging) : 0, ...base })]);
       return ok({ ok: true, nro });
     }
 

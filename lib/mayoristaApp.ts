@@ -12,7 +12,7 @@ import { getAuth } from './sheets';
 //  · App Vendedores  nombre · pin · admin(SI/NO) · activo
 export const ID = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
 export const HOJAS = {
-  pedidos: { t: 'App Pedidos', cols: ['nro', 'creado', 'fecha', 'vendedor', 'cliente', 'items', 'neto', 'iva', 'total', 'costo', 'entrega', 'direccion', 'fechaEntrega', 'estado', 'pagos', 'obs', 'origen', 'actualizado', 'conIva', 'anulado', 'factura'] },
+  pedidos: { t: 'App Pedidos', cols: ['nro', 'creado', 'fecha', 'vendedor', 'cliente', 'items', 'neto', 'iva', 'total', 'costo', 'entrega', 'direccion', 'fechaEntrega', 'estado', 'pagos', 'obs', 'origen', 'actualizado', 'conIva', 'anulado', 'factura', 'packaging'] },
   clientes: { t: 'App Clientes', cols: ['nombre', 'cuit', 'telefono', 'direccion', 'email', 'alta'] },
   productos: { t: 'App Productos', cols: ['nombre', 'precio', 'costo', 'activo', 'foto', 'colores', 'es'] },
   vendedores: { t: 'App Vendedores', cols: ['nombre', 'pin', 'admin', 'activo'] },
@@ -48,6 +48,7 @@ export type Pedido = {
   nro: number; creado: string; fecha: string; vendedor: string; cliente: string; items: Item[]; neto: number; iva: number; total: number;
   costo: number; entrega: string; direccion: string; fechaEntrega: string; estado: string; pagos: Pago[]; obs: string; origen: string;
   actualizado: string; conIva: boolean; anulado: boolean; factura: Factura | null; pagado: number; saldo: number;
+  packaging: number; // packaging del pedido cargado a mano por el admin (se resta de la ganancia)
 };
 export type Factura = { numero: string; tipo: string; cae: string; vence: string; pdf: string; total: number; doc?: string; nombre?: string; fecha?: string };
 const j = <T,>(s: string, d: T): T => { try { return s ? JSON.parse(s) : d; } catch { return d; } };
@@ -60,13 +61,13 @@ export function aPedido(f: string[]): Pedido {
   return {
     nro: num(f[0]), creado: f[1], fecha: f[2], vendedor: f[3], cliente: f[4], items: j<Item[]>(f[5], []), neto: num(f[6]), iva: num(f[7]),
     total, costo: num(f[9]), entrega: f[10], direccion: f[11], fechaEntrega: f[12], estado: f[13] || 'Pendiente', pagos, obs: f[15],
-    origen: f[16] || 'app', actualizado: f[17], conIva: f[18] !== 'NO', anulado: f[19] === 'SI', factura: j<Factura | null>(f[20], null), pagado, saldo: Math.max(0, total - pagado),
+    origen: f[16] || 'app', actualizado: f[17], conIva: f[18] !== 'NO', anulado: f[19] === 'SI', factura: j<Factura | null>(f[20], null), pagado, saldo: Math.max(0, total - pagado), packaging: num(f[21]),
   };
 }
 export function dePedido(p: Omit<Pedido, 'pagado' | 'saldo'>): (string | number)[] {
   return [p.nro, p.creado, p.fecha, p.vendedor, p.cliente, JSON.stringify(p.items), p.neto, p.iva, p.total, p.costo, p.entrega, p.direccion,
     p.fechaEntrega, p.estado, JSON.stringify(p.pagos), p.obs, p.origen, p.actualizado, p.conIva ? 'SI' : 'NO', p.anulado ? 'SI' : 'NO',
-    p.factura ? JSON.stringify(p.factura) : ''];
+    p.factura ? JSON.stringify(p.factura) : '', p.packaging || 0];
 }
 
 export const ahoraAR = () => new Date(Date.now() - 3 * 3600e3).toISOString().slice(0, 16).replace('T', ' ');
