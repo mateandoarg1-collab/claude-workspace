@@ -117,7 +117,8 @@ async function leerApi(page, desde, hasta) {
     const s = (await rs.json()).data, p = (await rp.json()).data;
     const medio = (re) => p.breakdown.find((b) => re.test(b.label)) ?? { revenue_with_shipping: 0, orders: 0 };
     const acordar = medio(/acordar/i), transf = medio(/transferencia/i);
-    return { total: [s.totals.revenue_with_shipping, s.totals.orders], acordar: [acordar.revenue_with_shipping, acordar.orders], transf: transf.revenue_with_shipping };
+    // en pesos enteros, como antes (la planilla lee «151112550,15» como texto)
+    return { total: [Math.round(s.totals.revenue_with_shipping), s.totals.orders], acordar: [Math.round(acordar.revenue_with_shipping), acordar.orders], transf: Math.round(transf.revenue_with_shipping) };
   }
 }
 
@@ -228,6 +229,8 @@ try {
     const CERO = { facturacion: 0, cmv: 0, empaque: 0, despacho: 0, despacho_u: 0, skus: {}, sin_regla: {} };
     const t = res[l.total], a = res[l.acordar] ?? (l.cantAcordar === 0 ? CERO : null);
     if (!t || !a) continue;
+    // listado vacío con ventas (la tabla de productos de la Métricas nueva a veces da error): no pisar el CMV con ceros
+    if (!t.unidades && l.cantTotal > 0) continue;
     // Local (Acordar = retiro): 1 bolsa por pedido. Online: empaque por mate + 1 caja de despacho por pedido, con el
     // costo promedio de caja de lo que se vendió (el listado trae una caja por unidad).
     const localPack = Math.round(l.cantAcordar * costos['PACK-BOL-11001']);
@@ -251,7 +254,8 @@ try {
     tabs.push(['unidades_sku', [['mes', 'sku', 'online', 'local'], ...previas, ...nuevas]]);
   }
   for (const [tab, values] of [...tabs,
-    ['cmv_empretienda', filasCmv],
+    // sin ningún período con listado: queda el CMV anterior
+    ...(filasCmv.length > 1 ? [['cmv_empretienda', filasCmv]] : []),
     ['cmv_revisar', [['Publicación sin regla (unidades del mes)', 'unidades'], ...[...revisar].sort((x, y) => y[1] - x[1])]],
   ]) {
     if (!hojasMayorista.includes(tab)) {
