@@ -3,10 +3,6 @@
  "AUTO-MAT-6002": 16000,
  "AUTO-MAT-6003": 16000,
  "AUTO-MAT-6004": 16000,
- "DESP-2X1": 406,
- "DESP-SET": 425,
- "DESP-SIMPLE": 262.05,
- "DESP-TERMO": 417.96,
  "DISC-COQUITO": 11500,
  "DISC-IMP-CERAMICA": 17000,
  "DISC-MUU-2": 40212,
@@ -22,8 +18,6 @@
  "MATE-KIT-750": 29500,
  "MATE-MAD-2020": 19700,
  "MATE-PIEL": 26000,
- "PACK-BOL-11001": 740,
- "PACK-CUR-11018": 478.17,
  "TER-MAT-5001": 18000,
  "TER-MAT-5002": 18000,
  "TER-MAT-5003": 18000,
@@ -33,5 +27,5 @@
  "TER-MAT-5007": 15965,
  "TER-MAT-5008": 15965,
  "YERB-KIT-8013": 2500,
- "_nota": "Ganan sobre la planilla Costos JP. Container: costo Escalafy sin los $500 de packaging Meli. DESP-* = caja Lumapack sin IVA + cinta. Local: 1 PACK-BOL-11001 por pedido."
+ "_nota": "Ganan sobre la planilla Costos JP. Container: costo Escalafy sin los $500 de packaging Meli. Packaging (cartulina, cajas de despacho sin cinta, bolsas, calco) sale del Excel: ver cmv.py."
 }

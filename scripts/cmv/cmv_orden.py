@@ -6,20 +6,20 @@ Costos cargados a mano por producto (/rentabilidad-tienda/costos): costos["_prod
 costos["_productos_hist"] = {NOMBRE: [[desde, costo], ...]}; si la venta trae "fecha", vale el de esa fecha. Reemplazan
 el costo de los SKUs del producto, pero se siguen sumando lo que agrega la variante (bombilla, caja o bolsa de regalo) y el
 packaging (con los componentes de la regla si la hay; si no, una caja de despacho simple).
-Packaging (README): online, cada mate sin caja de regalo lleva el packaging general y la venta lleva UNA caja de
-despacho (la más cara de las que pedirían sus productos); local (retiro), una bolsa por venta y sin caja.
+Packaging (ver cmv.py): online, cada mate sin caja de regalo lleva la cartulina y la venta lleva UNA caja de despacho
+(la más grande que pidan sus productos, sin cinta); local (retiro), una bolsa chica o grande y sin caja; siempre una calco.
 """
 import json, re, sys
 import reglas
-from cmv import despacho
+from cmv import despacho, packaging_excel, bolsa_local, EMPAQUE, CALCO
 from piezas_orden import clave as clave_eq
 
-BOLSA_LOCAL = 'PACK-BOL-11001'
 
 
 def calcular(costos, v):
     out = {'id': v['id'], 'cmv': 0, 'empaque': 0, 'despacho': 0, 'sin_costo': 0, 'sin_regla': [], 'sin_costo_n': []}
     cajas = []
+    todos = []  # componentes de toda la venta (para elegir la bolsa del local)
     manuales = costos.get('_productos', {})
     # Equivalencias canal Tienda (mateando-stock → Equivalencias, desde 18-nov-2026): mandan sobre las reglas; las revisadas
     # también sobre el costo cargado a mano por producto. costos['_eq'] = {clave: [[sku, cant], ...]}, costos['_eq_rev'] = [claves].
@@ -46,6 +46,7 @@ def calcular(costos, v):
         if k_eq in eq_rev:
             manual = None
         extras = reglas.extras(nombre, variante)
+        todos += (base or []) + extras
         if estado == 'eq':  # grabado o bombilla fijos de la equivalencia: no sumarlos dos veces
             ya = {s for s, _ in base}
             extras = [(s, c) for s, c in extras if s not in ya or s == reglas.CAJA]
@@ -58,7 +59,7 @@ def calcular(costos, v):
                 if s.startswith('DESP-'):
                     cajas.append(s)
                 elif s in costos:
-                    out['empaque' if s == 'PACK-CUR-11018' else 'cmv'] += costos[s] * c * q
+                    out['empaque' if s in EMPAQUE else 'cmv'] += costos[s] * c * q
             continue
         if estado == 'nuevo' or base is None:
             out['sin_regla'].append(p['n'])
@@ -75,11 +76,12 @@ def calcular(costos, v):
                 if p['n'] not in out['sin_costo_n']:
                     out['sin_costo_n'].append(p['n'])
                 continue
-            out['empaque' if s == 'PACK-CUR-11018' else 'cmv'] += costos[s] * c * q
+            out['empaque' if s in EMPAQUE else 'cmv'] += costos[s] * c * q
     if v['local']:
-        out['despacho'] = costos.get(BOLSA_LOCAL, 0)
+        out['despacho'] = costos.get(bolsa_local(todos), 0)
     elif cajas:
         out['despacho'] = max(costos.get(s, 0) for s in cajas)
+    out['empaque'] += costos.get(CALCO, 0)  # una calco por pedido
     for k in ('cmv', 'empaque', 'despacho'):
         out[k] = round(out[k], 2)
     return out
@@ -94,5 +96,5 @@ def mayusculas(costos):
 
 
 if __name__ == '__main__':
-    costos = mayusculas(json.load(open(sys.argv[1])))
+    costos = packaging_excel(mayusculas(json.load(open(sys.argv[1]))))
     print(json.dumps([calcular(costos, v) for v in json.load(sys.stdin)], ensure_ascii=False))

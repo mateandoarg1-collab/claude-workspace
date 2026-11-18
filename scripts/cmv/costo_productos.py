@@ -7,19 +7,30 @@ No mira los costos cargados a mano (costos["_productos"]): esos los muestra la p
 """
 import json, sys
 import reglas
+from cmv import EMPAQUE
+from cmv_orden import mayusculas
+from piezas_orden import clave
 
 
 def costo(costos, nombre, variante):
-    try:  # algunas reglas necesitan el color de la variante: sin eso (producto sin ventas) no se puede saber
-        base, estado = reglas.resolver(nombre, variante)
-    except (TypeError, ValueError):
-        return None
+    k = clave(nombre, variante)
+    if k in costos.get('_eq', {}):  # equivalencia de mateando-stock (lo que lleva la publicación)
+        base, estado = [tuple(x) for x in costos['_eq'][k]], 'eq'
+    else:
+        try:  # algunas reglas necesitan el color de la variante: sin eso (producto sin ventas) no se puede saber
+            base, estado = reglas.resolver(nombre, variante)
+        except (TypeError, ValueError):
+            return None
     if estado == 'nuevo' or base is None:
         return None
     total = 0
-    for s, c in base + reglas.extras(nombre, variante):
-        s = reglas.ALIAS.get(s, s)
-        if s.startswith('DESP-') or s == 'PACK-CUR-11018':
+    ex = reglas.extras(nombre, variante)
+    if estado == 'eq':
+        ya = {x for x, _ in base}
+        ex = [(x, c) for x, c in ex if x not in ya or x == reglas.CAJA]
+    for s, c in base + ex:
+        s = reglas.ALIAS.get(s, s).upper()
+        if s.startswith('DESP-') or s in EMPAQUE:
             continue
         if s not in costos:
             return None
@@ -28,7 +39,7 @@ def costo(costos, nombre, variante):
 
 
 if __name__ == '__main__':
-    costos = json.load(open(sys.argv[1]))
+    costos = mayusculas(json.load(open(sys.argv[1])))
     out = []
     for p in json.load(sys.stdin):
         nombre = str(p['n'] or '').upper()

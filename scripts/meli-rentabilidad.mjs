@@ -146,17 +146,22 @@ async function costosMeli(sheets) {
   }
   const buscar = (k, fecha) => historial.get(k)?.find((v) => (!v.desde || v.desde <= fecha) && fecha < v.hasta) ?? actual.get(k);
   // Desde 18-nov-2026 (pedido de Juampi): si la publicación tiene equivalencia (mateando-stock → Equivalencias), el costo
-  // sale de lo que lleva × costo de cada SKU en su Excel "Costos JP" (col G) + $500 de packaging si lleva un mate sin caja
-  // de regalo (cartulina + caja de despacho, como hacía Escalafy). costos_meli queda solo para lo que no tiene equivalencia.
-  const eq = await costosPorEquivalencia(sheets);
+  // sale de lo que lleva × costo de cada SKU en su Excel "Costos JP" (col G) + la cartulina por cada mate sin caja de regalo.
+  // Por pedido se suma (en calcular) una caja de cartón corrugado del tamaño que pida y una calco. costos_meli queda solo
+  // para lo que no tiene equivalencia (esos costos de Escalafy ya traen $500 de packaging si es mate).
+  const { eq, packaging } = await costosPorEquivalencia(sheets);
   const deEq = (item, variacion) => (variacion ? eq.get(`${item}|${variacion}`) : undefined) ?? eq.get(`${item}|`);
   // Una variación sin costo propio usa el de la publicación.
-  return (item, variacion, fecha) => deEq(item, variacion) ?? (variacion ? buscar(`${item}|${variacion}`, fecha) : undefined) ?? buscar(String(item), fecha);
+  const f = (item, variacion, fecha) => deEq(item, variacion) ?? (variacion ? buscar(`${item}|${variacion}`, fecha) : undefined) ?? buscar(String(item), fecha);
+  f.packaging = packaging;
+  return f;
 }
 
 const COSTOS_JP = '1VP12eqQsJpZdOA6crIUMZccqpPobVZzxc8jev2iUkF8';
 const ALIAS_SKU = { 'BOMB-ACE-12002': 'BOMB-ACE-12001', 'ACCE-ALM-10008': 'ACCE-ALM-10009', 'ACCE-KIT-10009': 'ACCE-KIT-10010' };
-const PACKAGING_MATE = 500;
+// Packaging (Juampi, 18-nov-2026; mismo criterio que scripts/cmv/cmv.py), sin cinta.
+const CARTULINA = 'PACK-PAC-11006', CALCO = 'PACK-CAL-11015';
+const CAJAS = { SIMPLE: 'PACK-CAR-11009', '2X1': 'PACK-CAR-11010', TERMO: 'PACK-CAR-11011', SET: 'PACK-CAR-11011' };
 // "$13.500", "1288,18", 7500 → número
 function aNumero(x) {
   if (typeof x === 'number') return x;
@@ -165,7 +170,8 @@ function aNumero(x) {
   const n = Number(/,/.test(t) ? t.replace(/\./g, '').replace(',', '.') : t.replace(/\.(?=\d{3}(\D|$))/g, ''));
   return Number.isFinite(n) ? n : null;
 }
-// item|variante → { tipo: 'LOCAL$', costo } para las publicaciones con equivalencia cuyos SKUs tienen todos costo.
+// item|variante → { tipo: 'LOCAL$', costo, caja } para las publicaciones con equivalencia cuyos SKUs tienen todos costo.
+// packaging: costo de cada caja de despacho y de la calco.
 async function costosPorEquivalencia(sheets) {
   const hojas = (await sheets.spreadsheets.get({ spreadsheetId: COSTOS_JP, fields: 'sheets.properties.title' })).data.sheets.map((h) => h.properties.title)
     .filter((t) => !/^(Stock |stock_|BASE scalify|Hoja 22)/.test(t));
@@ -185,10 +191,16 @@ async function costosPorEquivalencia(sheets) {
       costo += costoSku.get(sku) * Number(m[2] ?? 1);
     }
     if (!ok) continue;
-    if (/MATE-(CAL|MAD|ACE|CER|PIEL)/.test(t) && !/PACK-CAJ/.test(t)) costo += PACKAGING_MATE;
-    out.set(String(clave), { tipo: 'LOCAL$', costo: Math.round(costo * 100) / 100 });
+    const comps = t.split('+').map((p) => p.trim().match(/^(\S+?)(?:\s*\*\s*(\d+))?$/)).map((m) => [m[1], Number(m[2] ?? 1)]);
+    const mates = comps.filter(([s]) => /^MATE-(CAL|MAD|ACE|CER|PIEL)/.test(s)).reduce((n, [, c]) => n + c, 0);
+    const cajaRegalo = comps.some(([s]) => s.startsWith('PACK-CAJ'));
+    const termo = comps.some(([s]) => /^(TER|STAN-(CLA|SYS|POL))/.test(s));
+    if (mates && !cajaRegalo) costo += (costoSku.get(CARTULINA) ?? 0) * mates;
+    const caja = comps.some(([s]) => s.startsWith('MATE-KIT')) || (termo && (mates || comps.length > 2)) ? 'SET' : termo ? 'TERMO' : cajaRegalo || mates > 1 ? '2X1' : 'SIMPLE';
+    out.set(String(clave), { tipo: 'LOCAL$', costo: Math.round(costo * 100) / 100, caja });
   }
-  return out;
+  const packaging = { calco: costoSku.get(CALCO) ?? 0, caja: Object.fromEntries(Object.entries(CAJAS).map(([k, sku]) => [k, costoSku.get(sku) ?? 0])) };
+  return { eq: out, packaging };
 }
 
 // Envío de la devolución de un reclamo: lo que ML le cobra al vendedor, solo si la devolución ya se despachó.
@@ -254,12 +266,15 @@ async function calcular(desde, hasta, costos) {
     const f = esFlex ? flex(e) : { costo: 0, estimado: false };
     let costo = 0;
     let sinCosto = 0;
+    let caja = 0; // una caja de cartón corrugado por pedido (la más grande que pida lo que lleva)
     for (const oi of o.order_items) {
       const c = costos(oi.item.id, oi.item.variation_id, diaAR(o.date_created));
       if (!c || !c.costo) sinCosto += oi.quantity;
       else costo += (c.tipo === '%' ? (oi.unit_price * c.costo) / 100 : c.costo) * oi.quantity;
+      if (c?.caja) caja = Math.max(caja, costos.packaging.caja[oi.quantity > 1 && c.caja === 'SIMPLE' ? '2X1' : c.caja] ?? 0);
     }
     if (dev.aStock) costo = 0;
+    costo += caja + costos.packaging.calco; // el packaging se gasta aunque el producto vuelva
     const venta = bruto / IVA;
     const envioDev = dev.envio / IVA;
     // Flex: negativo = lo que ML le paga al vendedor por el envío.
