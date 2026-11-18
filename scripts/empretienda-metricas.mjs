@@ -55,8 +55,6 @@ function sesionInicial() {
 }
 
 const PANEL = 'https://panel.empretienda.com/metricas';
-const ACORDAR = 3;
-const TRANSFERENCIA = 5; // Métricas: payment_method (Mercado Pago 1, Efectivo 2, Acordar 3, Transferencia 5, Mobbex 6, Ualá Bis 7)
 const SPREADSHEET_ID = '1Cjh2fKaLQ0srGagMzI4nuJDcmRT386pKnkL7hty6hmI';
 const RANGE = "'dashboard_manual'!A5:G8";
 
@@ -101,66 +99,33 @@ async function iniciarSesion(page) {
   if (/mfa/.test(page.url())) throw new Error('Empretienda pidió código por mail: prendé la Mac para que mateandobot suba una sesión nueva');
 }
 
-async function leer(page, url, esMes) {
+// Métricas nueva (Empretienda la cambió el 17-nov-2026): /metricas/ventas?from=DD-MM-YYYY&to=DD-MM-YYYY, y los números
+// los pide la página a su API (…/shops/sales/summary y …/payment-methods). Se leen esas respuestas: total con envío
+// (como el "Volumen de ventas" de antes), y el desglose por medio de pago da Acordar y Transferencia sin filtrar.
+const fechaEmp = (d) => d.split('-').reverse().join('-');
+async function leerApi(page, desde, hasta) {
   for (let i = 0; ; i++) {
-    // No se espera "networkidle": los rastreadores de Empretienda mandan pedidos sin parar y la página nunca queda
-    // quieta. Se espera a que aparezcan los números (o la pantalla de login).
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    await Promise.race([
-      page.getByText('Volumen de ventas').first().waitFor({ timeout: 45000 }),
-      page.waitForURL(/auth0|login/, { timeout: 45000 }),
-    ]).catch(() => {});
-    if (/auth0|login/.test(page.url())) {
-      if (i === 2) throw new Error('No pude iniciar sesión en Empretienda');
-      await iniciarSesion(page);
+    const respuesta = (tipo) => page.waitForResponse((r) => r.url().includes(`/shops/sales/${tipo}?`) && r.url().includes(`from=${desde}&to=${hasta}`) && r.status() === 200, { timeout: 60000 });
+    const esperas = [respuesta('summary'), respuesta('payment-methods')];
+    await page.goto(`${PANEL}/ventas?from=${fechaEmp(desde)}&to=${fechaEmp(hasta)}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    const [rs, rp] = await Promise.all(esperas).catch(() => [null, null]);
+    if (!rs || !rp) {
+      if (i === 2) throw new Error(`Métricas no devolvió los números (${desde} a ${hasta}): ${page.url()}`);
+      if (/auth0|login/.test(page.url())) await iniciarSesion(page);
       continue;
     }
-    if (esMes || page.url().includes('from=')) break;
-    // Día 1 del mes: "del 1 al 1" es la vista por defecto y Empretienda saca las fechas de la dirección. Si la
-    // pantalla dice "Ventas de hoy" (o la del mes, que el día 1 es lo mismo), el número es el pedido.
-    {
-      const pedido = new URL(url).searchParams;
-      const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
-      const mes = new Date().toLocaleDateString('es-AR', { month: 'long', timeZone: 'America/Argentina/Buenos_Aires' });
-      const t = (await page.innerText('body')).toLowerCase();
-      const pantallaHoy = t.includes('ventas de hoy') || (hoy.endsWith('-01') && t.includes(`ventas de ${mes}`));
-      if (pedido.get('from') === hoy && pedido.get('until') === hoy && pantallaHoy) break;
-      // Del 1 a hoy (la semana el día 7, o «ayer» el día 2… cuando el rango arranca el 1): es la vista del mes, y
-      // Empretienda también saca las fechas de la dirección.
-      if (pedido.get('from') === `${hoy.slice(0, 8)}01` && pedido.get('until') === hoy && t.includes(`ventas de ${mes}`)) break;
-    }
-    if (i === 2) throw new Error(`Empretienda no aplicó el filtro: ${url}`);
+    const s = (await rs.json()).data, p = (await rp.json()).data;
+    const medio = (re) => p.breakdown.find((b) => re.test(b.label)) ?? { revenue_with_shipping: 0, orders: 0 };
+    const acordar = medio(/acordar/i), transf = medio(/transferencia/i);
+    return { total: [s.totals.revenue_with_shipping, s.totals.orders], acordar: [acordar.revenue_with_shipping, acordar.orders], transf: transf.revenue_with_shipping };
   }
-  await page.getByText('Volumen de ventas').first().waitFor({ timeout: 30000 });
-  if (esMes) {
-    // Mes en curso: vista por defecto ("Ventas de Octubre"). Con fechas explícitas, Empretienda corta en 1.500 ventas.
-    const mes = new Date().toLocaleDateString('es-AR', { month: 'long', timeZone: 'America/Argentina/Buenos_Aires' });
-    const t = await page.innerText('body');
-    const dia1 = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).endsWith('-01');
-    const ok = t.toLowerCase().includes(`ventas de ${mes}`) || (dia1 && t.toLowerCase().includes('ventas de hoy'));
-    if (!ok) throw new Error(`Métricas no muestra "Ventas de ${mes}": ${url}`);
-  }
-  // Empretienda va completando los números mientras carga (trae las ventas de a 750): leer hasta que el número se
-  // quede quieto. Si la cantidad es múltiplo de 750 puede estar esperando la próxima tanda: ahí se espera más.
-  let previo = '';
-  let quietas = 0;
-  for (let i = 0; i < 25; i++) {
-    await page.waitForTimeout(2000);
-    const texto = await page.innerText('body');
-    const actual = [numero(texto, 'Volumen de ventas'), numero(texto, 'Cantidad de ventas')];
-    quietas = actual.join() === previo ? quietas + 1 : 0;
-    previo = actual.join();
-    const falta = actual[1] > 0 && actual[1] % 750 === 0 ? 5 : 1;
-    if (quietas >= falta) return actual;
-  }
-  throw new Error(`Los números de Métricas no se estabilizaron: ${url}`);
 }
 
 // "Listado de productos" → "Descargar listado" (el segundo botón; el primero es el de clientes). Es el mismo Excel
 // "Productos vendidos" con el que se armaron las reglas de scripts/cmv. Si falla, sigue sin CMV.
 async function bajarListado(page, archivo) {
   try {
-    const boton = page.getByRole('button', { name: /descargar listado/i }).last(); // el de "Listado de productos" va último
+    const boton = page.getByRole('button', { name: /descargar/i }).last(); // el de "Listado de productos" va último
     await boton.scrollIntoViewIfNeeded();
     const [descarga] = await Promise.all([page.waitForEvent('download', { timeout: 30000 }), boton.click()]);
     await descarga.saveAs(archivo);
@@ -188,17 +153,11 @@ const ahora = new Date().toISOString();
 const values = [];
 const listados = {}; // periodo → { total, acordar } (rutas de los Excel de productos)
 for (const [periodo, [desde, hasta]] of Object.entries(PERIODOS)) {
-  const rango = `from=${desde}&until=${hasta}`;
-  const esMes = periodo === 'mes';
-  // el mes va sin fechas (vista por defecto): con fechas explícitas Empretienda corta en 1.500 ventas
-  const total = await leer(page, esMes ? PANEL : `${PANEL}?${rango}`, esMes);
+  const { total, acordar, transf } = await leerApi(page, desde, hasta);
+  // Listado de productos para el CMV: el de todo el período (botón "Descargar" de productos). El de Acordar ya no se
+  // puede filtrar desde la dirección; desde el 9-nov el local va por la caja, así que si no hubo Acordar vale cero.
   const lTotal = await bajarListado(page, `/tmp/listado-${periodo}-total.xlsx`);
-  const acordar = await leer(page, esMes ? `${PANEL}?payment_method=${ACORDAR}` : `${PANEL}?${rango}&payment_method=${ACORDAR}`, esMes);
-  const lAcordar = await bajarListado(page, `/tmp/listado-${periodo}-acordar.xlsx`);
-  // Ventas por transferencia (no llevan IVA): para la vista "Sin IVA" del CMV. Si falla, sigue sin ese dato.
-  const transf = await leer(page, esMes ? `${PANEL}?payment_method=${TRANSFERENCIA}` : `${PANEL}?${rango}&payment_method=${TRANSFERENCIA}`, esMes).catch(() => null);
-  listados[periodo] = { total: lTotal, acordar: lAcordar, cantTotal: total[1], cantAcordar: acordar[1], montoTransf: transf ? transf[0] : '' };
-  if (total[1] === 1500 || acordar[1] === 1500) throw new Error(`Empretienda devolvió exactamente 1.500 ventas (${periodo}): probable corte`);
+  listados[periodo] = { total: lTotal, acordar: null, cantTotal: total[1], cantAcordar: acordar[1], montoTransf: transf };
   values.push([periodo, desde, total[0], total[1], acordar[0], acordar[1], ahora]);
 }
 // Histórico por día del mes (pestaña empretienda_diario) para el gráfico de /canales: siempre hoy y ayer,
@@ -226,9 +185,7 @@ porDia.set(deAyer[1], [deAyer[1], ...deAyer.slice(2)]);
 const faltan = [];
 for (let d = 2; diaAR(d) >= hoy.slice(0, 8) + '01'; d++) if (!porDia.has(diaAR(d))) faltan.push(diaAR(d));
 for (const dia of faltan.slice(0, 4)) {
-  const rango = `from=${dia}&until=${dia}`;
-  const total = await leer(page, `${PANEL}?${rango}`, false);
-  const acordar = await leer(page, `${PANEL}?${rango}&payment_method=${ACORDAR}`, false);
+  const { total, acordar } = await leerApi(page, dia, dia);
   porDia.set(dia, [dia, total[0], total[1], acordar[0], acordar[1], ahora]);
 }
 const filas = [...porDia.values()].sort((a, b) => String(a[0]).localeCompare(String(b[0])));
@@ -268,7 +225,8 @@ try {
   const filasCmv = [['periodo', 'onlineFact', 'onlineCmv', 'onlinePack', 'localFact', 'localCmv', 'localPack', 'updatedAt', 'onlineTransfMonto']];
   const revisar = new Map();
   for (const [periodo, l] of Object.entries(listados)) {
-    const t = res[l.total], a = res[l.acordar];
+    const CERO = { facturacion: 0, cmv: 0, empaque: 0, despacho: 0, despacho_u: 0, skus: {}, sin_regla: {} };
+    const t = res[l.total], a = res[l.acordar] ?? (l.cantAcordar === 0 ? CERO : null);
     if (!t || !a) continue;
     // Local (Acordar = retiro): 1 bolsa por pedido. Online: empaque por mate + 1 caja de despacho por pedido, con el
     // costo promedio de caja de lo que se vendió (el listado trae una caja por unidad).
@@ -283,12 +241,12 @@ try {
   // Unidades vendidas por SKU del mes en curso (Tienda Online y Local) → pestaña unidades_sku, para el % de falla de
   // /posventa. Se reemplazan solo las filas del mes en curso; los meses anteriores quedan como historial.
   const lm = listados.mes;
-  if (lm && res[lm.total] && res[lm.acordar]) {
+  if (lm && res[lm.total] && (res[lm.acordar] || lm.cantAcordar === 0)) {
     const mesAct = hoy.slice(0, 7);
     const previas = hojasMayorista.includes('unidades_sku')
       ? ((await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: "'unidades_sku'!A2:D" })).data.values ?? []).filter((r) => r[0] !== mesAct)
       : [];
-    const t = res[lm.total].skus, a = res[lm.acordar].skus;
+    const t = res[lm.total].skus, a = res[lm.acordar]?.skus ?? {};
     const nuevas = Object.keys(t).sort().map((sku) => [mesAct, sku, (t[sku] ?? 0) - (a[sku] ?? 0), a[sku] ?? 0]);
     tabs.push(['unidades_sku', [['mes', 'sku', 'online', 'local'], ...previas, ...nuevas]]);
   }
