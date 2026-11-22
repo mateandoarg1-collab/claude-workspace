@@ -49,13 +49,15 @@ REGLAS = [
     (r'IMPERIAL PREMIUM DOBLE CALADO', lambda t: R('MATE-CAL-1044'), 'ok'),
     (r'IMPERIAL PREMIUM - BASE ALPACA', lambda t: R('MATE-CAL-1042'), 'revisar'),
     (r'MATE AFA', lambda t: R('MATE-AFA'), 'revisar'),
-    (r'KIT: TAPAMATE Y TAPABOMBI', lambda t: R('ACCE-KIT-10009'), 'ok'),
+    (r'KIT: TAPAMATE Y TAPABOMBI', lambda t: R('ACCE-KIT-10010'), 'ok'),  # 10009 = SKU viejo del kit (alias de 10010)
     (r'MATE TORPEDO CROCO CINCELADO (NEGRO|MARR)', lambda t: R('MATE-CAL-1033' if 'NEGRO' in t else 'MATE-CAL-1034'), 'ok'),
     # --- respuestas del usuario sobre productos que no estaban en Shopify ---
     (r'BOMBILLA DE ALPACA CINCELADA PICO DE LORO', lambda t: R('BOMB-ALP-12016'), 'ok'),
     (r'BOMBILLA PICO LORO DESARMABLE', lambda t: R('BOMB-DES-12017'), 'ok'),
     (r'BOMBILLON DE ALPACA CINCELADO', lambda t: R('BOMB-ALP-12004'), 'ok'),
-    (r'^TAPABOMBI$|^TAPAMATE$', lambda t: R('ACCE-KIT-10009'), 'ok'),
+    # Sueltos (22-nov-2026, Juampi: el TAPABOMBI de la caja se costeaba como el kit entero): cada uno con su SKU
+    (r'^TAPA ?BOMBI$', lambda t: R('ACCE-TAB-10005'), 'ok'),
+    (r'^TAPA ?MATE$', lambda t: R('ACCE-TAM-10004'), 'ok'),
     (r'IMPERIAL PREMIUM CUERO REPUJADO A MANO', lambda t: R('MATE-CAL-1041'), 'ok'),
     (r'MATE VACA MUU ORIGINAL', lambda t: R('DISC-MUU-ORIG'), 'discontinuado'),
     (r'MATE IMPERIAL DE CERAMICA', lambda t: R('DISC-IMP-CERAMICA'), 'discontinuado'),
