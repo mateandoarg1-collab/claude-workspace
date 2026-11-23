@@ -272,6 +272,16 @@ const col = Object.fromEntries(enc.map((k, i) => [k, i]));
 const ventas = crudas
   .map((r) => Object.fromEntries(Object.keys(col).map((k) => [k, r[col[k]] ?? ''])))
   .filter((v) => Number(v.pago_estado) === 1 && diaAR(v.fecha) >= desde && diaAR(v.fecha) <= hasta);
+// Medio de pago del local en Empretienda (26/10–8/11): sin nota se tomaba como tarjeta. Desde el 22-nov-2026 (Juampi:
+// "quiero noviembre bien") se usa el medio cruzado con lo que entró de verdad (Point/QR de MP, recaudadora Aginco y
+// planilla de efectivo), el mismo que muestra Métricas del local: data/local-medios-empretienda.json. Lo que no se pudo
+// cruzar queda sin medio = facturado sin comisión de Point (criterio pesimista).
+const MEDIOS_LOCAL = JSON.parse(readFileSync(new URL('../data/local-medios-empretienda.json', import.meta.url), 'utf8'));
+for (const v of ventas) {
+  const d = diaAR(v.fecha);
+  if (Number(v.pago_metodo) === 3 && d >= '2026-10-26' && d < '2026-11-09' && (v.medio_local === 'tarjeta' || !v.medio_local))
+    v.medio_local = MEDIOS_LOCAL[String(v.order_id)] || '';
+}
 
 // CMV y packaging por venta con las reglas de scripts/cmv.
 const costos = await costosSku();
