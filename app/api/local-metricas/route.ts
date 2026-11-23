@@ -1,6 +1,6 @@
 import { google } from 'googleapis';
 import { getAuth } from '@/lib/sheets';
-import { ventas } from '@/lib/localCajaVentas';
+import { conTarjetaVerificada, ventas } from '@/lib/localCajaVentas';
 import { setCostoTienda } from '@/lib/costosTienda';
 
 export const dynamic = 'force-dynamic';
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
     // fijos del local por mes, con su vigencia (desde/hasta)
     const fijosLocal = (fijos?.data.values ?? []).filter((f) => f[6] === 'local' && f[1] === 'fijo')
       .map((f) => ({ nombre: String(f[0]), monto: Number(f[2]) || 0, desde: String(f[4] || ''), hasta: String(f[5] || '') }));
-    return Response.json({ actualizado: new Date().toISOString(), ventas: v.lista, rentabilidad, fijosLocal }, { headers: { ...CORS, 'cache-control': 'no-store' } });
+    return Response.json({ actualizado: new Date().toISOString(), ventas: await conTarjetaVerificada(v.lista), rentabilidad, fijosLocal }, { headers: { ...CORS, 'cache-control': 'no-store' } });
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500, headers: CORS });
   }

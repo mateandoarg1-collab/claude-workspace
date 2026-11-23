@@ -55,13 +55,18 @@ export const VENTAS_COLS = ['order_id', 'numero', 'fecha', 'pago_metodo', 'pago_
 // 9-nov-2026 (Juampi): se busca la palabra en CUALQUIER parte de la nota, con errores de tipeo ("tranasfe",
 // "efectivooo", "pago con transf"). Solo hay que reconocer transferencia y efectivo: el resto del local se cobra con
 // Point/QR de Mercado Pago, así que desde el 26-oct todo lo que no es transferencia ni efectivo cuenta como tarjeta.
+// 22-nov-2026 (Juampi): "cuando no se sabe" NO es tarjeta. Sin nota (o nota que no dice el medio) queda vacío = sin
+// dato; "tarjeta" solo si la nota lo dice (tar, tarjeta, point, qr, débito, crédito, visa…). Métricas además confirma la
+// tarjeta con los cobros de Point/QR de Mercado Pago (lib/localCajaVentas conTarjetaVerificada).
 export function medioLocal(nota, fecha) {
   const t = String(nota ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
     .replace(/[^a-z]+/g, ' ').replace(/([a-z])\1+/g, '$1').trim(); // "efectivooo" → "efectivo"
   const p = t.split(' ').filter(Boolean);
   if (p.some((w) => /^(tr|tf)/.test(w) || /^t$/.test(w)) || /transf/.test(t.replace(/ /g, ''))) return 'transferencia';
   if (p.some((w) => /^(ef|cash|cas$)/.test(w) || /^e$/.test(w)) || /efect/.test(t.replace(/ /g, ''))) return 'efectivo';
-  return String(fecha ?? '') >= '2026-10-26T03' ? 'tarjeta' : '';
+  if (p.some((w) => w === 'tar' || w === 'tc' || w === 'td' || w === 'mp' || /^(tarj|point|posnet|qr|debit|credit|visa|master|amex|cabal)/.test(w))
+    || /mercadopago/.test(t.replace(/ /g, ''))) return 'tarjeta';
+  return '';
 }
 export function venta(o) {
   const s = o.shipping ?? {};
