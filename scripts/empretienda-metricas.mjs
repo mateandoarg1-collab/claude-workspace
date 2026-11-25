@@ -99,26 +99,44 @@ async function iniciarSesion(page) {
   if (/mfa/.test(page.url())) throw new Error('Empretienda pidió código por mail: prendé la Mac para que mateandobot suba una sesión nueva');
 }
 
-// Métricas nueva (Empretienda la cambió el 17-nov-2026): /metricas/ventas?from=DD-MM-YYYY&to=DD-MM-YYYY, y los números
-// los pide la página a su API (…/shops/sales/summary y …/payment-methods). Se leen esas respuestas: total con envío
-// (como el "Volumen de ventas" de antes), y el desglose por medio de pago da Acordar y Transferencia sin filtrar.
+// Métricas nueva: /metricas/ventas?from=DD-MM-YYYY&to=DD-MM-YYYY. Desde el 24-nov-2026 (~16:30) la página ya no pide
+// …/shops/sales/summary ni …/payment-methods (versión del 17-nov): baja las órdenes pagas del rango de
+// dashboard.empretienda.ar.ua.la/1/orders?payment_status=1&from=…&until=…&page=N&limit=750 y suma del lado del navegador.
+// Se lee esa respuesta (y las páginas siguientes con el mismo token si vienen 750) y se suma igual: total con envío
+// (o.total, como el "Volumen de ventas") y cantidad; Acordar = medio 3, Transferencia = medio 5. Comparado con lo leído
+// con la versión anterior: 20/11 y 23/11 dan idénticos, y el mes al 24/11 da el mismo Acordar (135 órdenes).
 const fechaEmp = (d) => d.split('-').reverse().join('-');
 async function leerApi(page, desde, hasta) {
   for (let i = 0; ; i++) {
-    const respuesta = (tipo) => page.waitForResponse((r) => r.url().includes(`/shops/sales/${tipo}?`) && r.url().includes(`from=${desde}&to=${hasta}`) && r.status() === 200, { timeout: 60000 });
-    const esperas = [respuesta('summary'), respuesta('payment-methods')];
+    const espera = page.waitForResponse((r) => r.url().includes('ua.la/1/orders?') && r.url().includes('payment_status=1') && r.url().includes(`from=${desde}T`) && r.status() === 200, { timeout: 60000 }).catch(() => null);
     await page.goto(`${PANEL}/ventas?from=${fechaEmp(desde)}&to=${fechaEmp(hasta)}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
-    const [rs, rp] = await Promise.all(esperas).catch(() => [null, null]);
-    if (!rs || !rp) {
+    const r = await espera;
+    if (!r) {
       if (i === 2) throw new Error(`Métricas no devolvió los números (${desde} a ${hasta}): ${page.url()}`);
       if (/auth0|login/.test(page.url())) await iniciarSesion(page);
       continue;
     }
-    const s = (await rs.json()).data, p = (await rp.json()).data;
-    const medio = (re) => p.breakdown.find((b) => re.test(b.label)) ?? { revenue_with_shipping: 0, orders: 0 };
-    const acordar = medio(/acordar/i), transf = medio(/transferencia/i);
+    let ordenes = await r.json();
+    if (!Array.isArray(ordenes)) throw new Error(`Métricas: la respuesta de órdenes cambió de forma (${desde} a ${hasta})`);
+    const limit = Number(new URL(r.url()).searchParams.get('limit')) || 750;
+    if (ordenes.length >= limit) {
+      const h = await r.request().allHeaders();
+      const headers = { authorization: h.authorization, accept: 'application/json', origin: h.origin, referer: h.referer };
+      for (let p = 1; ; p++) {
+        if (p > 50) throw new Error(`Métricas: demasiadas páginas de órdenes (${desde} a ${hasta})`);
+        const u = new URL(r.url());
+        u.searchParams.set('page', String(p));
+        const rp = await page.request.get(u.toString(), { headers });
+        if (!rp.ok()) throw new Error(`Métricas: la página ${p} de órdenes respondió ${rp.status()} (${desde} a ${hasta})`);
+        const mas = await rp.json();
+        ordenes = ordenes.concat(mas);
+        if (mas.length < limit) break;
+      }
+    }
+    const sumar = (lista) => [Math.round(lista.reduce((s, o) => s + Number(o.total || 0), 0)), lista.length];
+    const deMedio = (m) => ordenes.filter((o) => Number(o.payment?.method) === m);
     // en pesos enteros, como antes (la planilla lee «151112550,15» como texto)
-    return { total: [Math.round(s.totals.revenue_with_shipping), s.totals.orders], acordar: [Math.round(acordar.revenue_with_shipping), acordar.orders], transf: Math.round(transf.revenue_with_shipping) };
+    return { total: sumar(ordenes), acordar: sumar(deMedio(3)), transf: sumar(deMedio(5))[0] };
   }
 }
 
@@ -153,13 +171,22 @@ const page = await context.newPage();
 const ahora = new Date().toISOString();
 const values = [];
 const listados = {}; // periodo → { total, acordar } (rutas de los Excel de productos)
-for (const [periodo, [desde, hasta]] of Object.entries(PERIODOS)) {
-  const { total, acordar, transf } = await leerApi(page, desde, hasta);
-  // Listado de productos para el CMV: el de todo el período (botón "Descargar" de productos). El de Acordar ya no se
-  // puede filtrar desde la dirección; desde el 9-nov el local va por la caja, así que si no hubo Acordar vale cero.
-  const lTotal = await bajarListado(page, `/tmp/listado-${periodo}-total.xlsx`);
-  listados[periodo] = { total: lTotal, acordar: null, cantTotal: total[1], cantAcordar: acordar[1], montoTransf: transf };
-  values.push([periodo, desde, total[0], total[1], acordar[0], acordar[1], ahora]);
+// Si Métricas falla (Empretienda cambia la página seguido: 17-nov y 24-nov), igual se bajan las órdenes más abajo:
+// emp_ordenes la usan el tildador del servidor, la planilla de Zeta y la lista "no enviar" de los recordatorios.
+// Sin Métricas no se pisa nada de lo que sale de ahí (dashboard, diario, CMV, histórico) y la corrida termina con error.
+let errorMetricas = null;
+try {
+  for (const [periodo, [desde, hasta]] of Object.entries(PERIODOS)) {
+    const { total, acordar, transf } = await leerApi(page, desde, hasta);
+    // Listado de productos para el CMV: el de todo el período (botón "Descargar" de productos). El de Acordar ya no se
+    // puede filtrar desde la dirección; desde el 9-nov el local va por la caja, así que si no hubo Acordar vale cero.
+    const lTotal = await bajarListado(page, `/tmp/listado-${periodo}-total.xlsx`);
+    listados[periodo] = { total: lTotal, acordar: null, cantTotal: total[1], cantAcordar: acordar[1], montoTransf: transf };
+    values.push([periodo, desde, total[0], total[1], acordar[0], acordar[1], ahora]);
+  }
+} catch (e) {
+  errorMetricas = e;
+  console.log(`::warning::No pude leer Métricas (sigo con las órdenes): ${String(e?.message ?? e).split('\n')[0]}`);
 }
 // Histórico por día del mes (pestaña empretienda_diario) para el gráfico de /canales: siempre hoy y ayer,
 // y de a 4 días por corrida los días del mes que todavía falten (así el mes se completa solo en un par de horas).
@@ -171,37 +198,41 @@ const auth = new google.auth.GoogleAuth({
 const sheets = google.sheets({ version: 'v4', auth });
 const meta = await sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
 const hojasMayorista = meta.data.sheets.map((x) => x.properties?.title);
-if (!meta.data.sheets?.some((x) => x.properties?.title === DIARIO)) {
-  await sheets.spreadsheets.batchUpdate({
+if (!errorMetricas) try {
+  if (!meta.data.sheets?.some((x) => x.properties?.title === DIARIO)) {
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SPREADSHEET_ID,
+      requestBody: { requests: [{ addSheet: { properties: { title: DIARIO } } }] },
+    });
+  }
+  const previas = (await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${DIARIO}'!A2:F` })).data.values ?? [];
+  const porDia = new Map(previas.map((r) => [r[0], r]));
+  const deHoy = values.find((v) => v[0] === 'hoy');
+  const deAyer = values.find((v) => v[0] === 'ayer');
+  porDia.set(deHoy[1], [deHoy[1], ...deHoy.slice(2)]);
+  porDia.set(deAyer[1], [deAyer[1], ...deAyer.slice(2)]);
+  const faltan = [];
+  for (let d = 2; diaAR(d) >= hoy.slice(0, 8) + '01'; d++) if (!porDia.has(diaAR(d))) faltan.push(diaAR(d));
+  for (const dia of faltan.slice(0, 4)) {
+    const { total, acordar } = await leerApi(page, dia, dia);
+    porDia.set(dia, [dia, total[0], total[1], acordar[0], acordar[1], ahora]);
+  }
+  const filas = [...porDia.values()].sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+  await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
-    requestBody: { requests: [{ addSheet: { properties: { title: DIARIO } } }] },
+    range: `'${DIARIO}'!A1:F${filas.length + 1}`,
+    valueInputOption: 'RAW',
+    requestBody: { values: [['dia', 'totalMonto', 'totalCant', 'acordarMonto', 'acordarCant', 'updatedAt'], ...filas] },
   });
+} catch (e) {
+  console.log(`::warning::No pude guardar el histórico diario: ${String(e?.message ?? e).split('\n')[0]}`);
 }
-const previas = (await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${DIARIO}'!A2:F` })).data.values ?? [];
-const porDia = new Map(previas.map((r) => [r[0], r]));
-const deHoy = values.find((v) => v[0] === 'hoy');
-const deAyer = values.find((v) => v[0] === 'ayer');
-porDia.set(deHoy[1], [deHoy[1], ...deHoy.slice(2)]);
-porDia.set(deAyer[1], [deAyer[1], ...deAyer.slice(2)]);
-const faltan = [];
-for (let d = 2; diaAR(d) >= hoy.slice(0, 8) + '01'; d++) if (!porDia.has(diaAR(d))) faltan.push(diaAR(d));
-for (const dia of faltan.slice(0, 4)) {
-  const { total, acordar } = await leerApi(page, dia, dia);
-  porDia.set(dia, [dia, total[0], total[1], acordar[0], acordar[1], ahora]);
-}
-const filas = [...porDia.values()].sort((a, b) => String(a[0]).localeCompare(String(b[0])));
-await sheets.spreadsheets.values.update({
-  spreadsheetId: SPREADSHEET_ID,
-  range: `'${DIARIO}'!A1:F${filas.length + 1}`,
-  valueInputOption: 'RAW',
-  requestBody: { values: [['dia', 'totalMonto', 'totalCant', 'acordarMonto', 'acordarCant', 'updatedAt'], ...filas] },
-});
 
 // CMV de Tienda Online y Local (pestaña cmv_empretienda, la lee /canales). Costos: scripts/cmv/costos_base.json, encima
 // costos_override.json (lo que la planilla no tiene) y encima la planilla "Costos JP - meli" (col F SKU, col G costo neto),
 // que manda. Local = Acordar:
 // sin despacho, 1 bolsa por pedido. Online = total − Acordar.
-try {
+if (!errorMetricas) try {
   const COSTOS_JP = '1VP12eqQsJpZdOA6crIUMZccqpPobVZzxc8jev2iUkF8';
   const costos = JSON.parse(readFileSync('scripts/cmv/costos_base.json', 'utf8'));
   const override = JSON.parse(readFileSync('scripts/cmv/costos_override.json', 'utf8'));
@@ -279,7 +310,7 @@ try {
 // Histórico mensual (pestaña historico_mensual, la lee /canales): Tienda Online y Local del mes en curso. Se pisa en
 // cada lectura, así el último valor del mes queda como su cierre. Mercado Libre, Shopify y Mayorista los guarda el
 // cron de Vercel (/api/canales/historico/guardar).
-try {
+if (!errorMetricas) try {
   const mesRow = values.find((v) => v[0] === 'mes');
   if (mesRow) {
     const HIST = 'historico_mensual';
@@ -315,6 +346,11 @@ if (!PERFIL) {
 await context.close();
 await browser?.close();
 
+if (errorMetricas) {
+  // mismo texto que antes en el log (y "Se cerró la sesión…" si fue eso, para el aviso por mail de leer-metricas.sh)
+  console.log(`Error: ${String(errorMetricas?.message ?? errorMetricas)}`);
+  process.exit(1);
+}
 await sheets.spreadsheets.values.update({
   spreadsheetId: SPREADSHEET_ID,
   range: RANGE,
