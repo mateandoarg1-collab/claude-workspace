@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import AppHeader from '../components/AppHeader';
 import Pestanas from './Pestanas';
 
@@ -39,12 +39,28 @@ function armarConjuntos(archivos: Archivo[]): Conjunto[] {
   return out.length ? out : [nuevoConjunto(1)];
 }
 
-async function post(url: string, body: unknown) {
-  const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
-  const j = await r.json();
-  if (!r.ok || j.error) throw new Error(j.error || `Error ${r.status}`);
-  return j;
+// Límite de pedidos de Meta (#4 de la app, #17 de usuario, #32/#613): no es un error del anuncio, hay que esperar.
+const esLimite = (m: string) => /\(#(4|17|32|613|80004)\)|request limit|too many calls|rate limit/i.test(m);
+const ESPERAS_MIN = [2, 3, 5, 10, 10, 15, 15]; // ~1 h en total: el límite de Meta se libera por hora
+
+async function post(url: string, body: unknown, avisar?: (s: string) => void) {
+  for (let intento = 0; ; intento++) {
+    const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({ error: `Error ${r.status}` }));
+    if (r.ok && !j.error) return j;
+    const msg = String(j.error || `Error ${r.status}`);
+    if (!esLimite(msg) || intento >= ESPERAS_MIN.length) throw new Error(msg);
+    const min = ESPERAS_MIN[intento];
+    avisar?.(`⏳ Meta frenó por exceso de pedidos (${msg}). Espero ${min} min y sigo solo, no cierres la página…`);
+    await new Promise((ok) => setTimeout(ok, min * 60e3));
+  }
 }
+
+// Lo ya creado en Meta en la última carga, para seguir desde ahí sin duplicar si se corta.
+type Progreso = {
+  campId?: string; sets: Record<number, string>; ads: Record<string, string>;
+  subidos: Record<string, { hash?: string; videoId?: string; miniatura?: string }>;
+};
 
 export default function AnunciosPage() {
   const [cuentas, setCuentas] = useState<Cuenta[]>([]);
@@ -66,6 +82,8 @@ export default function AnunciosPage() {
   const [conjuntos, setConjuntos] = useState<Conjunto[]>([nuevoConjunto(1)]);
   const [log, setLog] = useState<string[]>([]);
   const [creando, setCreando] = useState(false);
+  const progreso = useRef<Progreso | null>(null);
+  const [cortado, setCortado] = useState(false);
 
   useEffect(() => {
     fetch('/api/anuncios/cuentas').then((r) => r.json()).then((j) => {
@@ -133,18 +151,21 @@ export default function AnunciosPage() {
     void ci;
   }));
 
-  async function crear() {
-    if (!confirm(`Se va a crear "${campana}" (CBO $${presupuesto.toLocaleString('es-AR')}/día) con ${conjuntos.length} conjunto(s) en ${cuentaSel?.nombre}. Queda PAUSADA. ¿Seguimos?`)) return;
+  async function crear(seguir = false) {
+    if (!seguir && !confirm(`Se va a crear "${campana}" (CBO $${presupuesto.toLocaleString('es-AR')}/día) con ${conjuntos.length} conjunto(s) en ${cuentaSel?.nombre}. Queda PAUSADA. ¿Seguimos?`)) return;
     setCreando(true);
+    setCortado(false);
     const L = (s: string) => setLog((l) => [...l, s]);
-    setLog([]);
+    if (seguir && progreso.current) L('— Sigo desde donde quedó (lo ya creado no se repite) —');
+    else { setLog([]); progreso.current = { sets: {}, ads: {}, subidos: {} }; }
+    const pg = progreso.current!;
     try {
       // Si faltan copys, se generan solos con la idea antes de publicar.
       let cs = conjuntos;
       const faltan = cs.reduce((s, c) => s + c.ads.filter((a) => !a.texto.trim()).length, 0);
       if (faltan) {
         L(`Generando ${faltan} copys con la idea…`);
-        const { copys } = await post('/api/anuncios/copys', { idea, cantidad: faltan });
+        const { copys } = await post('/api/anuncios/copys', { idea, cantidad: faltan }, L);
         let k = 0;
         cs = cs.map((c) => ({
           ...c, ads: c.ads.map((a) => {
@@ -156,31 +177,43 @@ export default function AnunciosPage() {
         setConjuntos(cs);
         L('✓ Copys listos');
       }
-      L('Creando campaña CBO…');
-      const { id: campId } = await post('/api/anuncios/paso', { accion: 'campana', cuenta, nombre: campana, presupuesto });
-      L(`✓ Campaña ${campId}`);
-      const subidos: Record<string, { hash?: string; videoId?: string; miniatura?: string }> = {};
-      for (const c of cs) {
-        L(`Creando ${c.nombre}…`);
-        const { id: setId } = await post('/api/anuncios/paso', { accion: 'conjunto', cuenta, campana: campId, nombre: c.nombre, pixel });
-        L(`✓ ${c.nombre} (${setId})`);
+      if (!pg.campId) {
+        L('Creando campaña CBO…');
+        pg.campId = (await post('/api/anuncios/paso', { accion: 'campana', cuenta, nombre: campana, presupuesto }, L)).id;
+        L(`✓ Campaña ${pg.campId}`);
+      }
+      const campId = pg.campId!;
+      for (const [ci, c] of cs.entries()) {
+        if (!pg.sets[ci]) {
+          L(`Creando ${c.nombre}…`);
+          pg.sets[ci] = (await post('/api/anuncios/paso', { accion: 'conjunto', cuenta, campana: campId, nombre: c.nombre, pixel }, L)).id;
+          L(`✓ ${c.nombre} (${pg.sets[ci]})`);
+        }
+        const setId = pg.sets[ci];
         for (const [ai, a] of c.ads.entries()) {
+          if (pg.ads[`${ci}|${ai}`]) continue;
           const arch = archivos.find((x) => x.id === a.archivo)!;
-          if (!subidos[arch.id]) {
+          if (!pg.subidos[arch.id]) {
             L(`Subiendo ${arch.nombre}${arch.tipo === 'video' ? ' (los videos tardan un rato)' : ''}…`);
-            subidos[arch.id] = await post('/api/anuncios/paso', { accion: 'media', cuenta, fileId: arch.id, nombre: arch.nombre, tipo: arch.tipo });
+            pg.subidos[arch.id] = await post('/api/anuncios/paso', { accion: 'media', cuenta, fileId: arch.id, nombre: arch.nombre, tipo: arch.tipo }, L);
           }
           const nombre = `${c.nombre} - Ad ${ai + 1} - ${arch.nombre}`;
           const { id: adId } = await post('/api/anuncios/paso', {
-            accion: 'anuncio', cuenta, conjunto: setId, nombre, tipo: arch.tipo, ...subidos[arch.id],
+            accion: 'anuncio', cuenta, conjunto: setId, nombre, tipo: arch.tipo, ...pg.subidos[arch.id],
             texto: a.texto, titulo: a.titulo, link, cta, pagina, instagram: instagram || undefined,
-          });
+          }, L);
+          pg.ads[`${ci}|${ai}`] = adId;
           L(`✓ ${nombre} (${adId})`);
         }
       }
       L('🎉 Listo. La campaña quedó PAUSADA: revisala en el Administrador de anuncios y prendela.');
+      progreso.current = null;
     } catch (e) {
       L(`✗ Error: ${e instanceof Error ? e.message : String(e)}`);
+      if (pg.campId) {
+        setCortado(true);
+        L('Tocá «Seguir desde donde quedó» para terminar la misma campaña sin duplicar lo ya creado.');
+      }
     }
     setCreando(false);
   }
@@ -323,9 +356,14 @@ export default function AnunciosPage() {
               {[...new Set(problemas)].slice(0, 8).map((p) => <li key={p}>{p}</li>)}
             </ul>
           )}
-          <button className={`${btn} w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-base`} disabled={problemas.length > 0 || creando} onClick={crear}>
+          <button className={`${btn} w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-base`} disabled={problemas.length > 0 || creando} onClick={() => crear()}>
             {creando ? 'Publicando en Meta…' : 'Publicar en Meta (queda pausada)'}
           </button>
+          {cortado && !creando && (
+            <button className={`${btn} w-full py-3 mt-2 bg-amber-600 hover:bg-amber-500 text-white text-base`} onClick={() => crear(true)}>
+              Seguir desde donde quedó
+            </button>
+          )}
           {log.length > 0 && (
             <pre className="mt-3 text-xs bg-slate-950 rounded-lg p-3 whitespace-pre-wrap text-slate-300">{log.join('\n')}</pre>
           )}

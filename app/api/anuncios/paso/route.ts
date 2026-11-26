@@ -42,12 +42,15 @@ export async function POST(req: Request) {
       fd.append('name', b.nombre);
       const v = await meta(`${b.cuenta}/advideos`, token, { body: fd });
       // Esperar a que Meta procese el video para tener miniatura (hasta ~4 min).
-      for (let i = 0; i < 48; i++) {
-        const s = await meta(`${v.id}?fields=status`, token);
-        const estado = s.status?.video_status;
+      // Consulta cada 10 s (no 5) para gastar menos pedidos del límite de la app de Meta.
+      for (let i = 0; i < 26; i++) {
+        await new Promise((r) => setTimeout(r, 10000));
+        let estado: string | undefined;
+        try {
+          estado = (await meta(`${v.id}?fields=status`, token)).status?.video_status;
+        } catch { continue; } // si Meta frena la consulta, el video ya está subido: seguimos esperando
         if (estado === 'ready') break;
         if (estado === 'error') throw new Error('Meta no pudo procesar el video');
-        await new Promise((r) => setTimeout(r, 5000));
       }
       const t = await meta(`${v.id}/thumbnails?fields=uri,is_preferred`, token);
       const thumbs = (t.data ?? []) as Array<{ uri: string; is_preferred: boolean }>;
