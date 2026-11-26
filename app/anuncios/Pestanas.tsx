@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 // Pestañas de la sección de pauta: primero la plataforma (Meta / Google / TikTok); Meta tiene sus sub-pestañas.
 const META = [
   { href: '/anuncios', label: 'Cargar campaña' },
+  { href: '/anuncios/campanas', label: 'Campañas activas' },
   { href: '/anuncios/rendimiento', label: 'Rendimiento de pauta' },
   { href: '/anuncios/presupuesto', label: 'Presupuesto por ROAS' },
 ];

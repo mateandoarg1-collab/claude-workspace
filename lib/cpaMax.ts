@@ -55,15 +55,15 @@ export type Decision = { cuenta: string; id: string; nombre: string; gasto: numb
 
 // Revisa los anuncios ACTIVOS de la cuenta (últimos 3 días) y pausa los que superan el CPA máx. dry = no pausa.
 // probar = simular con otro CPA máx (siempre sin pausar).
-export async function controlar(cuenta: string, dry = false, probar?: number): Promise<{ cpaMax: number | null; revisados: number; apagados: Decision[] }> {
+export async function controlar(cuenta: string, dry = false, probar?: number, excluirCampanas: Set<string> = new Set()): Promise<{ cpaMax: number | null; revisados: number; apagados: Decision[] }> {
   const token = tokenPara(cuenta)!;
   if (probar) dry = true;
   const cpaMax = probar || (await leerCpaMax(cuenta));
   if (!cpaMax) return { cpaMax: null, revisados: 0, apagados: [] };
   const recargo = RECARGO[cuenta] ?? 1;
   const filtro = encodeURIComponent(JSON.stringify([{ field: 'ad.effective_status', operator: 'IN', value: ['ACTIVE'] }]));
-  const filas: Array<{ ad_id: string; ad_name: string; spend: string; actions?: Array<{ action_type: string; value: string }> }> = [];
-  let url: string | null = `${cuenta}/insights?level=ad&date_preset=last_3d&limit=500&filtering=${filtro}&fields=ad_id,ad_name,spend,actions`;
+  const filas: Array<{ ad_id: string; ad_name: string; campaign_id?: string; spend: string; actions?: Array<{ action_type: string; value: string }> }> = [];
+  let url: string | null = `${cuenta}/insights?level=ad&date_preset=last_3d&limit=500&filtering=${filtro}&fields=ad_id,ad_name,campaign_id,spend,actions`;
   for (let i = 0; url && i < 10; i++) {
     const j = await meta(url, token);
     filas.push(...(j.data ?? []));
@@ -71,6 +71,8 @@ export async function controlar(cuenta: string, dry = false, probar?: number): P
   }
   const apagados: Decision[] = [];
   for (const f of filas) {
+    // Las campañas con CPA máx propio las controla lib/cpaCampanas.ts.
+    if (f.campaign_id && excluirCampanas.has(f.campaign_id)) continue;
     const gasto = Number(f.spend ?? 0) * recargo;
     let compras = 0;
     for (const t of COMPRA) {

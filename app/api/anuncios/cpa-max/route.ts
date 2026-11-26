@@ -1,5 +1,9 @@
 import { tokenPara } from '@/lib/anuncios';
 import { controlar, guardarCpaMax, leerCpaMax, listarApagados } from '@/lib/cpaMax';
+import { leerCpaCampanas } from '@/lib/cpaCampanas';
+
+// Las campañas con CPA máx propio (/anuncios/campanas) no entran en el control por cuenta.
+const conCampana = async () => new Set((await leerCpaCampanas()).map((c) => c.id));
 
 export const maxDuration = 60;
 
@@ -11,8 +15,8 @@ export async function GET(req: Request) {
   try {
     // ?probar=15000 → solo simula qué se apagaría con ese CPA máx.
     const probar = Number(sp.get('probar')) || 0;
-    if (probar) return Response.json({ seApagarian: (await controlar(cuenta, true, probar)).apagados });
-    const [cpaMax, apagados, previa] = await Promise.all([leerCpaMax(cuenta), listarApagados(cuenta), controlar(cuenta, true)]);
+    if (probar) return Response.json({ seApagarian: (await controlar(cuenta, true, probar, await conCampana())).apagados });
+    const [cpaMax, apagados, previa] = await Promise.all([leerCpaMax(cuenta), listarApagados(cuenta), controlar(cuenta, true, undefined, await conCampana())]);
     return Response.json({ cpaMax, apagados, seApagarian: previa.apagados, revisados: previa.revisados });
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 });
@@ -26,7 +30,7 @@ export async function POST(req: Request) {
   try {
     // { apagarAhora: true } → corre el control ya mismo en esta cuenta (botón "APAGAR AHORA" de Machado).
     if (apagarAhora) {
-      const r = await controlar(cuenta, false);
+      const r = await controlar(cuenta, false, undefined, await conCampana());
       return Response.json({ ok: true, apagados: r.apagados });
     }
     const valor = cpaMax ? Math.round(Number(cpaMax)) : null;

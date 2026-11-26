@@ -1,5 +1,6 @@
 import { meta, tokensDisponibles } from '@/lib/anuncios';
 import { controlar } from '@/lib/cpaMax';
+import { controlarCampanas, leerCpaCampanas } from '@/lib/cpaCampanas';
 
 export const maxDuration = 120;
 
@@ -12,11 +13,15 @@ export async function POST(req: Request) {
     const j = await meta('me/adaccounts?fields=account_status&limit=100', t);
     for (const c of j.data ?? []) if (c.account_status === 1) cuentas.add(c.id);
   }
+  const config = await leerCpaCampanas();
+  const conCampana = new Set(config.map((c) => c.id));
   const resultado = [];
   for (const c of cuentas) {
     try {
-      const r = await controlar(c, dry);
+      const r = await controlar(c, dry, undefined, conCampana);
       if (r.cpaMax) resultado.push({ cuenta: c, ...r });
+      const rc = await controlarCampanas(c, dry, config);
+      if (rc.campanas) resultado.push({ cuenta: c, porCampana: true, ...rc });
     } catch (e) {
       resultado.push({ cuenta: c, error: e instanceof Error ? e.message : String(e) });
     }
