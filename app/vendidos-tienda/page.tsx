@@ -7,8 +7,11 @@ import AppHeader from '../components/AppHeader';
 // ordenados por compras o por volumen, con Hoy / Ayer / 7 días / Mes / fechas a elección.
 
 type Variante = { v: string; unidades: number; volumen: number };
-type Producto = { id: string; producto: string; foto: string | null; link: string | null; unidades: number; volumen: number; pedidos: number; variantes: Variante[] };
-type Data = { desde: string; hasta: string; actualizado: string; pedidos: number; unidades: number; volumen: number; productos: Producto[]; error?: string };
+type Producto = {
+  id: string; producto: string; foto: string | null; link: string | null; unidades: number; volumen: number; pedidos: number; variantes: Variante[];
+  ventaNeta: number; ganancia: number; sinCosto: boolean;
+};
+type Data = { desde: string; hasta: string; actualizado: string; pedidos: number; unidades: number; volumen: number; ventaNeta: number; ganancia: number; productos: Producto[]; error?: string };
 
 const hoyAR = (menos = 0) => new Date(Date.now() - 3 * 3600e3 - menos * 864e5).toISOString().slice(0, 10);
 const PERIODOS = [
@@ -32,7 +35,7 @@ export default function VendidosTienda() {
   const [desdeP, setDesdeP] = useState(hoyAR(6));
   const [hastaP, setHastaP] = useState(hoyAR());
   const [canal, setCanal] = useState<(typeof CANALES)[number]['id']>('todos');
-  const [orden, setOrden] = useState<'compras' | 'volumen'>('compras');
+  const [orden, setOrden] = useState<'compras' | 'volumen' | 'ganancia'>('compras');
   const [abierto, setAbierto] = useState<string | null>(null);
   const [res, setRes] = useState<{ clave: string; data: Data | null }>({ clave: '', data: null });
 
@@ -50,7 +53,10 @@ export default function VendidosTienda() {
   }, [desde, hasta, canal]);
 
   const lista = [...(data?.productos ?? [])].sort((a, b) =>
-    orden === 'compras' ? b.unidades - a.unidades || b.volumen - a.volumen : b.volumen - a.volumen || b.unidades - a.unidades);
+    orden === 'compras' ? b.unidades - a.unidades || b.volumen - a.volumen
+    : orden === 'volumen' ? b.volumen - a.volumen || b.unidades - a.unidades
+    : b.ganancia - a.ganancia);
+  const pct = (g: number, v: number) => (v ? `${Math.round((g / v) * 100)}%` : '–');
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -71,15 +77,18 @@ export default function VendidosTienda() {
           {CANALES.map((c) => <button key={c.id} className={pill(canal === c.id)} onClick={() => setCanal(c.id)}>{c.label}</button>)}
         </div>
 
-        <div className="grid grid-cols-3 gap-2 text-sm">
-          {[['Pedidos', data ? String(data.pedidos) : '…'], ['Unidades', data ? String(data.unidades) : '…'], ['Volumen', data ? $(data.volumen) : '…']].map(([l, v]) => (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+          {[
+            ['Pedidos', data ? String(data.pedidos) : '…'], ['Unidades', data ? String(data.unidades) : '…'], ['Volumen', data ? $(data.volumen) : '…'],
+            ['Ganancia (antes de pauta)', data ? `${$(data.ganancia)} · ${pct(data.ganancia, data.ventaNeta)}` : '…'],
+          ].map(([l, v]) => (
             <div key={l} className={`${caja} px-3 py-2`}><p className="text-xs text-slate-500">{l}</p><p className="font-semibold tabular-nums">{v}</p></div>
           ))}
         </div>
 
         <div className={`${caja} overflow-hidden`}>
-          <div className="grid grid-cols-2 text-sm font-semibold border-b border-slate-800">
-            {(['compras', 'volumen'] as const).map((o) => (
+          <div className="grid grid-cols-3 text-xs sm:text-sm font-semibold border-b border-slate-800">
+            {(['compras', 'volumen', 'ganancia'] as const).map((o) => (
               <button key={o} onClick={() => setOrden(o)}
                 className={`py-3 ${orden === o ? 'text-emerald-300 border-b-2 border-emerald-400' : 'text-slate-400 hover:text-slate-100'}`}>
                 Ordenados por {o}
@@ -107,6 +116,9 @@ export default function VendidosTienda() {
                     <div className="text-right flex-shrink-0">
                       <p className={`text-sm font-semibold tabular-nums ${orden === 'compras' ? 'text-emerald-300' : ''}`}>{p.unidades} u.</p>
                       <p className={`text-xs tabular-nums ${orden === 'volumen' ? 'text-emerald-300 font-semibold' : 'text-slate-400'}`}>{$(p.volumen)}</p>
+                      <p className={`text-xs tabular-nums ${p.ganancia < 0 ? 'text-rose-400' : orden === 'ganancia' ? 'text-emerald-300 font-semibold' : 'text-slate-400'}`}>
+                        {p.sinCosto ? <span className="text-amber-400">sin costo · </span> : null}gana {$(p.ganancia)} ({pct(p.ganancia, p.ventaNeta)})
+                      </p>
                     </div>
                   </button>
                   {abierto === p.producto && (
@@ -125,7 +137,9 @@ export default function VendidosTienda() {
           </ul>
         </div>
         <p className="text-xs text-slate-500">
-          Ventas pagas de Empretienda. Volumen = cantidad × precio (con IVA, sin envío). Se actualiza cada hora
+          Ventas pagas de Empretienda. Volumen = cantidad × precio (con IVA, sin envío). Ganancia = la de Rentabilidad Tienda (venta sin IVA − costo
+          − packaging − comisiones − envío − impuestos), antes de pauta, repartida entre los productos de cada venta según su precio; % sobre venta sin IVA.
+          «sin costo» = falta cargar el costo y la ganancia sale inflada. Se actualiza cada hora
           {data?.actualizado ? ` · último dato ${new Date(data.actualizado).toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}.
         </p>
       </main>

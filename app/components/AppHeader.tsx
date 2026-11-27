@@ -29,9 +29,9 @@ const NAV: Array<Item & { sub?: Item[] }> = [
       { href: '/china', label: 'Ritmo de venta' },
       { href: '/simulador', label: 'Simulador de espacio' },
       { href: '/productos', label: 'Productos vendidos' },
-      { href: '/vendidos-tienda', label: 'Vendidos Empretienda' },
     ],
   },
+  { href: '/vendidos-tienda', label: 'Vendidos Empre' },
   { href: '/preguntas', label: 'Preguntas ML', badge: true },
   {
     href: '/envios',
