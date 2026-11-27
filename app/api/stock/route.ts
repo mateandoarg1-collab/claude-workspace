@@ -6,7 +6,7 @@ export const maxDuration = 60;
 // API del stock del depósito. La usa la app aparte mateando-stock.vercel.app (repo mateandoarg1-collab/mateando-stock,
 // rewrite de /api/stock a esta ruta). Acceso libre (pedido de Juampi, 15-nov-2026).
 // GET → stock por SKU, últimos movimientos y ventas sin traducir. GET ?vista=eq → todas las equivalencias + catálogo con fotos.
-// POST {accion:'mov', tipo, quien, nota, items:[{sku, cant}]} → carga movimientos.
+// POST {accion:'mov', tipo, quien, nota, items:[{sku, cant}], antesDeAbrir?} → carga movimientos (Conteo antesDeAbrir = cierre de ayer).
 // POST {accion:'eq', canal, clave, descripcion, skus, quien} → crea o corrige una equivalencia (publicación → SKUs) y la marca revisada por quien.
 // POST {accion:'producto', sku, costo?, proveedores?:[p1,p2], quien} → cambia costo/proveedores en el Excel (log en "Stock Cambios").
 // POST {accion:'foto', sku, foto} → guarda la foto de un producto (imagen chica en base64 o URL).
@@ -31,7 +31,9 @@ export async function POST(req: Request) {
     if (!quien) return no('Falta quién carga');
     const cat = new Map((await catalogo()).map((p) => [p.sku, p]));
     const items = (Array.isArray(b.items) ? b.items : []).slice(0, 300);
-    const fecha = ahoraAR();
+    // Conteo hecho antes de abrir: vale como cierre de ayer (así se descuentan todas las ventas de hoy).
+    const ayer = new Date(Date.parse(`${ahoraAR().slice(0, 10)}T12:00:00Z`) - 864e5).toISOString().slice(0, 10);
+    const fecha = tipo === 'Conteo' && b.antesDeAbrir ? `${ayer} 23:59` : ahoraAR();
     const filas: (string | number)[][] = [];
     for (const it of items) {
       const sku = txt(it.sku, 40).toUpperCase();
