@@ -319,14 +319,28 @@ if (!errorMetricas) try {
     if (!titulos.includes(HIST)) {
       await sheets.spreadsheets.batchUpdate({ spreadsheetId: SPREADSHEET_ID, requestBody: { requests: [{ addSheet: { properties: { title: HIST } } }] } });
     }
+    // mes siempre "YYYY-MM": si Sheets lo pasó a fecha (número de serie, 46327 = nov-2026) se vuelve a texto (18-nov-2026)
+    const normalizarMes = (v) => {
+      const s = String(v ?? '').trim();
+      if (/^\d{5}(\.\d+)?$/.test(s)) return new Date(Date.UTC(1899, 11, 30) + Number(s) * 864e5).toISOString().slice(0, 7);
+      const m = s.match(/^(\d{4})-(\d{2})-\d{2}/);
+      return m ? `${m[1]}-${m[2]}` : s;
+    };
     const previas = ((await sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: `'${HIST}'!A2:F`, valueRenderOption: 'UNFORMATTED_VALUE' })).data.values ?? [])
+      .map((r) => [normalizarMes(r[0]), ...r.slice(1)])
       .filter((r) => !(r[0] === mesAct && (r[1] === 'online' || r[1] === 'local')));
     const [, , tMonto, tCant, aMonto, aCant] = mesRow;
     const nuevas = [
       [mesAct, 'online', tMonto - aMonto, tCant - aCant, 'Métricas Empretienda (total − Acordar)', ahora],
       [mesAct, 'local', aMonto, aCant, 'Métricas Empretienda (Acordar)', ahora],
     ];
-    const todas = [...previas, ...nuevas].sort((x, y) => String(x[0]).localeCompare(String(y[0])) || String(x[1]).localeCompare(String(y[1])));
+    // un (mes, canal) repetido: vale el guardado más reciente
+    const unica = new Map();
+    for (const r of [...previas, ...nuevas]) {
+      const k = `${r[0]}|${r[1]}`;
+      if (!unica.has(k) || String(r[5] ?? '') > String(unica.get(k)[5] ?? '')) unica.set(k, r);
+    }
+    const todas = [...unica.values()].sort((x, y) => String(x[0]).localeCompare(String(y[0])) || String(x[1]).localeCompare(String(y[1])));
     await sheets.spreadsheets.values.clear({ spreadsheetId: SPREADSHEET_ID, range: `'${HIST}'!A:F` });
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID, range: `'${HIST}'!A1`, valueInputOption: 'RAW',

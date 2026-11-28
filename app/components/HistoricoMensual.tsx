@@ -29,12 +29,14 @@ export default function HistoricoMensual() {
   }, []);
 
   const meses = [...new Set((filas ?? []).map((f) => f.mes))].sort().reverse();
+  // Local = «Acordar» de Empretienda (hasta el 8-nov-2026) + caja propia del local (canal "caja", desde el 9-nov).
   const val = (mes: string, canal: string) => {
-    const f = filas?.find((x) => x.mes === mes && x.canal === canal);
-    if (!f) return 0;
-    if (ver === 'ventas') return f.ventas;
-    if (ver === 'usd') return blue[mes] ? f.monto / blue[mes] : 0; // promedio del blue venta de ese mes
-    return f.monto;
+    const fs = (filas ?? []).filter((x) => x.mes === mes && (x.canal === canal || (canal === 'local' && x.canal === 'caja')));
+    if (!fs.length) return 0;
+    if (ver === 'ventas') return fs.reduce((s, f) => s + f.ventas, 0);
+    const monto = fs.reduce((s, f) => s + f.monto, 0);
+    if (ver === 'usd') return blue[mes] ? monto / blue[mes] : 0; // promedio del blue venta de ese mes
+    return monto;
   };
   const total = (mes: string) => CANALES.reduce((s, c) => s + val(mes, c), 0);
   const maxTotal = Math.max(1, ...meses.map(total));
@@ -94,7 +96,7 @@ export default function HistoricoMensual() {
       )}
       <p className="text-xs text-slate-500 mt-3">
         Facturación con IVA, mismos criterios que la tabla de arriba. «Dólares» = facturación ÷ promedio del dólar blue venta de ese mes. Tienda Online y Local: hasta septiembre, de las órdenes pagadas del panel de
-        Empretienda (carga única); desde octubre, de Métricas. Meli, Shopify y Mayorista se guardan una vez por día; el mes se cierra el día 1.
+        Empretienda (carga única); desde octubre, de Métricas. Local desde el 9-nov: + caja propia del local. Meli, Shopify y Mayorista se guardan una vez por día; el mes se cierra el día 1.
       </p>
     </section>
   );
