@@ -32,7 +32,7 @@ export const FOTOS_COLS = ['sku', 'foto', 'origen'];
 const VENTANA = 30; // días para el ritmo de venta
 const SKU_RX = /^[A-Z]+-[A-Z0-9]+(-[A-Z0-9]+)?$/i; // MATE-CAL-1001, y también MATE-PIEL o MATE-KIT-1L
 // SKUs de las reglas / Shopify que en el Excel de Juampi tienen otro código (mismo producto). Todo en mayúsculas.
-const ALIAS: Record<string, string> = { 'BOMB-ACE-12002': 'BOMB-ACE-12001', 'ACCE-ALM-10008': 'ACCE-ALM-10009', 'ACCE-KIT-10009': 'ACCE-KIT-10010' };
+const ALIAS: Record<string, string> = { 'BOMB-ACE-12002': 'BOMB-ACE-12001', 'ACCE-ALM-10008': 'ACCE-ALM-10009', 'ACCE-KIT-10009': 'ACCE-KIT-10010', 'MATE-MAD-2020': 'MATE-MAD-2021' };
 export const skuExcel = (s: string) => { const u = s.trim().toUpperCase(); return ALIAS[u] ?? u; };
 
 const sheets = () => google.sheets({ version: 'v4', auth: getAuth() });

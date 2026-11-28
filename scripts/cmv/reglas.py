@@ -31,9 +31,9 @@ KIT_T7 = {'ROSA': 'TER-MAT-5006', 'BEIGE': 'TER-MAT-5008', 'NEGRO': 'TER-MAT-500
 def _kc(t): return re.search(r'MATE (ROSA|BEIGE|NEGRO|BLANCO)', t).group(1)
 REGLAS = [
     # --- octubre 2026 (publicaciones nuevas, definidas con JP el 21-oct) ---
-    (r'^NUEVO! MATE RANCHERO ROS', lambda t: R('MATE-MAD-2020'), 'ok'),
+    (r'^NUEVO! MATE RANCHERO ROS', lambda t: R('MATE-MAD-2021'), 'ok'),
     (r'^BOX MAM. [1-4] - MATE RANCHERO BLANCO|^BOX MAM. 2', lambda t: R('MATE-MAD-2003', BOMB), 'ok'),
-    (r'^BOX MAM. 3', lambda t: R('MATE-MAD-2020', BOMB), 'ok'),
+    (r'^BOX MAM. 3', lambda t: R('MATE-MAD-2021', BOMB), 'ok'),
     (r'SET IMPERIAL ROSE QUARTZ \+ TERMO MATEANDO 1 L', lambda t: R('MATE-ACE-RQ', 'TER-MAT-5002', BOMB), 'ok'),
     (r'^BOX MAM. 4|IMPERIAL ACERO ROSE QUARTZ', lambda t: R('MATE-ACE-RQ', BOMB), 'ok'),
     (r'^BOX MAM. 1|IMPERIAL RUSTICO - MAM', lambda t: R('MATE-MAD-2008', BOMB), 'ok'),
@@ -47,14 +47,14 @@ REGLAS = [
     (r'KIT MATERO MATEANDO - TERMO 1 LT? MATE (ROSA|BEIGE|NEGRO|BLANCO)', lambda t: R(KIT_T1[_kc(t)], KIT_MATE[_kc(t)], 'BOMB-ACE-12001'), 'ok'),
     (r'KIT MATERO MATEANDO - TERMO 750 ML MATE (ROSA|BEIGE|NEGRO|BLANCO)', lambda t: R(KIT_T7[_kc(t)], KIT_MATE[_kc(t)], 'BOMB-ACE-12001'), 'ok'),
     (r'SET VACA RANCHERO \+ TERMO MATEANDO BEIGE 1 L', lambda t: R('MATE-MAD-2003', 'TER-MAT-5004', BOMB), 'ok'),
-    (r'SET MATE VACA RANCHERO ROSA \+ TERMO .*750', lambda t: R('MATE-MAD-2020', 'TER-MAT-5006', BOMB), 'ok'),
+    (r'SET MATE VACA RANCHERO ROSA \+ TERMO .*750', lambda t: R('MATE-MAD-2021', 'TER-MAT-5006', BOMB), 'ok'),
     (r'SET MATE VACA RANCHERO BLACK \+ TERMO .*1 L', lambda t: R('MATE-MAD-2004', 'TER-MAT-5001', BOMB), 'ok'),
     (r'SET MATE VACA RANCHERO BLACK \+ TERMO .*750', lambda t: R('MATE-MAD-2004', 'TER-MAT-5005', BOMB), 'ok'),
     (r'SET MATE VACA RANCHERO \+ TERMO MATEANDO BEIGE 750', lambda t: R('MATE-MAD-2003', 'TER-MAT-5008', BOMB), 'ok'),
     (r'IMPERIAL PREMIUM CON PIEL', lambda t: R('MATE-PIEL'), 'ok'),
     # Kit Tote (Juampi 12-nov-2026: rose quartz y beige cuestan igual): tote + termo 1 L + mate ranchero + yerbera gamuza + bombilla.
     # Antes solo matcheaba el nombre rose quartz y los otros nombres caían en «YERBERA GAMUZA» ($2.800).
-    (r'KIT MATERO TOTE\s+TERMO.*ROSE\s+QUARTZ', lambda t: R('BOLS-TOT-7016', 'TER-MAT-5002', 'MATE-MAD-2020', 'YERB-GAM-8008', BOMB), 'ok'),
+    (r'KIT MATERO TOTE\s+TERMO.*ROSE\s+QUARTZ', lambda t: R('BOLS-TOT-7016', 'TER-MAT-5002', 'MATE-MAD-2021', 'YERB-GAM-8008', BOMB), 'ok'),
     (r'KIT MATERO TOTE', lambda t: R('BOLS-TOT-7016', 'TER-MAT-5004', 'MATE-MAD-2003', 'YERB-GAM-8008', BOMB), 'ok'),  # beige (o sin color)
     (r'TOTE MATERA ROSE QUARTZ', lambda t: R('BOLS-TOT-7016'), 'revisar'),
     (r'IMPERIAL PREMIUM DOBLE CALADO', lambda t: R('MATE-CAL-1044'), 'ok'),
@@ -93,7 +93,7 @@ REGLAS = [
     (r'SET ROSA - MATE RANCHERO', lambda t: R('MATE-MAD-2015', 'TER-MAT-5002', 'YERB-LAT-8012'), 'revisar'),
     (r'SET .*RANCHERO.*(4\.0|ROSE QUARTZ RANCHERO).*750', lambda t: R('MATE-MAD-2015', 'TER-MAT-5006', BOMB), 'revisar'),
     (r'SET .*RANCHERO.*(4\.0|ROSE QUARTZ RANCHERO)', lambda t: R('MATE-MAD-2015', 'TER-MAT-5002', BOMB), 'ok'),
-    (r'SET VACA ROSE QUARTZ RANCHERO', lambda t: R('MATE-MAD-2020', 'TER-MAT-5002', BOMB), 'ok'),  # = BUNDLE-B024
+    (r'SET VACA ROSE QUARTZ RANCHERO', lambda t: R('MATE-MAD-2021', 'TER-MAT-5002', BOMB), 'ok'),  # = BUNDLE-B024
     (r'SET .*RANCHERO.*1 L BLANCO', lambda t: R('MATE-MAD-2003', 'TER-MAT-5003', BOMB), 'ok'),
     (r'SET .*RANCHERO.*ROS[AE] QUARTZ 1 L', lambda t: R('MATE-MAD-2003', 'TER-MAT-5002', BOMB), 'ok'),
     (r'SET .*RANCHERO.*750', lambda t: R('MATE-MAD-2003', 'TER-MAT-5006', BOMB), 'revisar'),
@@ -120,7 +120,7 @@ REGLAS = [
     (r'YERBA CANARIAS 4X3', lambda t: R(('CANA-TRA-13003', 4)), 'revisar'),
     # --- mates ---
     (r'RANCHERO 4\.0', lambda t: R('MATE-MAD-2015'), 'ok'),
-    (r'RANCHERO ROSE QUARTZ', lambda t: R('MATE-MAD-2020'), 'ok'),  # 'Nuevo! Mate Ranchero Rose Quartz', distinto del 4.0
+    (r'RANCHERO ROSE QUARTZ', lambda t: R('MATE-MAD-2021'), 'ok'),  # 'Nuevo! Mate Ranchero Rose Quartz', distinto del 4.0
     (r'MATE VACA RANCHERO', lambda t: R(color(t, RANCH) or 'MATE-MAD-2003'), 'ok'),  # sin color = blanco
     (r'IMPERIAL (DE )?ALGARROBO ENCERADO', lambda t: R('MATE-MAD-2010'), 'ok'),
     (r'IMPERIAL PREMIUM ALGARROBO|IMPERIAL DE ALGARROBO', lambda t: R('MATE-MAD-2008'), 'ok'),

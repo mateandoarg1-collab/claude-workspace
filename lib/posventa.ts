@@ -48,7 +48,7 @@ function canal(v: unknown): CanalPv {
 const ALIAS: [RegExp, string][] = [
   [/^YERBERA GAMUZA$/, 'YERB-GAM-8008'],
   [/ROSA.*(4|PUNTAS)|(4|PUNTAS).*ROSA/, 'MATE-MAD-2015'], // ranchero 4.0 / 4 puntas rosa
-  [/^(MATE )?RAN\w* ROSA+$/, 'MATE-MAD-2020'], // "ranchero rosa" (y errores de tipeo) = el nuevo Rose Quartz
+  [/^(MATE )?RAN\w* ROSA+$/, 'MATE-MAD-2021'], // "ranchero rosa" (y errores de tipeo) = el nuevo Rose Quartz
   [/^RANCHERO BLANCO$/, 'MATE-MAD-2003'],
   [/^COQUITO$/, 'DISC-COQUITO'],
 ];
@@ -76,7 +76,7 @@ export async function getReclamos(): Promise<{ reclamos: Reclamo[]; nombres: Rec
     nombreASku(sheets),
   ]);
   // Nombres de SKUs que no están (o no tienen SKU) en la planilla de costos.
-  const nombres: Record<string, string> = { 'MATE-MAD-2020': 'MATE RANCHERO ROSE QUARTZ (NUEVO)', 'DISC-COQUITO': 'MATE COQUITO (discontinuado)' };
+  const nombres: Record<string, string> = { 'MATE-MAD-2021': 'MATE RANCHERO ROSE QUARTZ (NUEVO)', 'DISC-COQUITO': 'MATE COQUITO (discontinuado)' };
   for (const v of skus.values()) nombres[v.sku] ??= v.nombre;
   const reclamos: Reclamo[] = [];
   for (const r of res.data.values ?? []) {
@@ -121,7 +121,7 @@ export async function getCostoPosventa(desde: string, hasta: string) {
 // Foto por SKU: listado público de productos de la tienda Shopify (mateando.com/products.json, sin credenciales;
 // solo productos activos) y, para los que están en borrador o discontinuados, fotos de sus publicaciones de Meli.
 const FOTOS_EXTRA: Record<string, string> = {
-  'MATE-MAD-2020': 'https://http2.mlstatic.com/D_838450-MLA116308662747_082026-O.webp',
+  'MATE-MAD-2021': 'https://http2.mlstatic.com/D_838450-MLA116308662747_082026-O.webp',
   'MATE-ACE-3008': 'https://http2.mlstatic.com/D_850717-MLA116619775246_092026-O.webp',
   'DISC-COQUITO': 'https://http2.mlstatic.com/D_924717-MLA115636436236_092026-O.webp',
   'MATE-ACE-RQ': 'https://cdn.shopify.com/s/files/1/0667/1443/5655/files/materosa-mateimperialrosa-mate.jpg?v=1789586676',

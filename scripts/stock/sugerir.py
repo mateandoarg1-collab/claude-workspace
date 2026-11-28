@@ -61,7 +61,7 @@ def _deluxe(t):
 
 def _ranchero(t):
     if re.search(ROS, t):
-        return 'MATE-MAD-2020', False
+        return 'MATE-MAD-2021', False
     return color(t, [(r'TODO NEGRO|BLACK', 'MATE-MAD-2007'), (BLA, 'MATE-MAD-2003'), (NEG, 'MATE-MAD-2004'), (r'SUELA|MARRON CLARO', 'MATE-MAD-2006'), (r'MARRON|CHOCOLATE', 'MATE-MAD-2005')], 'MATE-MAD-2004')
 
 
