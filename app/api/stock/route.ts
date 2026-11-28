@@ -1,4 +1,4 @@
-import { resumen, guardarFoto, editarProducto, agregarFilas, catalogo, parsearSkus, skuExcel, ahoraAR, listaEquivalencias, guardarEquivalencia, MOV, MOV_COLS, TIPOS, CANALES_EQ } from '@/lib/stock';
+import { resumen, guardarFoto, editarProducto, agregarFilas, catalogo, parsearSkus, skuExcel, ahoraAR, listaEquivalencias, guardarEquivalencia, MOV, MOV_COLS, TIPOS, DESTINOS, CANALES_EQ, movimientos } from '@/lib/stock';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -34,6 +34,15 @@ export async function POST(req: Request) {
     // Conteo hecho antes de abrir: vale como cierre de ayer (así se descuentan todas las ventas de hoy).
     const ayer = new Date(Date.parse(`${ahoraAR().slice(0, 10)}T12:00:00Z`) - 864e5).toISOString().slice(0, 10);
     const fecha = tipo === 'Conteo' && b.antesDeAbrir ? `${ayer} 23:59` : ahoraAR();
+    // Envío / Remito Mayorista: destino obligatorio y número de remito correlativo (va en la nota: "Remito 0001 · Local · …").
+    let nota = txt(b.nota, 200), remito = 0;
+    if (tipo === 'Envío' || tipo === 'Remito Mayorista') {
+      const destino = txt(b.destino, 40);
+      if (!DESTINOS.includes(destino)) return no('Elegí el destino');
+      if ((tipo === 'Remito Mayorista') !== (destino === 'Mayorista')) return no('Destino inválido');
+      remito = 1 + Math.max(0, ...(await movimientos()).map((m) => Number(m.nota.match(/^Remito (\d+)/)?.[1] ?? 0)));
+      nota = [`Remito ${String(remito).padStart(4, '0')}`, destino, nota].filter(Boolean).join(' · ');
+    }
     const filas: (string | number)[][] = [];
     for (const it of items) {
       const sku = txt(it.sku, 40).toUpperCase();
@@ -41,11 +50,11 @@ export async function POST(req: Request) {
       const p = cat.get(sku);
       if (!p) return no(`SKU desconocido: ${sku}`);
       if (!Number.isFinite(cant) || (tipo !== 'Ajuste' && cant < 0) || (tipo !== 'Conteo' && cant === 0)) return no(`Cantidad inválida en ${sku}`);
-      filas.push([fecha, tipo, sku, p.nombre, cant, quien, txt(b.nota, 200)]);
+      filas.push([fecha, tipo, sku, p.nombre, cant, quien, nota]);
     }
     if (!filas.length) return no('No hay productos');
     await agregarFilas(MOV, MOV_COLS, filas);
-    return Response.json({ ok: true, cargados: filas.length });
+    return Response.json({ ok: true, cargados: filas.length, remito, fecha, nota });
   }
   if (b.accion === 'eq') {
     const canal = txt(b.canal, 20);

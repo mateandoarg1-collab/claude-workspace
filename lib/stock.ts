@@ -21,7 +21,12 @@ export const EQ = 'Stock Equivalencias';
 // (esas las suma reglas.extras). La usa scripts/cmv/piezas_orden.py antes que las reglas.
 export const EQ_COLS = ['canal', 'clave', 'descripcion', 'skus', 'actualizado', 'revisado', 'dudoso', 'ventas90', 'foto', 'link', 'opciones'];
 export const CANALES_EQ = ['MeLi', 'Tienda', 'Shopify', 'Mayorista'];
-export const TIPOS = ['Conteo', 'Ingreso', 'Salida Full', 'Ajuste'] as const;
+// Envío = mercadería que sale del depósito al Local o al Local Güemes MDP (resta y genera remito).
+// Remito Mayorista = solo el remito: el stock ya lo descuenta el pedido de "App Pedidos".
+export const TIPOS = ['Conteo', 'Ingreso', 'Salida Full', 'Ajuste', 'Envío', 'Remito Mayorista'] as const;
+export const DESTINOS = ['Local', 'Local Güemes MDP', 'Mayorista'];
+// Productos repetidos en el Excel (sin ventas ni equivalencias) que no se muestran: 28-nov-2026, pedido de Ángel.
+const OCULTOS = new Set(['BOMB-ALP-12012', 'BOMB-DEL-12013']);
 export const FOTOS = 'Stock Fotos';
 export const FOTOS_COLS = ['sku', 'foto', 'origen'];
 const VENTANA = 30; // días para el ritmo de venta
@@ -101,7 +106,7 @@ export async function catalogo(): Promise<Producto[]> {
   (r.data.valueRanges ?? []).forEach((vr, i) => {
     (vr.values ?? []).forEach((f, j) => {
       const sku = String(f[5] ?? '').trim().toUpperCase();
-      if (!SKU_RX.test(sku) || vistos.has(sku)) return;
+      if (!SKU_RX.test(sku) || vistos.has(sku) || OCULTOS.has(sku)) return;
       vistos.add(sku);
       out.push({ sku, nombre: String(f[0] ?? '').replace(/\s+/g, ' ').trim(), categoria: tabs[i], fila: j + 2, costo: aNumero(f[6]),
         proveedores: [f[7], f[8]].map((x) => String(x ?? '').trim()).filter(Boolean) });
@@ -241,20 +246,23 @@ export async function resumen() {
   const conteos = new Map<string, Movimiento>();
   for (const m of movs) if (m.tipo === 'Conteo' && (!conteos.has(m.sku) || m.fecha >= conteos.get(m.sku)!.fecha)) conteos.set(m.sku, m);
   const primerConteo = [...conteos.values()].reduce((d, m) => (m.fecha.slice(0, 10) < d ? m.fecha.slice(0, 10) : d), hoy);
+  // Lo que no se contó arranca en 0 desde el primer conteo del depósito: los ingresos suman y las ventas restan (puede quedar negativo).
+  const inicio = conteos.size ? [...conteos.values()].reduce((d, m) => (m.fecha < d ? m.fecha : d), '9999') : '';
   const desde = [primerConteo, restarDias(hoy, VENTANA)].sort()[0];
   const skus = new Set(cat.map((p) => p.sku));
   const v = await ventas(desde, skus);
   const desdeRitmo = restarDias(hoy, VENTANA);
 
   const filas: FilaStock[] = cat.map((p) => {
-    const c = conteos.get(p.sku);
+    const contado = conteos.get(p.sku);
+    const c = contado ?? (inicio ? { fecha: inicio, cant: 0 } as Movimiento : undefined);
     const despues = (m: Movimiento) => m.sku === p.sku && (!c || m.fecha > c.fecha);
     let ingresos = 0, ajustes = 0, full = 0, ultimoIngreso = '';
     for (const m of movs) {
       if (!despues(m)) continue;
       if (m.tipo === 'Ingreso') { ingresos += m.cant; if (m.fecha > ultimoIngreso) ultimoIngreso = m.fecha; }
       else if (m.tipo === 'Ajuste') ajustes += m.cant;
-      else if (m.tipo === 'Salida Full') full += m.cant;
+      else if (m.tipo === 'Salida Full' || m.tipo === 'Envío') full += m.cant;
     }
     const porCanal: Record<string, number> = {};
     let vendido = 0, enVentana = 0;
@@ -265,7 +273,7 @@ export async function resumen() {
     }
     const ritmo = enVentana / VENTANA;
     const stock = c ? c.cant + ingresos + ajustes - full - vendido : null;
-    return { ...p, foto: fts.get(p.sku) ?? '', conteo: c ? { fecha: c.fecha, cant: c.cant } : null, ingresos, ajustes, full, vendido, porCanal, stock, ritmo,
+    return { ...p, foto: fts.get(p.sku) ?? '', conteo: contado ? { fecha: contado.fecha, cant: contado.cant } : null, ingresos, ajustes, full, vendido, porCanal, stock, ritmo,
       dias: stock != null && ritmo > 0 ? Math.floor(Math.max(0, stock) / ritmo) : null, ultimoIngreso };
   });
   const proveedores = [...new Set(cat.flatMap((p) => p.proveedores))].sort((a, b) => a.localeCompare(b));
