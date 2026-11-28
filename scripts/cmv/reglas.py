@@ -25,6 +25,10 @@ def set_matero(t, mates):
     return R(mate, 'TER-ACE-5009', BOMB, {'N': 'CANA-4x4-7006', 'M': 'CANA-4x4-7007', 'S': 'CANA-4x4-7008'}[c],
              {'N': 'YERB-CUE-8001', 'M': 'YERB-CUE-8002', 'S': 'YERB-CUE-8003'}[c])
 
+KIT_MATE = {'ROSA': 'MATE-ACE-3008', 'BEIGE': 'MATE-ACE-3009', 'NEGRO': 'MATE-ACE-3007', 'BLANCO': 'MATE-ACE-3017'}
+KIT_T1 = {'ROSA': 'TER-MAT-5002', 'BEIGE': 'TER-MAT-5004', 'NEGRO': 'TER-MAT-5001', 'BLANCO': 'TER-MAT-5003'}
+KIT_T7 = {'ROSA': 'TER-MAT-5006', 'BEIGE': 'TER-MAT-5008', 'NEGRO': 'TER-MAT-5005', 'BLANCO': 'TER-MAT-5007'}
+def _kc(t): return re.search(r'MATE (ROSA|BEIGE|NEGRO|BLANCO)', t).group(1)
 REGLAS = [
     # --- octubre 2026 (publicaciones nuevas, definidas con JP el 21-oct) ---
     (r'^NUEVO! MATE RANCHERO ROS', lambda t: R('MATE-MAD-2020'), 'ok'),
@@ -33,8 +37,9 @@ REGLAS = [
     (r'SET IMPERIAL ROSE QUARTZ \+ TERMO MATEANDO 1 L', lambda t: R('MATE-ACE-RQ', 'TER-MAT-5002', BOMB), 'ok'),
     (r'^BOX MAM. 4|IMPERIAL ACERO ROSE QUARTZ', lambda t: R('MATE-ACE-RQ', BOMB), 'ok'),
     (r'^BOX MAM. 1|IMPERIAL RUSTICO - MAM', lambda t: R('MATE-MAD-2008', BOMB), 'ok'),
-    (r'KIT MATERO MATEANDO - TERMO 1 LT? MATE (ROSA|BEIGE|NEGRO|BLANCO)', lambda t: R('MATE-KIT-1L'), 'ok'),
-    (r'KIT MATERO MATEANDO - TERMO 750 ML MATE (ROSA|BEIGE|NEGRO|BLANCO)', lambda t: R('MATE-KIT-750'), 'ok'),
+    # Kits matero (28-nov-2026): termo + mate Flow del mismo color + bombilla de acero, para que el stock descuente cada pieza.
+    (r'KIT MATERO MATEANDO - TERMO 1 LT? MATE (ROSA|BEIGE|NEGRO|BLANCO)', lambda t: R(KIT_T1[_kc(t)], KIT_MATE[_kc(t)], 'BOMB-ACE-12001'), 'ok'),
+    (r'KIT MATERO MATEANDO - TERMO 750 ML MATE (ROSA|BEIGE|NEGRO|BLANCO)', lambda t: R(KIT_T7[_kc(t)], KIT_MATE[_kc(t)], 'BOMB-ACE-12001'), 'ok'),
     (r'SET VACA RANCHERO \+ TERMO MATEANDO BEIGE 1 L', lambda t: R('MATE-MAD-2003', 'TER-MAT-5004', BOMB), 'ok'),
     (r'SET MATE VACA RANCHERO ROSA \+ TERMO .*750', lambda t: R('MATE-MAD-2020', 'TER-MAT-5006', BOMB), 'ok'),
     (r'SET MATE VACA RANCHERO BLACK \+ TERMO .*1 L', lambda t: R('MATE-MAD-2004', 'TER-MAT-5001', BOMB), 'ok'),
