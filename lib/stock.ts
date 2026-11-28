@@ -95,6 +95,8 @@ export async function editarProducto(sku: string, cambios: { costo?: number; pro
   return log.length;
 }
 
+// Filas del Excel con nombre pero sin SKU válido (las llena catalogo(); se muestran en la solapa Problemas).
+export let sinSkuExcel: { categoria: string; fila: number; nombre: string; sku: string }[] = [];
 export async function catalogo(): Promise<Producto[]> {
   const s = sheets();
   const tabs = ((await s.spreadsheets.get({ spreadsheetId: STOCK_ID, fields: 'sheets.properties.title' })).data.sheets ?? [])
@@ -103,15 +105,19 @@ export async function catalogo(): Promise<Producto[]> {
   const r = await s.spreadsheets.values.batchGet({ spreadsheetId: STOCK_ID, ranges: tabs.map((t) => `'${t}'!A2:I`), valueRenderOption: 'UNFORMATTED_VALUE' });
   const vistos = new Set<string>();
   const out: Producto[] = [];
+  const sinSku: typeof sinSkuExcel = [];
   (r.data.valueRanges ?? []).forEach((vr, i) => {
     (vr.values ?? []).forEach((f, j) => {
       const sku = String(f[5] ?? '').trim().toUpperCase();
-      if (!SKU_RX.test(sku) || vistos.has(sku) || OCULTOS.has(sku)) return;
+      const nombre = String(f[0] ?? '').replace(/\s+/g, ' ').trim();
+      if (!SKU_RX.test(sku)) { if (nombre && !/^nombre$/i.test(nombre)) sinSku.push({ categoria: tabs[i], fila: j + 2, nombre, sku }); return; }
+      if (vistos.has(sku) || OCULTOS.has(sku)) return;
       vistos.add(sku);
       out.push({ sku, nombre: String(f[0] ?? '').replace(/\s+/g, ' ').trim(), categoria: tabs[i], fila: j + 2, costo: aNumero(f[6]),
         proveedores: [f[7], f[8]].map((x) => String(x ?? '').trim()).filter(Boolean) });
     });
   });
+  sinSkuExcel = sinSku;
   return out;
 }
 
@@ -277,7 +283,7 @@ export async function resumen() {
       dias: stock != null && ritmo > 0 ? Math.floor(Math.max(0, stock) / ritmo) : null, ultimoIngreso };
   });
   const proveedores = [...new Set(cat.flatMap((p) => p.proveedores))].sort((a, b) => a.localeCompare(b));
-  return { actualizado: ahoraAR(), proveedores, filas, ultimos: movs.slice(-40).reverse(), sinTraducir: v.sinTraducir.slice(0, 150), errores: v.errores };
+  return { actualizado: ahoraAR(), proveedores, filas, sinSku: sinSkuExcel, ultimos: movs.slice(-40).reverse(), sinTraducir: v.sinTraducir.slice(0, 150), errores: v.errores };
 }
 
 export type Equivalencia = { fila: number; canal: string; clave: string; descripcion: string; skus: string; actualizado: string; revisado: string; dudoso: boolean; ventas90: number; foto: string; link: string; opciones: string };
